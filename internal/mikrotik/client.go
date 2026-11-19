@@ -34,6 +34,12 @@ type SystemResource struct {
 	MemUsagePct  float64 `json:"mem_usage_pct"`
 }
 
+type WANIPInfo struct {
+	Interface string `json:"interface"`
+	Address   string `json:"address"`
+	Version   int    `json:"version"`
+}
+
 type InterfaceInfo struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
@@ -52,11 +58,28 @@ type InterfaceInfo struct {
 }
 
 type DHCPLease struct {
+	ID       string `json:"id"`
 	Address  string `json:"address"`
 	MAC      string `json:"mac"`
 	HostName string `json:"host_name"`
 	Status   string `json:"status"`
+	Dynamic  bool   `json:"dynamic"`
 	Comment  string `json:"comment"`
+}
+
+type ARPEntry struct {
+	Address   string `json:"address"`
+	MAC       string `json:"mac"`
+	Interface string `json:"interface"`
+	Status    string `json:"status"`
+}
+
+type RouteEntry struct {
+	DstAddress string `json:"dst_address"`
+	Gateway    string `json:"gateway"`
+	Distance   string `json:"distance"`
+	Active     bool   `json:"active"`
+	RoutingTbl string `json:"routing_table"`
 }
 
 type RawConnection struct {
@@ -169,6 +192,85 @@ func GetSystemResource(c *routeros.Client) (SystemResource, error) {
 	return res, nil
 }
 
+func isPrivateIPv4(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
+		return true
+	}
+	return false
+}
+
+func GetWANIPs(c *routeros.Client) []WANIPInfo {
+	var out []WANIPInfo
+	if r4, err := c.Run("/ip/address/print"); err == nil {
+		for _, re := range r4.Re {
+			m := re.Map
+			if m["disabled"] == "true" || m["invalid"] == "true" {
+				continue
+			}
+			ipStr := strings.Split(m["address"], "/")[0]
+			ip := net.ParseIP(ipStr)
+			if ip == nil || ip.To4() == nil {
+				continue
+			}
+			ifaceLower := strings.ToLower(m["interface"])
+			isWANIf := strings.Contains(ifaceLower, "pppoe") || strings.Contains(ifaceLower, "wan")
+			if !isPrivateIPv4(ip) || isWANIf {
+				out = append(out, WANIPInfo{
+					Interface: m["interface"],
+					Address:   ipStr,
+					Version:   4,
+				})
+			}
+		}
+	}
+	if r6, err := c.Run("/ipv6/address/print"); err == nil {
+		var fallbackV6 *WANIPInfo
+		for _, re := range r6.Re {
+			m := re.Map
+			if m["disabled"] == "true" || m["invalid"] == "true" {
+				continue
+			}
+			ipStr := strings.Split(m["address"], "/")[0]
+			ip := net.ParseIP(ipStr)
+			if ip == nil || ip.IsLinkLocalUnicast() || ip.IsPrivate() || ip.IsLoopback() {
+				continue
+			}
+			ifaceLower := strings.ToLower(m["interface"])
+			isWANIf := strings.Contains(ifaceLower, "pppoe") || strings.Contains(ifaceLower, "wan") || strings.HasSuffix(m["address"], "/128")
+			if isWANIf {
+				out = append(out, WANIPInfo{
+					Interface: m["interface"],
+					Address:   ipStr,
+					Version:   6,
+				})
+			} else if fallbackV6 == nil {
+				fallbackV6 = &WANIPInfo{
+					Interface: m["interface"],
+					Address:   m["address"],
+					Version:   6,
+				}
+			}
+		}
+		hasV6 := false
+		for _, x := range out {
+			if x.Version == 6 {
+				hasV6 = true
+				break
+			}
+		}
+		if !hasV6 && fallbackV6 != nil {
+			out = append(out, *fallbackV6)
+		}
+	}
+	return out
+}
+
 func GetInterfaces(c *routeros.Client) ([]InterfaceInfo, error) {
 	r, err := c.Run("/interface/print")
 	if err != nil {
@@ -197,13 +299,14 @@ func GetInterfaces(c *routeros.Client) ([]InterfaceInfo, error) {
 	return out, nil
 }
 
-func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLease, error) {
+func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLease, []DHCPLease, error) {
 	r, err := c.Run("/ip/dhcp-server/lease/print")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	byIP := make(map[string]DHCPLease, len(r.Re))
 	byMAC := make(map[string]DHCPLease, len(r.Re))
+	list := make([]DHCPLease, 0, len(r.Re))
 	for _, re := range r.Re {
 		m := re.Map
 		ip := m["active-address"]
@@ -215,12 +318,15 @@ func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLea
 			mac = strings.ToUpper(m["mac-address"])
 		}
 		lease := DHCPLease{
+			ID:       m[".id"],
 			Address:  ip,
 			MAC:      mac,
 			HostName: m["host-name"],
 			Status:   m["status"],
+			Dynamic:  m["dynamic"] == "true",
 			Comment:  m["comment"],
 		}
+		list = append(list, lease)
 		if ip != "" {
 			byIP[ip] = lease
 		}
@@ -228,7 +334,49 @@ func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLea
 			byMAC[mac] = lease
 		}
 	}
-	return byIP, byMAC, nil
+	return byIP, byMAC, list, nil
+}
+
+func MakeDHCPStatic(c *routeros.Client, id string) error {
+	_, err := c.Run("/ip/dhcp-server/lease/make-static", "=numbers="+id)
+	return err
+}
+
+func GetARPTable(c *routeros.Client) ([]ARPEntry, error) {
+	r, err := c.Run("/ip/arp/print")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ARPEntry, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		out = append(out, ARPEntry{
+			Address:   m["address"],
+			MAC:       strings.ToUpper(m["mac-address"]),
+			Interface: m["interface"],
+			Status:    m["status"],
+		})
+	}
+	return out, nil
+}
+
+func GetRoutes(c *routeros.Client) ([]RouteEntry, error) {
+	r, err := c.Run("/ip/route/print")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RouteEntry, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		out = append(out, RouteEntry{
+			DstAddress: m["dst-address"],
+			Gateway:    m["gateway"],
+			Distance:   m["distance"],
+			Active:     m["active"] == "true",
+			RoutingTbl: m["routing-table"],
+		})
+	}
+	return out, nil
 }
 
 func GetIPv6Neighbors(c *routeros.Client) map[string]string {

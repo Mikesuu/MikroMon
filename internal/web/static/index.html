@@ -3,349 +3,450 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MikroMon — MikroTik 行为与流量分析平台</title>
+  <title>MikroMon — OpenWrt/RouterOS 行为分析控制台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body { background-color: #16191e; color: #e2e8f0; }
+    .luci-card { background-color: #1e2229; border: 1px solid #2d333d; }
+    .luci-sidebar { background-color: #1a1e24; border-right: 1px solid #2d333d; }
+    .luci-header { background-color: #1b1f26; border-bottom: 1px solid #2d333d; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex">
+<body class="min-h-screen font-sans flex">
 
-  <!-- 左侧固定导航栏 (参考 FanchmWrt / iKuai) -->
-  <aside class="w-56 bg-slate-900 border-r border-slate-800/80 flex-shrink-0 hidden md:flex flex-col justify-between sticky top-0 h-screen">
-    <div>
-      <div class="px-5 py-4 border-b border-slate-800/80 flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center font-bold text-slate-950">M</div>
+  <!-- OpenWrt 原版折叠式左侧边栏 -->
+  <aside class="luci-sidebar w-56 flex-shrink-0 hidden md:flex flex-col justify-between sticky top-0 h-screen select-none">
+    <div class="overflow-y-auto">
+      <div class="px-4 py-3.5 border-b border-[#2d333d] flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded bg-[#0099cc] flex items-center justify-center font-bold text-white text-sm">M</div>
         <div>
-          <div class="text-sm font-bold tracking-wide">MikroMon</div>
-          <div class="text-[11px] text-slate-400">RouterOS 行为分析 v2.0</div>
+          <div class="text-sm font-bold text-slate-100">MikroMon</div>
+          <div class="text-[11px] text-slate-400">LuCI Style · v2.1</div>
         </div>
       </div>
 
-      <nav class="p-3 space-y-1 text-sm">
-        <button onclick="switchTab('overview')" data-tab="overview" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sky-500/15 text-sky-400 font-medium">
-          <span>📊</span><span>总览仪表盘</span>
+      <nav class="p-2.5 space-y-1 text-[13px]">
+        <!-- 直达项 -->
+        <button onclick="switchTab('overview')" data-tab="overview" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded bg-[#0099cc]/20 text-[#38bdf8] font-medium">
+          <span>状态概览</span>
         </button>
-        <button onclick="switchTab('ips')" data-tab="ips" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <span>💻</span><span>终端列表</span>
+        <button onclick="switchTab('ips')" data-tab="ips" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+          <span>终端列表</span>
         </button>
-        <button onclick="switchTab('interfaces')" data-tab="interfaces" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <span>🔌</span><span>网络与接口</span>
-        </button>
-        <button onclick="switchTab('connections')" data-tab="connections" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <span>🌐</span><span>实时连接与归属地</span>
-        </button>
-        <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <span>🔍</span><span>上网审计</span>
-        </button>
-        <button onclick="switchTab('policy')" data-tab="policy" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <span>🛡️</span><span>行为管控与工具</span>
-        </button>
+
+        <!-- 折叠组 1: 网络监控 -->
+        <div>
+          <button onclick="toggleMenu('grp-net', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+            <span>网络监控</span><span class="chev text-xs transition-transform">▸</span>
+          </button>
+          <div id="grp-net" class="hidden pl-4 space-y-0.5 mt-0.5">
+            <button onclick="switchTab('interfaces')" data-tab="interfaces" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">接口状态与趋势</button>
+            <button onclick="switchTab('connections')" data-tab="connections" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">实时连接与归属地</button>
+            <button onclick="switchTab('network')" data-tab="network" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">DHCP / ARP / 路由表</button>
+          </div>
+        </div>
+
+        <!-- 折叠组 2: 行为审计 -->
+        <div>
+          <button onclick="toggleMenu('grp-audit', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+            <span>行为审计</span><span class="chev text-xs transition-transform">▸</span>
+          </button>
+          <div id="grp-audit" class="hidden pl-4 space-y-0.5 mt-0.5">
+            <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">上网审计 (域名/URL)</button>
+            <button onclick="switchTab('dpi')" data-tab="dpi" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">应用流量排行</button>
+          </div>
+        </div>
+
+        <!-- 折叠组 3: 管控与工具 -->
+        <div>
+          <button onclick="toggleMenu('grp-ctrl', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+            <span>管控与工具</span><span class="chev text-xs transition-transform">▸</span>
+          </button>
+          <div id="grp-ctrl" class="hidden pl-4 space-y-0.5 mt-0.5">
+            <button onclick="switchTab('policy')" data-tab="policy" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">限速与 IP 黑名单</button>
+            <button onclick="switchTab('tools')" data-tab="tools" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">Torch 抓包与 Ping</button>
+          </div>
+        </div>
+
+        <!-- 折叠组 4: 系统设置 -->
+        <div>
+          <button onclick="toggleMenu('grp-sys', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+            <span>系统设置</span><span class="chev text-xs transition-transform">▸</span>
+          </button>
+          <div id="grp-sys" class="hidden pl-4 space-y-0.5 mt-0.5">
+            <button onclick="openSettings()" class="w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">路由器与 ADG 对接</button>
+            <button onclick="switchTab('dbstatus')" data-tab="dbstatus" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">DPI / Geo 数据库</button>
+          </div>
+        </div>
       </nav>
     </div>
 
-    <div class="p-4 border-t border-slate-800/80 space-y-2">
-      <button onclick="openSettings()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg py-2 text-xs font-medium">⚙️ 路由器与 ADG 配置</button>
-      <div class="text-[11px] text-slate-500 text-center">API 8728/8729 · IPv4/IPv6</div>
+    <div class="p-3 border-t border-[#2d333d] text-[11px] text-slate-500 flex justify-between items-center">
+      <span>RouterOS API</span>
+      <span class="text-[#38bdf8]">8728 / 8729</span>
     </div>
   </aside>
 
-  <!-- 右侧主内容区 -->
+  <!-- 主区域 -->
   <div class="flex-1 flex flex-col min-w-0">
-    <!-- 顶部精简状态栏 -->
-    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
-      <div class="flex items-center gap-3 flex-wrap">
-        <select id="routerSelect" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs"></select>
-        <span id="statusBadge" class="px-2.5 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400">连接中...</span>
-        <!-- 手机端快捷菜单 -->
-        <select onchange="switchTab(this.value)" class="md:hidden bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs">
-          <option value="overview">总览仪表盘</option>
+    <!-- 顶部栏：路由切换 + 公网 IP 展示 + 时间尺度 -->
+    <header class="luci-header px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30">
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <select id="routerSelect" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs"></select>
+        <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-400">连接中...</span>
+        <!-- 公网 IP 徽章区 (填补原来空白区域) -->
+        <div id="headerWanPills" class="flex items-center gap-1.5 flex-wrap text-[11px]"></div>
+        <select onchange="switchTab(this.value)" class="md:hidden bg-[#252a33] border border-[#373f4b] rounded px-2 py-1 text-xs">
+          <option value="overview">状态概览</option>
           <option value="ips">终端列表</option>
-          <option value="interfaces">网络与接口</option>
+          <option value="interfaces">接口状态</option>
           <option value="connections">实时连接</option>
+          <option value="network">DHCP/ARP/路由</option>
           <option value="audit">上网审计</option>
-          <option value="policy">行为管控</option>
+          <option value="dpi">应用排行</option>
+          <option value="policy">限速黑名单</option>
+          <option value="tools">Torch/Ping</option>
         </select>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <div class="flex bg-slate-800/90 rounded-lg p-0.5 border border-slate-700" id="rangeBar">
-          <button data-range="1h" class="range-btn px-2.5 py-1 text-xs rounded-md bg-sky-500 text-slate-950 font-medium">1小时</button>
-          <button data-range="6h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">6小时</button>
-          <button data-range="12h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">12小时</button>
-          <button data-range="24h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">24小时</button>
-          <button data-range="7d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">7天</button>
-          <button data-range="15d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">15天</button>
-          <button data-range="30d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">30天</button>
+      <div class="flex items-center gap-2">
+        <div class="flex bg-[#252a33] rounded p-0.5 border border-[#373f4b]" id="rangeBar">
+          <button data-range="1h" class="range-btn px-2 py-0.5 text-xs rounded bg-[#0099cc] text-white font-medium">1小时</button>
+          <button data-range="6h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">6小时</button>
+          <button data-range="12h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">12小时</button>
+          <button data-range="24h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">24小时</button>
+          <button data-range="7d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">7天</button>
+          <button data-range="15d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">15天</button>
+          <button data-range="30d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">30天</button>
         </div>
-        <button onclick="openSettings()" class="md:hidden bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg text-xs">设置</button>
+        <button onclick="openSettings()" class="md:hidden bg-[#252a33] border border-[#373f4b] px-2 py-1 rounded text-xs">设置</button>
       </div>
     </header>
 
-    <main class="p-5 space-y-5 flex-1">
-      <!-- 1. 总览仪表盘 (参考 FanchmWrt 双栏结构) -->
-      <section id="tab-overview" class="tab-panel grid grid-cols-1 xl:grid-cols-12 gap-5">
-        <!-- 主左区 9列 -->
-        <div class="xl:col-span-9 space-y-5">
-          <!-- 5个KPI卡 -->
+    <main class="p-4 space-y-4 flex-1">
+      <!-- 1. 状态概览 -->
+      <section id="tab-overview" class="tab-panel grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div class="xl:col-span-9 space-y-4">
+          <!-- 5个核心卡片 -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-              <div class="text-xs text-slate-400">联网状态</div>
-              <div id="kpiNetState" class="text-lg font-bold text-emerald-400 mt-1">检测中</div>
-              <div id="kpiWanName" class="text-[11px] text-slate-500 mt-0.5 truncate">-</div>
+            <div class="luci-card rounded-lg p-3">
+              <div class="text-xs text-slate-400">联网状态与公网 IP</div>
+              <div id="kpiNetState" class="text-base font-bold text-emerald-400 mt-1">检测中</div>
+              <div id="kpiPublicIps" class="text-[11px] text-sky-300 font-mono mt-0.5 break-all">-</div>
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-              <div class="text-xs text-slate-400">活跃应用</div>
+            <div class="luci-card rounded-lg p-3">
+              <div class="text-xs text-slate-400">活跃 APP</div>
               <div id="kpiApps" class="text-xl font-bold text-sky-400 mt-1">0</div>
-              <div class="text-[11px] text-slate-500 mt-0.5">当前识别应用数</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">DPI 真实应用数</div>
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+            <div class="luci-card rounded-lg p-3">
               <div class="text-xs text-slate-400">在线终端</div>
               <div id="kpiUsers" class="text-xl font-bold text-indigo-400 mt-1">0</div>
               <div id="kpiUsersSub" class="text-[11px] text-slate-500 mt-0.5">IPv4 / IPv6</div>
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-              <div class="text-xs text-slate-400">活跃连接数</div>
+            <div class="luci-card rounded-lg p-3">
+              <div class="text-xs text-slate-400">活跃连接</div>
               <div id="kpiConns" class="text-xl font-bold text-amber-400 mt-1">0</div>
               <div class="text-[11px] text-slate-500 mt-0.5">实时并发会话</div>
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-              <div class="text-xs text-slate-400">周期流量 (<span class="range-lbl">1小时</span>)</div>
+            <div class="luci-card rounded-lg p-3">
+              <div class="text-xs text-slate-400">统计流量 (<span class="range-lbl">1小时</span>)</div>
               <div id="kpiTotalTraffic" class="text-lg font-bold text-emerald-300 mt-1">0 B</div>
-              <div class="text-[11px] text-slate-500 mt-0.5">全网汇总统计</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">区间累计总流量</div>
             </div>
           </div>
 
-          <!-- 流量统计曲线 -->
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <!-- 流量统计 -->
+          <div class="luci-card rounded-lg p-4">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
               <div class="flex items-center gap-3">
                 <h2 class="text-sm font-semibold">流量统计</h2>
-                <select id="overviewIface" onchange="onOverviewIfaceChange()" class="bg-slate-800 border border-slate-700 rounded-md text-xs px-2.5 py-1"></select>
+                <select id="overviewIface" onchange="onOverviewIfaceChange()" class="bg-[#252a33] border border-[#373f4b] rounded text-xs px-2.5 py-1"></select>
                 <label class="flex items-center gap-1 text-xs text-slate-400 cursor-pointer">
                   <input id="invertLanChk" type="checkbox" onchange="loadOverviewChart()" />
                   <span>LAN视角反转</span>
                 </label>
               </div>
-              <div id="overviewRatePill" class="text-xs font-mono bg-slate-800/80 px-3 py-1 rounded-full">
-                <span class="text-sky-400">下载 0 bps</span> · <span class="text-emerald-400">上传 0 bps</span>
+              <div id="overviewRatePill" class="text-xs font-mono bg-[#252a33] px-3 py-1 rounded">
+                <span class="text-sky-400">下行 0 bps</span> · <span class="text-emerald-400">上行 0 bps</span>
               </div>
             </div>
-            <div id="overviewTrafficChart" class="h-64 w-full"></div>
+            <div id="overviewTrafficChart" class="h-60 w-full"></div>
           </div>
 
-          <!-- 活跃 APP 徽章墙 -->
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <!-- 活跃 APP 图标墙 -->
+          <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
-              <h2 class="text-sm font-semibold">活跃应用识别</h2>
-              <span class="text-xs text-slate-500">点击任意应用可跳转过滤连接详情</span>
+              <h2 class="text-sm font-semibold">活跃 APP（实时 & 近 15 分钟真实应用）</h2>
+              <span class="text-[11px] text-slate-400">点击任意 APP 查看对应连接明细</span>
             </div>
-            <div id="activeAppsWall" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5"></div>
+            <div id="activeAppsWall" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 gap-2.5"></div>
           </div>
 
-          <!-- 下方双图: 分类环图 + 用户Top8横向柱状图 -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <!-- 下方双图 -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="luci-card rounded-lg p-4">
               <h2 class="text-sm font-semibold mb-2">应用分类流量分布 (<span class="range-lbl">1小时</span>)</h2>
-              <div id="appCatChart" class="h-64 w-full"></div>
+              <div id="appCatChart" class="h-60 w-full"></div>
             </div>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <div class="luci-card rounded-lg p-4">
               <h2 class="text-sm font-semibold mb-2">用户流量 Top 8 (<span class="range-lbl">1小时</span>)</h2>
-              <div id="userTop8Chart" class="h-64 w-full"></div>
+              <div id="userTop8Chart" class="h-60 w-full"></div>
             </div>
           </div>
         </div>
 
-        <!-- 右侧系统信息边栏 3列 -->
-        <div class="xl:col-span-3 space-y-5">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
-            <h3 class="text-sm font-semibold border-b border-slate-800 pb-2">系统信息</h3>
-            <div class="text-xs space-y-2">
+        <!-- 右侧 OpenWrt 系统栏 -->
+        <div class="xl:col-span-3 space-y-4">
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">系统信息</h3>
+            <div class="text-xs space-y-1.5">
               <div class="flex justify-between"><span class="text-slate-400">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
-              <div class="flex justify-between gap-2"><span class="text-slate-400 shrink-0">设备型号</span><span id="sysModel" class="font-medium truncate">-</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">CPU 架构</span><span id="sysArch">-</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">系统版本</span><span id="sysVer" class="text-sky-400">-</span></div>
+              <div class="flex justify-between gap-2"><span class="text-slate-400 shrink-0">设备型号</span><span id="sysModel" class="truncate">-</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">架构</span><span id="sysArch">-</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">固件版本</span><span id="sysVer" class="text-[#38bdf8]">-</span></div>
               <div class="flex justify-between"><span class="text-slate-400">运行时间</span><span id="sysUptime">-</span></div>
             </div>
           </div>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <h3 class="text-sm font-semibold border-b border-slate-800 pb-2 mb-2">运行状态</h3>
-            <div class="grid grid-cols-2 gap-2">
+          <div class="luci-card rounded-lg p-4">
+            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2 mb-1">运行状态</h3>
+            <div class="grid grid-cols-2 gap-1">
               <div id="gaugeCpu" class="h-32"></div>
               <div id="gaugeMem" class="h-32"></div>
             </div>
-            <div id="sysMemDetail" class="text-center text-[11px] text-slate-400 mt-1">-</div>
+            <div id="sysMemDetail" class="text-center text-[11px] text-slate-400">-</div>
           </div>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b border-slate-800 pb-2">接口速览</h3>
-            <div id="sideIfaceList" class="space-y-2 text-xs"></div>
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">WAN 公网与接口速览</h3>
+            <div id="sideWanBox" class="space-y-1 text-[11px] font-mono bg-[#16191e] p-2 rounded"></div>
+            <div id="sideIfaceList" class="space-y-1.5 text-xs pt-1"></div>
           </div>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b border-slate-800 pb-2">最近活跃域名</h3>
-            <div id="sideDomainFeed" class="space-y-1.5 text-xs max-h-56 overflow-y-auto"></div>
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">活跃域名 (URL)</h3>
+            <div id="sideDomainFeed" class="space-y-1 text-xs max-h-52 overflow-y-auto"></div>
           </div>
         </div>
       </section>
 
       <!-- 2. 终端列表 -->
-      <section id="tab-ips" class="tab-panel hidden space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <section id="tab-ips" class="tab-panel hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-sm font-semibold">在线终端实时速率 (IPv4 + IPv6)</h2>
-              <input id="ipSearch" oninput="renderLiveIPs()" placeholder="搜索 IP / 主机名 / MAC..." class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs w-48" />
+              <input id="ipSearch" oninput="renderLiveIPs()" placeholder="搜索 IP / 设备名 / MAC..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
             </div>
             <div class="overflow-x-auto max-h-[460px]">
               <table class="w-full text-xs text-left">
-                <thead class="text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-900">
-                  <tr><th class="py-2">终端 IP</th><th class="py-2">设备名 / MAC</th><th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">主要应用</th><th class="py-2">操作</th></tr>
+                <thead class="text-slate-400 border-b border-[#2d333d] sticky top-0 bg-[#1e2229]">
+                  <tr><th class="py-2">终端 IP</th><th class="py-2">设备 / 厂商</th><th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">主要应用</th><th class="py-2">操作</th></tr>
                 </thead>
-                <tbody id="allLiveIpBody" class="divide-y divide-slate-800/70"></tbody>
+                <tbody id="allLiveIpBody" class="divide-y divide-[#2d333d]/60"></tbody>
               </table>
             </div>
           </div>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <h2 class="text-sm font-semibold mb-3">历史流量排行 (<span class="range-lbl">1小时</span>) — 点击查看曲线</h2>
+          <div class="luci-card rounded-lg p-4">
+            <h2 class="text-sm font-semibold mb-3">历史流量排行 (<span class="range-lbl">1小时</span>) — 点击查看趋势</h2>
             <div class="overflow-x-auto max-h-[460px]">
               <table class="w-full text-xs text-left">
-                <thead class="text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-900">
-                  <tr><th class="py-2">IP</th><th class="py-2">设备名</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总流量</th></tr>
+                <thead class="text-slate-400 border-b border-[#2d333d] sticky top-0 bg-[#1e2229]">
+                  <tr><th class="py-2">IP</th><th class="py-2">设备名</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr>
                 </thead>
-                <tbody id="histIpBody" class="divide-y divide-slate-800/70"></tbody>
+                <tbody id="histIpBody" class="divide-y divide-[#2d333d]/60"></tbody>
               </table>
             </div>
           </div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h2 class="text-sm font-semibold mb-2">单终端历史流量趋势: <span id="selectedIpTitle" class="text-sky-400">请在上方点击任意 IP</span></h2>
+        <div class="luci-card rounded-lg p-4">
+          <h2 class="text-sm font-semibold mb-2">单终端历史曲线: <span id="selectedIpTitle" class="text-[#38bdf8]">请在上方点击任意 IP</span></h2>
           <div id="ipDetailChart" class="h-64 w-full"></div>
         </div>
       </section>
 
-      <!-- 3. 网络与接口 -->
-      <section id="tab-interfaces" class="tab-panel hidden space-y-5">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+      <!-- 3. 接口状态 -->
+      <section id="tab-interfaces" class="tab-panel hidden space-y-4">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <h2 class="text-sm font-semibold mb-3">全部接口状态</h2>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-slate-800">
+            <thead class="text-slate-400 border-b border-[#2d333d]">
               <tr>
                 <th class="py-2">接口名</th><th class="py-2">类型</th><th class="py-2">状态</th><th class="py-2">MAC / MTU</th>
                 <th class="py-2">实时 RX</th><th class="py-2">实时 TX</th><th class="py-2">累计收发</th><th class="py-2">掉线/丢包</th><th class="py-2">操作</th>
               </tr>
             </thead>
-            <tbody id="ifaceTableBody" class="divide-y divide-slate-800/70"></tbody>
+            <tbody id="ifaceTableBody" class="divide-y divide-[#2d333d]/60"></tbody>
           </table>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h2 class="text-sm font-semibold mb-2">接口历史曲线: <span id="selectedIfaceTitle" class="text-sky-400">-</span></h2>
+        <div class="luci-card rounded-lg p-4">
+          <h2 class="text-sm font-semibold mb-2">接口历史曲线: <span id="selectedIfaceTitle" class="text-[#38bdf8]">-</span></h2>
           <div id="ifaceDetailChart" class="h-72 w-full"></div>
         </div>
       </section>
 
       <!-- 4. 实时连接与归属地 -->
       <section id="tab-connections" class="tab-panel hidden space-y-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-wrap gap-3 items-center justify-between">
-          <div class="flex gap-2.5 flex-wrap">
-            <input id="connFilterIp" oninput="renderConnections()" placeholder="过滤内网 IP / 设备名..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs w-48" />
-            <input id="connFilterApp" oninput="renderConnections()" placeholder="过滤应用 / 分类 / 域名..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs w-48" />
-            <input id="connFilterIsp" oninput="renderConnections()" placeholder="过滤归属地 / 服务商 (如 腾讯, 教育网)..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs w-56" />
+        <div class="luci-card rounded-lg p-3 flex flex-wrap gap-2.5 items-center justify-between">
+          <div class="flex gap-2 flex-wrap">
+            <input id="connFilterIp" oninput="renderConnections()" placeholder="过滤内网 IP / 设备名..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterApp" oninput="renderConnections()" placeholder="过滤应用 / 分类 / 域名..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterIsp" oninput="renderConnections()" placeholder="过滤归属地 / 服务商..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
           </div>
           <span id="connCountLabel" class="text-xs text-slate-400">显示 0 条连接</span>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-slate-800">
+            <thead class="text-slate-400 border-b border-[#2d333d]">
               <tr>
-                <th class="py-2">识别应用 / 分类</th><th class="py-2">协议</th><th class="py-2">内网终端</th>
+                <th class="py-2">识别应用</th><th class="py-2">协议</th><th class="py-2">内网终端</th>
                 <th class="py-2">目标地址 / DNS 域名</th><th class="py-2">归属地 / 服务商 (ISP)</th>
                 <th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">累计流量</th><th class="py-2">状态</th>
               </tr>
             </thead>
-            <tbody id="connTableBody" class="divide-y divide-slate-800/70"></tbody>
+            <tbody id="connTableBody" class="divide-y divide-[#2d333d]/60"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- 5. 上网审计 -->
+      <!-- 5. DHCP / ARP / 路由表 -->
+      <section id="tab-network" class="tab-panel hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-semibold">OpenWrt 风格网络表（DHCP 租约 / ARP / 路由表）</h2>
+          <button onclick="loadNetworkDetails()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新网络表</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
+            <h3 class="text-xs font-semibold text-slate-300 mb-2">DHCP 租约列表</h3>
+            <table class="w-full text-xs text-left">
+              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">IP</th><th class="py-1.5">主机名</th><th class="py-1.5">MAC</th><th class="py-1.5">类型</th><th class="py-1.5">操作</th></tr></thead>
+              <tbody id="dhcpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            </table>
+          </div>
+          <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
+            <h3 class="text-xs font-semibold text-slate-300 mb-2">ARP 邻接表</h3>
+            <table class="w-full text-xs text-left">
+              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">IP</th><th class="py-1.5">MAC</th><th class="py-1.5">接口</th><th class="py-1.5">状态</th></tr></thead>
+              <tbody id="arpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-80">
+          <h3 class="text-xs font-semibold text-slate-300 mb-2">活动路由表 (/ip/route)</h3>
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">目标网段</th><th class="py-1.5">网关 / 接口</th><th class="py-1.5">路由表</th><th class="py-1.5">距离</th><th class="py-1.5">状态</th></tr></thead>
+            <tbody id="routeBody" class="divide-y divide-[#2d333d]/60"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6. 上网审计 -->
       <section id="tab-audit" class="tab-panel hidden space-y-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
+        <div class="luci-card rounded-lg p-4 flex flex-wrap justify-between items-center gap-3">
           <div>
             <h2 class="text-sm font-semibold">域名访问审计记录</h2>
-            <p class="text-xs text-slate-400 mt-0.5">支持自动抓取 RouterOS DNS 缓存或对接 AdGuard Home (`10.10.10.10`) 实时审计日志</p>
+            <p class="text-xs text-slate-400 mt-0.5">支持 RouterOS DNS 缓存与 AdGuard Home 实时查询同步</p>
           </div>
           <div class="flex gap-2">
-            <input id="auditSearch" placeholder="搜索设备 IP / 域名 / 应用..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs w-56" />
-            <button onclick="loadAudit()" class="bg-sky-500 text-slate-950 font-medium px-3 py-1.5 rounded-lg text-xs">刷新查询</button>
+            <input id="auditSearch" placeholder="搜索 IP / 域名 / 应用..." class="bg-[#252a33] border border-[#373f4b] rounded px-3 py-1 text-xs w-56" />
+            <button onclick="loadAudit()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新查询</button>
           </div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-slate-800">
+            <thead class="text-slate-400 border-b border-[#2d333d]">
               <tr><th class="py-2">时间</th><th class="py-2">终端 IP</th><th class="py-2">设备名</th><th class="py-2">访问域名</th><th class="py-2">识别应用</th><th class="py-2">分类</th><th class="py-2">来源</th></tr>
             </thead>
-            <tbody id="auditBody" class="divide-y divide-slate-800/70"></tbody>
+            <tbody id="auditBody" class="divide-y divide-[#2d333d]/60"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- 6. 行为管控与工具 (限速 / 拉黑 / Torch / Ping) -->
-      <section id="tab-policy" class="tab-panel hidden space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <h2 class="text-sm font-semibold">终端限速策略 (Simple Queue)</h2>
-              <button onclick="loadPolicy()" class="text-xs text-sky-400 hover:underline">刷新</button>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <input id="qTarget" placeholder="目标 IP (如 10.10.10.44)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs" />
-              <input id="qLimit" placeholder="上传/下载 (如 10M/50M)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs" />
-              <button onclick="addQueue()" class="bg-sky-500 text-slate-950 font-medium rounded px-3 py-1.5 text-xs">添加限速</button>
-            </div>
-            <table class="w-full text-xs text-left">
-              <thead class="text-slate-400 border-b border-slate-800"><tr><th class="py-2">名称</th><th class="py-2">目标</th><th class="py-2">限速上限</th><th class="py-2">当前速率</th><th class="py-2">操作</th></tr></thead>
-              <tbody id="queueBody" class="divide-y divide-slate-800/70"></tbody>
-            </table>
-          </div>
+      <!-- 7. 应用流量排行 -->
+      <section id="tab-dpi" class="tab-panel hidden space-y-4">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
+          <h2 class="text-sm font-semibold mb-3">应用历史流量明细排行 (<span class="range-lbl">1小时</span>)</h2>
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">应用 / 协议</th><th class="py-2">分类</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr></thead>
+            <tbody id="dpiRankBody" class="divide-y divide-[#2d333d]/60"></tbody>
+          </table>
+        </div>
+      </section>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <h2 class="text-sm font-semibold">IP 黑名单 (mikromon_blocked)</h2>
-            <div class="flex gap-2">
-              <input id="blockIpInput" placeholder="输入需阻断的 IP" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs flex-1" />
-              <input id="blockCommentInput" placeholder="备注" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs w-28" />
-              <button onclick="addBlockIP()" class="bg-rose-500 text-white font-medium rounded px-3 py-1.5 text-xs">拉黑</button>
-            </div>
+      <!-- 8. 限速与黑名单 -->
+      <section id="tab-policy" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="luci-card rounded-lg p-4 space-y-3">
+          <div class="flex justify-between items-center">
+            <h2 class="text-sm font-semibold">终端限速策略 (Simple Queue)</h2>
+            <button onclick="loadPolicy()" class="text-xs text-[#38bdf8] hover:underline">刷新</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="qTarget" placeholder="目标 IP (如 10.10.10.44)" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs" />
+            <input id="qLimit" placeholder="上传/下载 (如 10M/50M)" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs" />
+            <button onclick="addQueue()" class="bg-[#0099cc] text-white font-medium rounded px-3 py-1.5 text-xs">添加限速</button>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">名称</th><th class="py-2">目标</th><th class="py-2">限速上限</th><th class="py-2">当前速率</th><th class="py-2">操作</th></tr></thead>
+            <tbody id="queueBody" class="divide-y divide-[#2d333d]/60"></tbody>
+          </table>
+        </div>
+
+        <div class="luci-card rounded-lg p-4 space-y-3">
+          <h2 class="text-sm font-semibold">IP 黑名单 (mikromon_blocked)</h2>
+          <div class="flex gap-2">
+            <input id="blockIpInput" placeholder="输入需阻断的 IP" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs flex-1" />
+            <input id="blockCommentInput" placeholder="备注" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs w-28" />
+            <button onclick="addBlockIP()" class="bg-rose-600 text-white font-medium rounded px-3 py-1.5 text-xs">拉黑</button>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">IP</th><th class="py-2">备注</th><th class="py-2">时间</th><th class="py-2">操作</th></tr></thead>
+            <tbody id="blockBody" class="divide-y divide-[#2d333d]/60"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 9. Torch 与 Ping -->
+      <section id="tab-tools" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 luci-card rounded-lg p-4 space-y-3">
+          <div class="flex flex-wrap gap-2 items-center">
+            <h2 class="text-sm font-semibold mr-2">实时 Torch 抓包</h2>
+            <select id="torchIface" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs"></select>
+            <button onclick="runTorch()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">抓取快照</button>
+            <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="bg-[#252a33] border border-[#373f4b] px-3 py-1 rounded text-xs">开启自动刷新</button>
+          </div>
+          <div class="overflow-x-auto max-h-96">
             <table class="w-full text-xs text-left">
-              <thead class="text-slate-400 border-b border-slate-800"><tr><th class="py-2">IP</th><th class="py-2">备注</th><th class="py-2">时间</th><th class="py-2">操作</th></tr></thead>
-              <tbody id="blockBody" class="divide-y divide-slate-800/70"></tbody>
+              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">源</th><th class="py-1.5">目标</th><th class="py-1.5">协议</th><th class="py-1.5">TX</th><th class="py-1.5">RX</th></tr></thead>
+              <tbody id="torchBody" class="divide-y divide-[#2d333d]/60"></tbody>
             </table>
           </div>
         </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div class="flex flex-wrap gap-2 items-center">
-              <h2 class="text-sm font-semibold mr-2">实时 Torch 抓包</h2>
-              <select id="torchIface" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs"></select>
-              <button onclick="runTorch()" class="bg-sky-500 text-slate-950 font-medium px-3 py-1 rounded text-xs">抓取快照</button>
-              <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="bg-slate-800 border border-slate-700 px-3 py-1 rounded text-xs">开启自动刷新</button>
-            </div>
-            <div class="overflow-x-auto max-h-64">
-              <table class="w-full text-xs text-left">
-                <thead class="text-slate-400 border-b border-slate-800"><tr><th class="py-1.5">源</th><th class="py-1.5">目标</th><th class="py-1.5">协议</th><th class="py-1.5">TX</th><th class="py-1.5">RX</th></tr></thead>
-                <tbody id="torchBody" class="divide-y divide-slate-800/70"></tbody>
-              </table>
-            </div>
+        <div class="luci-card rounded-lg p-4 space-y-3">
+          <h2 class="text-sm font-semibold">路由器 Ping 诊断</h2>
+          <div class="flex gap-2">
+            <input id="pingTarget" value="223.5.5.5" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs flex-1" />
+            <button onclick="runPing()" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs">Ping</button>
           </div>
+          <pre id="pingResult" class="bg-[#16191e] p-2.5 rounded text-[11px] text-slate-300 overflow-x-auto max-h-80">等待执行...</pre>
+        </div>
+      </section>
 
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-            <h2 class="text-sm font-semibold">路由器 Ping 诊断</h2>
-            <div class="flex gap-2">
-              <input id="pingTarget" value="223.5.5.5" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs flex-1" />
-              <button onclick="runPing()" class="bg-emerald-500 text-slate-950 font-medium rounded px-3 py-1 text-xs">Ping</button>
-            </div>
-            <pre id="pingResult" class="bg-slate-950 p-2.5 rounded text-[11px] text-slate-300 overflow-x-auto max-h-56">等待执行...</pre>
+      <!-- 10. DPI / Geo 数据库状态 -->
+      <section id="tab-dbstatus" class="tab-panel hidden space-y-4">
+        <div class="luci-card rounded-lg p-5 space-y-4 max-w-2xl">
+          <h2 class="text-sm font-semibold">DPI 应用特征库 & Geo/ASN 数据库状态</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">内置 DPI 特征</div><div id="dbSigCnt" class="text-lg font-bold text-[#38bdf8] mt-1">-</div></div>
+            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">已缓存 Geo/ASN IP</div><div id="dbGeoCnt" class="text-lg font-bold text-emerald-400 mt-1">-</div></div>
+            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">域名审计记录</div><div id="dbAuditCnt" class="text-lg font-bold text-amber-400 mt-1">-</div></div>
+            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">24h 原始采样</div><div id="dbSampleCnt" class="text-lg font-bold text-indigo-400 mt-1">-</div></div>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="loadDBStats()" class="bg-[#252a33] border border-[#373f4b] px-3 py-1.5 rounded text-xs">刷新统计</button>
+            <button onclick="clearGeoCache()" class="bg-rose-600 text-white px-3 py-1.5 rounded text-xs">清空 Geo/ASN 缓存重抓</button>
           </div>
         </div>
       </section>
@@ -354,59 +455,59 @@
 
   <!-- 设置弹窗 -->
   <div id="settingsModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="luci-card rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center">
         <h3 class="text-base font-semibold">路由器与数据源配置</h3>
         <button onclick="closeSettings()" class="text-slate-400 hover:text-white">✕</button>
       </div>
       <div id="routerListBox" class="space-y-2 max-h-32 overflow-y-auto"></div>
-      <div class="grid grid-cols-2 gap-3 text-xs border-t border-slate-800 pt-4">
+      <div class="grid grid-cols-2 gap-3 text-xs border-t border-[#2d333d] pt-4">
         <input id="cfgId" type="hidden" />
         <div class="col-span-2">
           <label class="text-slate-400">备注名称</label>
-          <input id="cfgName" value="主路由 MikroTik" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgName" value="主路由 MikroTik" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">路由器 IP / 域名</label>
-          <input id="cfgHost" placeholder="10.10.10.2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgHost" placeholder="10.10.10.2" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">API 端口 (8728 / 8729)</label>
-          <input id="cfgPort" type="number" value="8728" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgPort" type="number" value="8728" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">RouterOS 用户名</label>
-          <input id="cfgUser" value="admin" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgUser" value="admin" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">RouterOS 密码</label>
-          <input id="cfgPass" type="password" placeholder="留空表示不修改原密码" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgPass" type="password" placeholder="留空表示不修改原密码" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div class="col-span-2 flex items-center gap-4 text-slate-300">
           <label class="flex items-center gap-1.5"><input id="cfgTls" type="checkbox" /> 启用 API-SSL (8729)</label>
           <label class="flex items-center gap-1.5"><input id="cfgSkipVerify" type="checkbox" checked /> 忽略自签名证书校验</label>
         </div>
 
-        <div class="col-span-2 border-t border-slate-800 pt-3 mt-1">
-          <div class="text-sky-400 font-medium mb-1">可选：对接 AdGuard Home (强烈推荐，用于补全域名与上网审计)</div>
+        <div class="col-span-2 border-t border-[#2d333d] pt-3 mt-1">
+          <div class="text-[#38bdf8] font-medium">可选：对接 AdGuard Home（强烈推荐，大幅提升微信/抖音/淘宝等 App 精准度）</div>
         </div>
         <div class="col-span-2">
           <label class="text-slate-400">AdGuard Home 地址 (如 http://10.10.10.10)</label>
-          <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">ADG 用户名 (若无留空)</label>
-          <input id="cfgAdgUser" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgAdgUser" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
           <label class="text-slate-400">ADG 密码 (留空不修改)</label>
-          <input id="cfgAdgPass" type="password" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1 text-sm" />
+          <input id="cfgAdgPass" type="password" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
       </div>
       <div id="testResultMsg" class="text-xs hidden p-2 rounded"></div>
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="testRouter()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-1.5 rounded-lg text-sm">测试连接</button>
-        <button onclick="saveRouter()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-medium px-4 py-1.5 rounded-lg text-sm">保存配置</button>
+        <button onclick="testRouter()" class="bg-[#252a33] border border-[#373f4b] px-4 py-1.5 rounded text-sm">测试连接</button>
+        <button onclick="saveRouter()" class="bg-[#0099cc] text-white font-medium px-4 py-1.5 rounded text-sm">保存配置</button>
       </div>
     </div>
   </div>
@@ -430,6 +531,14 @@ const chartIpDetail = echarts.init(document.getElementById('ipDetailChart'));
 window.addEventListener('resize', () => {
   [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize());
 });
+
+function toggleMenu(id, btn) {
+  const el = document.getElementById(id);
+  const open = el.classList.contains('hidden');
+  el.classList.toggle('hidden');
+  const ch = btn.querySelector('.chev');
+  if (ch) ch.textContent = open ? '▾' : '▸';
+}
 
 function fmtBps(bps) {
   if (!bps || bps <= 0) return '0 bps';
@@ -462,7 +571,7 @@ function renderTrafficChart(chart, points, invert=false) {
     legend: { data: ['下行 (下载)', '上行 (上传)'], textStyle: { color: '#94a3b8' }, top: 0 },
     grid: { left: 60, right: 15, top: 30, bottom: 24 },
     xAxis: { type: 'category', data: points.map(p => fmtTime(p.ts)), axisLabel: { color: '#64748b', fontSize: 10 } },
-    yAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: '#262b33' } } },
     series: [
       { name: '下行 (下载)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#38bdf8' }, itemStyle: { color: '#38bdf8' }, data: rxArr },
       { name: '上行 (上传)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, data: txArr }
@@ -474,11 +583,11 @@ function renderGauge(chart, title, val, color) {
   chart.setOption({
     series: [{
       type: 'gauge', startAngle: 210, endAngle: -30, min: 0, max: 100,
-      radius: '92%', progress: { show: true, width: 8, itemStyle: { color } },
-      axisLine: { lineStyle: { width: 8, color: [[1, '#1e293b']] } },
+      radius: '92%', progress: { show: true, width: 7, itemStyle: { color } },
+      axisLine: { lineStyle: { width: 7, color: [[1, '#2d333d']] } },
       pointer: { show: false }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false },
       title: { offsetCenter: [0, '68%'], fontSize: 11, color: '#94a3b8' },
-      detail: { offsetCenter: [0, '5%'], fontSize: 18, fontWeight: 'bold', color: '#f1f5f9', formatter: '{value}%' },
+      detail: { offsetCenter: [0, '5%'], fontSize: 17, fontWeight: 'bold', color: '#f1f5f9', formatter: '{value}%' },
       data: [{ value: Number(val || 0).toFixed(0), name: title }]
     }]
   });
@@ -489,14 +598,15 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.remove('hidden');
   document.querySelectorAll('.nav-btn').forEach(b => {
     const active = b.dataset.tab === name;
-    b.classList.toggle('bg-sky-500/15', active);
-    b.classList.toggle('text-sky-400', active);
+    b.classList.toggle('bg-[#0099cc]/20', active);
+    b.classList.toggle('text-[#38bdf8]', active);
     b.classList.toggle('font-medium', active);
-    b.classList.toggle('text-slate-400', !active);
   });
   if (name === 'policy') loadPolicy();
   if (name === 'ips') loadHistIPs();
   if (name === 'audit') loadAudit();
+  if (name === 'network') loadNetworkDetails();
+  if (name === 'dbstatus') loadDBStats();
   if (name === 'interfaces' && selectedIface) loadIfaceDetailChart(selectedIface);
   setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
 }
@@ -511,10 +621,10 @@ document.querySelectorAll('.range-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     currentRange = btn.dataset.range;
     document.querySelectorAll('.range-btn').forEach(b => {
-      b.classList.remove('bg-sky-500', 'text-slate-950', 'font-medium');
+      b.classList.remove('bg-[#0099cc]', 'text-white', 'font-medium');
       b.classList.add('text-slate-300');
     });
-    btn.classList.add('bg-sky-500', 'text-slate-950', 'font-medium');
+    btn.classList.add('bg-[#0099cc]', 'text-white', 'font-medium');
     btn.classList.remove('text-slate-300');
     document.querySelectorAll('.range-lbl').forEach(el => el.textContent = btn.textContent);
     refreshHistoryAll();
@@ -537,10 +647,10 @@ async function loadRouters() {
   sel.onchange = () => { currentRouterId = Number(sel.value); pollSnapshot(); refreshHistoryAll(); };
 
   document.getElementById('routerListBox').innerHTML = list.map(r => `
-    <div class="flex justify-between items-center bg-slate-800/70 px-3 py-2 rounded-lg text-xs">
+    <div class="flex justify-between items-center bg-[#252a33] px-3 py-2 rounded text-xs">
       <span><b>${r.name}</b> — ${r.host}:${r.port} ${r.adg_url ? '<span class="text-emerald-400">+ADG</span>' : ''}</span>
       <div class="space-x-2">
-        <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-sky-400 hover:underline">编辑</button>
+        <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-[#38bdf8] hover:underline">编辑</button>
         <button onclick="deleteRouter(${r.id})" class="text-rose-400 hover:underline">删除</button>
       </div>
     </div>
@@ -556,16 +666,29 @@ async function pollSnapshot() {
     const badge = document.getElementById('statusBadge');
     const kpiNet = document.getElementById('kpiNetState');
     if (snap.online) {
-      badge.className = 'px-2.5 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-400';
+      badge.className = 'px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400';
       badge.textContent = `● 在线 (${snap.system.identity || 'MikroTik'})`;
       kpiNet.textContent = '已联网';
-      kpiNet.className = 'text-lg font-bold text-emerald-400 mt-1';
+      kpiNet.className = 'text-base font-bold text-emerald-400 mt-1';
     } else {
-      badge.className = 'px-2.5 py-0.5 rounded-full text-xs bg-rose-500/20 text-rose-400';
+      badge.className = 'px-2 py-0.5 rounded text-xs bg-rose-500/20 text-rose-400';
       badge.textContent = `● 离线: ${snap.last_error || '未连接'}`;
       kpiNet.textContent = '离线';
-      kpiNet.className = 'text-lg font-bold text-rose-400 mt-1';
+      kpiNet.className = 'text-base font-bold text-rose-400 mt-1';
     }
+
+    // 渲染公网 IP
+    const wans = snap.wan_ips || [];
+    document.getElementById('headerWanPills').innerHTML = wans.map(w => `
+      <span class="px-2 py-0.5 rounded bg-[#252a33] border border-[#373f4b] font-mono">
+        <span class="text-slate-400">${w.interface}:</span>
+        <span class="${w.version === 6 ? 'text-purple-300' : 'text-sky-300'}">${w.address}</span>
+      </span>
+    `).join('');
+    document.getElementById('kpiPublicIps').textContent = wans.filter(w => w.version === 4).map(w => w.address).join(' / ') || '-';
+    document.getElementById('sideWanBox').innerHTML = wans.length ? wans.map(w => `
+      <div class="flex justify-between gap-2"><span class="text-slate-400 truncate">${w.interface} (v${w.version})</span><span class="text-sky-300 truncate">${w.address}</span></div>
+    `).join('') : '<div class="text-slate-500">未检测到公网 IP</div>';
 
     if (snap.system) {
       document.getElementById('sysIdentity').textContent = snap.system.identity || '-';
@@ -593,30 +716,25 @@ async function pollSnapshot() {
     syncIfaceSelects(ifaces);
 
     const ovName = document.getElementById('overviewIface').value;
-    document.getElementById('kpiWanName').textContent = ovName || '-';
     const activeIf = ifaces.find(x => x.name === ovName) || ifaces[0];
     if (activeIf) {
       const inv = document.getElementById('invertLanChk').checked;
       const dl = inv ? activeIf.tx_bps : activeIf.rx_bps;
       const ul = inv ? activeIf.rx_bps : activeIf.tx_bps;
-      document.getElementById('overviewRatePill').innerHTML = `<span class="text-sky-400">下载 ${fmtBps(dl)}</span> · <span class="text-emerald-400">上传 ${fmtBps(ul)}</span>`;
+      document.getElementById('overviewRatePill').innerHTML = `<span class="text-sky-400">下行 ${fmtBps(dl)}</span> · <span class="text-emerald-400">上行 ${fmtBps(ul)}</span>`;
     }
 
-    // 活跃 APP 徽章墙
-    document.getElementById('activeAppsWall').innerHTML = apps.slice(0, 12).map(a => `
-      <button onclick="jumpAppFilter('${a.app}')" class="bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-xl p-2.5 text-left transition">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${a.color || '#38bdf8'}"></span>
-          <span class="text-xs font-semibold truncate">${a.app}</span>
-        </div>
-        <div class="text-[11px] text-slate-400 mt-1 flex justify-between">
-          <span>${a.category}</span>
-          <span class="text-sky-300 font-mono">${fmtBps(a.rx_bps + a.tx_bps)}</span>
+    // 真实活跃 APP 徽章墙
+    document.getElementById('activeAppsWall').innerHTML = apps.length ? apps.slice(0, 16).map(a => `
+      <button onclick="jumpAppFilter('${a.app}')" class="bg-[#252a33] hover:bg-[#2d333d] border border-[#373f4b] rounded-lg p-2.5 flex flex-col items-center text-center transition">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow" style="background:${a.color}25; border:1px solid ${a.color}66">${a.icon || '📱'}</div>
+        <div class="text-xs font-medium mt-1.5 truncate w-full">${a.app}</div>
+        <div class="text-[10px] ${a.rx_bps+a.tx_bps > 0 ? 'text-sky-300' : 'text-slate-500'} font-mono mt-0.5">
+          ${a.rx_bps+a.tx_bps > 0 ? fmtBps(a.rx_bps + a.tx_bps) : '近期活跃'}
         </div>
       </button>
-    `).join('');
+    `).join('') : '<div class="col-span-full text-xs text-slate-500 py-4 text-center">正在识别真实应用（若内网走旁路 AdGuard Home，请点击左下角设置对接 ADG 以获得 100% App 识别率）</div>';
 
-    // 右侧接口速览
     document.getElementById('sideIfaceList').innerHTML = ifaces.filter(i => !i.disabled).slice(0, 6).map(i => `
       <div class="flex justify-between items-center">
         <span class="flex items-center gap-1.5 truncate"><span class="w-1.5 h-1.5 rounded-full ${i.running ? 'bg-emerald-400' : 'bg-rose-400'}"></span>${i.name}</span>
@@ -624,16 +742,14 @@ async function pollSnapshot() {
       </div>
     `).join('');
 
-    // 右侧活跃域名
     const doms = snap.recent_domains || [];
     document.getElementById('sideDomainFeed').innerHTML = doms.length ? doms.slice(0, 20).map(d => `
-      <div class="flex justify-between items-center gap-2 border-b border-slate-800/50 pb-1">
+      <div class="flex justify-between items-center gap-2 border-b border-[#2d333d]/60 pb-1">
         <span class="truncate text-slate-300" title="${d.domain}">${d.domain}</span>
-        <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-sky-300">${d.app}</span>
+        <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[#252a33] text-sky-300">${d.app}</span>
       </div>
-    `).join('') : '<div class="text-slate-500">暂无域名记录（建议在设置中对接 AdGuard Home）</div>';
+    `).join('') : '<div class="text-slate-500">暂无域名记录</div>';
 
-    // 接口页面
     document.getElementById('ifaceTableBody').innerHTML = ifaces.map(i => `
       <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIfaceDetailChart('${i.name}')">
         <td class="py-2 font-medium text-sky-300">${i.name}</td>
@@ -662,10 +778,10 @@ function renderLiveIPs() {
   document.getElementById('allLiveIpBody').innerHTML = rows.map(ip => `
     <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
       <td class="py-2 font-mono text-sky-300">${ip.ip} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-300">v6</span>' : ''}</td>
-      <td class="py-2"><div>${ip.host_name || '-'}</div><div class="text-[10px] text-slate-500 font-mono">${ip.mac || ''}</div></td>
+      <td class="py-2"><div>${ip.host_name || '-'} ${ip.vendor ? `<span class="text-[10px] text-slate-400">(${ip.vendor})</span>`:''}</div><div class="text-[10px] text-slate-500 font-mono">${ip.mac || ''}</div></td>
       <td class="py-2 text-sky-400">${fmtBps(ip.rx_bps)}</td>
       <td class="py-2 text-emerald-400">${fmtBps(ip.tx_bps)}</td>
-      <td class="py-2"><span class="px-1.5 py-0.5 rounded bg-slate-800">${ip.top_app || '-'}</span></td>
+      <td class="py-2"><span class="px-1.5 py-0.5 rounded bg-[#252a33]">${ip.top_app || '-'}</span></td>
       <td class="py-2" onclick="event.stopPropagation()">
         <button onclick="quickBlock('${ip.ip}')" class="text-rose-400 hover:underline">拉黑</button>
       </td>
@@ -713,10 +829,7 @@ function renderConnections() {
   document.getElementById('connCountLabel').textContent = `显示 ${filtered.length} 条连接`;
   document.getElementById('connTableBody').innerHTML = filtered.slice(0, 200).map(c => `
     <tr class="hover:bg-slate-800/40">
-      <td class="py-1.5">
-        <span class="px-2 py-0.5 rounded font-medium text-slate-950" style="background:${c.color || '#38bdf8'}">${c.app}</span>
-        <span class="text-[10px] text-slate-400 ml-1">${c.category||''}</span>
-      </td>
+      <td class="py-1.5"><span class="px-2 py-0.5 rounded font-medium text-white text-[11px]" style="background:${c.color || '#0099cc'}">${c.icon || ''} ${c.app}</span></td>
       <td class="py-1.5 uppercase text-slate-400">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
       <td class="py-1.5 font-mono"><div>${c.client_ip}:${c.client_port}</div><div class="text-[10px] text-slate-400">${c.host_name || ''}</div></td>
       <td class="py-1.5 font-mono"><div>${c.remote_ip}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-300">${c.domain}</div>` : ''}</td>
@@ -750,17 +863,19 @@ async function loadAppCharts() {
   const totalBytes = list.reduce((s, a) => s + a.total_bytes, 0);
   document.getElementById('kpiTotalTraffic').textContent = fmtBytes(totalBytes);
 
+  document.getElementById('dpiRankBody').innerHTML = list.map(a => `
+    <tr><td class="py-1.5 font-medium">${a.app}</td><td class="py-1.5 text-slate-400">${a.category}</td><td class="py-1.5 text-sky-400">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-400">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
+  `).join('');
+
   const catMap = {};
   list.forEach(a => { const c = a.category || '其他'; catMap[c] = (catMap[c] || 0) + a.total_bytes; });
-  const catData = Object.entries(catMap).map(([name, value]) => ({ name, value }));
-
   chartAppCat.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'item', formatter: p => `${p.name}: ${fmtBytes(p.value)} (${p.percent}%)` },
     series: [{
       type: 'pie', radius: ['42%', '74%'],
       label: { color: '#cbd5e1', fontSize: 11, formatter: '{b} {d}%' },
-      data: catData
+      data: Object.entries(catMap).map(([name, value]) => ({ name, value }))
     }]
   });
 }
@@ -785,7 +900,7 @@ async function loadHistIPs() {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => ps.map(p => `${p.seriesName}: ${fmtBytes(p.value)}`).join('<br/>') },
     legend: { data: ['下载', '上传'], textStyle: { color: '#94a3b8' }, top: 0 },
     grid: { left: 105, right: 20, top: 28, bottom: 20 },
-    xAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    xAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: '#262b33' } } },
     yAxis: { type: 'category', data: top8.map(u => u.host_name || u.ip), axisLabel: { color: '#cbd5e1', fontSize: 10 } },
     series: [
       { name: '下载', type: 'bar', stack: 'tot', itemStyle: { color: '#38bdf8' }, data: top8.map(u => u.rx_bytes) },
@@ -811,11 +926,45 @@ async function loadAudit() {
       <td class="py-1.5 font-mono text-sky-300">${r.client_ip}</td>
       <td class="py-1.5">${r.host_name || '-'}</td>
       <td class="py-1.5 font-mono text-amber-300">${r.domain}</td>
-      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-slate-800">${r.app}</span></td>
+      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-[#252a33]">${r.app}</span></td>
       <td class="py-1.5 text-slate-400">${r.category}</td>
       <td class="py-1.5 text-slate-500">${r.source}</td>
     </tr>
   `).join('');
+}
+
+async function loadNetworkDetails() {
+  const res = await fetch(`/api/network/details?router_id=${currentRouterId}`);
+  const data = await res.json();
+  document.getElementById('dhcpBody').innerHTML = (data.leases || []).map(l => `
+    <tr><td class="py-1.5 font-mono text-sky-300">${l.address}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono text-slate-400">${l.mac}</td><td class="py-1.5">${l.dynamic ? '动态':'静态'}</td><td class="py-1.5">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#38bdf8] hover:underline">设为静态</button>`:'-'}</td></tr>
+  `).join('');
+  document.getElementById('arpBody').innerHTML = (data.arp || []).map(a => `
+    <tr><td class="py-1.5 font-mono text-sky-300">${a.address}</td><td class="py-1.5 font-mono text-slate-400">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td></tr>
+  `).join('');
+  document.getElementById('routeBody').innerHTML = (data.routes || []).map(r => `
+    <tr><td class="py-1.5 font-mono text-sky-300">${r.dst_address}</td><td class="py-1.5 font-mono">${r.gateway}</td><td class="py-1.5">${r.routing_table||'main'}</td><td class="py-1.5">${r.distance}</td><td class="py-1.5">${r.active?'<span class="text-emerald-400">Active</span>':'Inactive'}</td></tr>
+  `).join('');
+}
+
+async function makeStatic(id) {
+  await fetch(`/api/dhcp/static?router_id=${currentRouterId}&id=${id}`, { method: 'POST' });
+  loadNetworkDetails();
+}
+
+async function loadDBStats() {
+  const res = await fetch('/api/system/dbstats');
+  const d = await res.json();
+  document.getElementById('dbSigCnt').textContent = d.dpi_signatures;
+  document.getElementById('dbGeoCnt').textContent = d.geo_cached_ips;
+  document.getElementById('dbAuditCnt').textContent = d.audit_records;
+  document.getElementById('dbSampleCnt').textContent = d.history_samples;
+}
+
+async function clearGeoCache() {
+  await fetch('/api/system/clear-geo', { method: 'POST' });
+  loadDBStats();
+  alert('Geo/ASN 缓存已清空，系统将在后台重新识别归属地与服务商。');
 }
 
 function refreshHistoryAll() {

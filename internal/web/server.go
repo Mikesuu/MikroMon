@@ -40,6 +40,10 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/history/ip", s.handleIPDetailHistory)
 	mux.HandleFunc("/api/history/apps", s.handleAppTop)
 	mux.HandleFunc("/api/audit/domains", s.handleDomainAudit)
+	mux.HandleFunc("/api/network/details", s.handleNetworkDetails)
+	mux.HandleFunc("/api/dhcp/static", s.handleDHCPStatic)
+	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
+	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
 	mux.HandleFunc("/api/queues", s.handleQueues)
 	mux.HandleFunc("/api/blocked", s.handleBlocked)
@@ -210,7 +214,7 @@ func (s *Server) handleIPDetailHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppTop(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	rng := r.URL.Query().Get("range")
-	list, err := s.store.QueryTopApps(id, rng, 30)
+	list, err := s.store.QueryTopApps(id, rng, 50)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
@@ -236,6 +240,70 @@ func (s *Server) handleDomainAudit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, 200, list)
+}
+
+func (s *Server) handleNetworkDetails(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var leases []mikrotik.DHCPLease
+	var arps []mikrotik.ARPEntry
+	var routes []mikrotik.RouteEntry
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		_, _, l, err := mikrotik.GetDHCPLeases(c)
+		if err == nil {
+			leases = l
+		}
+		arps, _ = mikrotik.GetARPTable(c)
+		routes, _ = mikrotik.GetRoutes(c)
+		return nil
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"leases": leases,
+		"arp":    arps,
+		"routes": routes,
+	})
+}
+
+func (s *Server) handleDHCPStatic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	leaseID := r.URL.Query().Get("id")
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		return mikrotik.MakeDHCPStatic(c, leaseID)
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleDBStats(w http.ResponseWriter, r *http.Request) {
+	st := s.store.GetDBStats()
+	writeJSON(w, 200, map[string]any{
+		"dpi_signatures":  dpi.SignatureCount(),
+		"geo_cached_ips":  st.GeoCachedIPs,
+		"audit_records":   st.AuditRecords,
+		"history_samples": st.HistorySamples,
+	})
+}
+
+func (s *Server) handleClearGeo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	if err := s.col.ClearGeoCache(); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleToggleIface(w http.ResponseWriter, r *http.Request) {
