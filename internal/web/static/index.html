@@ -126,8 +126,25 @@
         
       </div>
 
-      <div class="flex items-center gap-2">
-        
+      <div class="flex items-center gap-2 flex-wrap text-[11px]">
+        <div class="hidden lg:flex items-center gap-2 luci-sub px-2.5 py-1 rounded font-mono">
+          <span id="hdrSysIdentity" class="font-semibold">-</span>
+          <span class="luci-txt2">·</span>
+          <span id="hdrSysModel" class="luci-txt2 max-w-[140px] truncate">-</span>
+          <span class="luci-txt2">·</span>
+          <span id="hdrSysVer" class="text-[#0099cc]">-</span>
+          <span class="luci-txt2">·</span>
+          <span id="hdrSysUptime" class="luci-txt2">-</span>
+        </div>
+        <div class="flex items-center gap-2 luci-sub px-2.5 py-1 rounded font-mono">
+          <span class="luci-txt2">CPU</span>
+          <span id="hdrCpuVal" class="font-bold text-[#0099cc]">0%</span>
+          <span class="w-10 h-1.5 rounded bg-slate-500/20 overflow-hidden hidden sm:inline-block"><span id="hdrCpuBar" class="block h-full bg-[#0099cc]" style="width:0%"></span></span>
+          <span class="luci-txt2 ml-1" data-i18n="mem_lbl">内存</span>
+          <span id="hdrMemVal" class="font-bold text-emerald-500">0%</span>
+          <span class="w-10 h-1.5 rounded bg-slate-500/20 overflow-hidden hidden sm:inline-block"><span id="hdrMemBar" class="block h-full bg-emerald-500" style="width:0%"></span></span>
+          <span id="hdrMemDetail" class="luci-txt2 hidden xl:inline text-[10px]"></span>
+        </div>
         <button onclick="openSettings()" class="md:hidden luci-sub px-2 py-1 rounded text-xs" data-i18n="btn_settings">设置</button>
       </div>
     </header>
@@ -135,58 +152,45 @@
     <main class="p-4 space-y-4 flex-1">
       <!-- 1. 状态概览 -->
       <section id="tab-overview" class="tab-panel space-y-4">
-        <!-- 顶部首行：左侧5个在线KPI + 右侧系统信息与运行状态 -->
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-          <div class="xl:col-span-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
-              <div class="text-xs luci-txt2" data-i18n="kpi_net">联网状态</div>
-              <div id="kpiNetState" class="text-lg font-bold text-emerald-500 mt-1">-</div>
-              <div id="kpiWanSummary" class="text-[11px] luci-txt2 mt-0.5 truncate">-</div>
+        <!-- 顶部紧凑首行：左7列(5个在线KPI) + 右5列(WAN出口与归属地) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-3 items-stretch">
+          <div class="xl:col-span-7 grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
+              <div class="text-[11px] luci-txt2" data-i18n="kpi_net">联网状态</div>
+              <div id="kpiNetState" class="text-base font-bold text-emerald-500 leading-tight">-</div>
+              <div id="kpiWanSummary" class="text-[10px] luci-txt2 truncate">-</div>
             </div>
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
-              <div class="text-xs luci-txt2" data-i18n="kpi_apps">活跃 APP</div>
-              <div id="kpiApps" class="text-2xl font-bold text-[#0099cc] mt-1">0</div>
-              <div class="text-[11px] luci-txt2 mt-0.5" data-i18n="kpi_apps_sub">当前/近期真实应用</div>
+            <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
+              <div class="text-[11px] luci-txt2" data-i18n="kpi_apps">活跃 APP</div>
+              <div id="kpiApps" class="text-xl font-bold text-[#0099cc] leading-tight">0</div>
+              <div class="text-[10px] luci-txt2 truncate" data-i18n="kpi_apps_sub">当前/近期真实应用</div>
             </div>
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
-              <div class="text-xs luci-txt2" data-i18n="kpi_users">在线终端</div>
-              <div id="kpiUsers" class="text-2xl font-bold text-indigo-500 mt-1">0</div>
-              <div id="kpiUsersSub" class="text-[11px] luci-txt2 mt-0.5">IPv4 / IPv6</div>
+            <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
+              <div class="text-[11px] luci-txt2" data-i18n="kpi_users">在线终端</div>
+              <div id="kpiUsers" class="text-xl font-bold text-indigo-500 leading-tight">0</div>
+              <div id="kpiUsersSub" class="text-[10px] luci-txt2 truncate">IPv4 / IPv6</div>
             </div>
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
-              <div class="text-xs luci-txt2" data-i18n="kpi_conns">活跃连接</div>
-              <div id="kpiConns" class="text-2xl font-bold text-amber-500 mt-1">0</div>
-              <div class="text-[11px] luci-txt2 mt-0.5" data-i18n="kpi_conns_sub">实时并发会话</div>
+            <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
+              <div class="text-[11px] luci-txt2" data-i18n="kpi_conns">活跃连接</div>
+              <div id="kpiConns" class="text-xl font-bold text-amber-500 leading-tight">0</div>
+              <div class="text-[10px] luci-txt2 truncate" data-i18n="kpi_conns_sub">实时并发会话</div>
             </div>
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between col-span-2 sm:col-span-1">
-              <div class="text-xs luci-txt2"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span>)</div>
-              <div class="mt-1 space-y-0.5 font-mono leading-tight">
-                <div class="text-sm font-bold text-[#0099cc]">↓ <span id="kpiTrafficDl">0 B</span></div>
-                <div class="text-sm font-bold text-emerald-500">↑ <span id="kpiTrafficUl">0 B</span></div>
+            <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between col-span-2 sm:col-span-1">
+              <div class="text-[11px] luci-txt2 truncate"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span>)</div>
+              <div class="font-mono leading-tight text-xs font-bold">
+                <span class="text-[#0099cc]">↓<span id="kpiTrafficDl">0 B</span></span>
+                <span class="text-emerald-500 ml-1">↑<span id="kpiTrafficUl">0 B</span></span>
               </div>
-              <div class="text-[11px] luci-txt2 mt-0.5"><span data-i18n="total_lbl">总计</span>: <span id="kpiTrafficTot">0 B</span></div>
+              <div class="text-[10px] luci-txt2 truncate"><span data-i18n="total_lbl">总计</span>: <span id="kpiTrafficTot">0 B</span></div>
             </div>
           </div>
 
-          <div class="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="luci-card rounded-lg p-3 space-y-1.5 flex flex-col justify-center">
-              <div class="text-xs font-semibold border-b luci-border pb-1" data-i18n="side_sysinfo">系统信息</div>
-              <div class="text-xs space-y-1">
-                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_hostname">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
-                <div class="flex justify-between gap-2"><span class="luci-txt2 shrink-0" data-i18n="lbl_model">设备型号</span><span id="sysModel" class="truncate">-</span></div>
-                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_firmware">固件版本</span><span id="sysVer" class="text-[#0099cc]">-</span></div>
-                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_uptime">运行时间</span><span id="sysUptime">-</span></div>
-                <div class="hidden"><span id="sysArch"></span></div>
-              </div>
+          <div class="xl:col-span-5 luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
+            <div class="flex items-center justify-between border-b luci-border pb-1 mb-1">
+              <span class="text-xs font-semibold" data-i18n="side_wan">WAN 出口与归属地</span>
+              <button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-0.5 rounded text-[11px] font-medium hover:opacity-80">👁 查看 IP</button>
             </div>
-            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
-              <div class="text-xs font-semibold border-b luci-border pb-1" data-i18n="side_status">运行状态</div>
-              <div class="grid grid-cols-2 gap-1">
-                <div id="gaugeCpu" class="h-24"></div>
-                <div id="gaugeMem" class="h-24"></div>
-              </div>
-              <div id="sysMemDetail" class="text-center text-[10px] luci-txt2">-</div>
-            </div>
+            <div id="sideWanList" class="space-y-1 text-[11px]"></div>
           </div>
         </div>
 
@@ -242,13 +246,7 @@
         </div>
 
         <div class="xl:col-span-3 space-y-4">
-          <div class="luci-card rounded-lg p-4 space-y-2">
-            <div class="flex items-center justify-between border-b luci-border pb-2">
-              <h3 class="text-sm font-semibold" data-i18n="side_wan">WAN 出口与归属地</h3>
-              <button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-0.5 rounded text-[11px] font-medium hover:opacity-80">👁 查看 IP</button>
-            </div>
-            <div id="sideWanList" class="space-y-1.5 text-xs"></div>
-          </div>
+
 
           <div class="luci-card rounded-lg p-4 space-y-2">
             <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_ifaces">接口实时速览</h3>
@@ -882,13 +880,11 @@ function toggleThemeQuick() { applyTheme((document.documentElement.getAttribute(
 const chartOverview = echarts.init(document.getElementById('overviewTrafficChart'));
 const chartAppCat = echarts.init(document.getElementById('appCatChart'));
 const chartUserTop8 = echarts.init(document.getElementById('userTop8Chart'));
-const chartGaugeCpu = echarts.init(document.getElementById('gaugeCpu'));
-const chartGaugeMem = echarts.init(document.getElementById('gaugeMem'));
 const chartIfaceDetail = echarts.init(document.getElementById('ifaceDetailChart'));
 const chartIpDetail = echarts.init(document.getElementById('ipDetailChart'));
 
 window.addEventListener('resize', () => {
-  [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize());
+  [chartOverview, chartAppCat, chartUserTop8, chartIfaceDetail, chartIpDetail].forEach(c => c.resize());
 });
 
 function closeOtherMenus(keepId) {
@@ -996,7 +992,7 @@ function switchTab(name) {
   if (name === 'logs') loadLogs();
   if (name === 'dbstatus') loadDBStats();
   if (name === 'interfaces' && selectedIface) loadIfaceDetailChart(selectedIface);
-  setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
+  setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
 }
 
 function toggleShowAllApps() {
@@ -1073,26 +1069,27 @@ async function pollSnapshot() {
     const wans = snap.wan_ips || [];
     const sw = document.getElementById('sideWanList');
     if (sw) sw.innerHTML = wans.length ? wans.map(w => `
-      <div class="luci-sub rounded p-2 space-y-0.5">
-        <div class="flex justify-between items-center">
-          <span class="font-medium">${w.interface} (v${w.version})</span>
-          <span class="font-mono ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
-        </div>
-        <div class="text-[11px] luci-txt2">${tGeo(shortISP(w.location, w.isp)) || '-'}</div>
+      <div class="flex items-center justify-between gap-2 luci-sub rounded px-2 py-0.5">
+        <span class="font-medium truncate max-w-[120px]">${w.interface}</span>
+        <span class="font-mono shrink-0 ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
+        <span class="text-[10px] luci-txt2 truncate">${tGeo(shortISP(w.location, w.isp)) || '-'}</span>
       </div>
     `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
     document.getElementById('kpiWanSummary').textContent = wanNames || 'WAN OK';
 
     if (snap.system) {
-      document.getElementById('sysIdentity').textContent = snap.system.identity || '-';
-      document.getElementById('sysModel').textContent = snap.system.board_name || '-';
-      document.getElementById('sysArch').textContent = snap.system.architecture || '-';
-      document.getElementById('sysVer').textContent = `RouterOS ${snap.system.version || ''}`;
-      document.getElementById('sysUptime').textContent = snap.system.uptime || '-';
-      renderGauge(chartGaugeCpu, 'CPU', snap.system.cpu_load, '#0099cc');
-      renderGauge(chartGaugeMem, t('mem_lbl'), snap.system.mem_usage_pct, '#10b981');
-      document.getElementById('sysMemDetail').textContent = `${fmtBytes(snap.system.total_mem - snap.system.free_mem)} / ${fmtBytes(snap.system.total_mem)}`;
+      document.getElementById('hdrSysIdentity').textContent = snap.system.identity || '-';
+      document.getElementById('hdrSysModel').textContent = snap.system.board_name || '-';
+      document.getElementById('hdrSysVer').textContent = `ROS ${snap.system.version || ''}`;
+      document.getElementById('hdrSysUptime').textContent = snap.system.uptime || '-';
+      const cpu = Math.round(snap.system.cpu_load || 0);
+      const mem = Math.round(snap.system.mem_usage_pct || 0);
+      document.getElementById('hdrCpuVal').textContent = `${cpu}%`;
+      document.getElementById('hdrCpuBar').style.width = `${cpu}%`;
+      document.getElementById('hdrMemVal').textContent = `${mem}%`;
+      document.getElementById('hdrMemBar').style.width = `${mem}%`;
+      document.getElementById('hdrMemDetail').textContent = `(${fmtBytes(snap.system.total_mem - snap.system.free_mem)}/${fmtBytes(snap.system.total_mem)})`;
     }
 
     const conns = snap.connections || [];
