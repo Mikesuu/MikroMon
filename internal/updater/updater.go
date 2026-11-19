@@ -36,11 +36,11 @@ type Status struct {
 }
 
 type Manager struct {
-	store   *store.Store
-	client  *http.Client
-	mu      sync.RWMutex
-	status  Status
-	onExit  func()
+	store  *store.Store
+	client *http.Client
+	mu     sync.RWMutex
+	status Status
+	onExit func()
 }
 
 func New(currentVersion string, st *store.Store, onExit func()) *Manager {
@@ -51,7 +51,7 @@ func New(currentVersion string, st *store.Store, onExit func()) *Manager {
 	mirror := st.GetSetting("gh_mirror")
 	return &Manager{
 		store:  st,
-		client: &http.Client{Timeout: 25 * time.Second},
+		client: &http.Client{Timeout: 20 * time.Second},
 		onExit: onExit,
 		status: Status{
 			CurrentVersion: currentVersion,
@@ -103,7 +103,7 @@ func (m *Manager) RunLoop(ctx context.Context) {
 
 func (m *Manager) CheckAndMaybeApply(ctx context.Context) {
 	st := m.Check(ctx)
-	if st.HasUpdate && st.AutoUpdate && st.DownloadURL != "" && !st.Updating {
+	if st.HasUpdate && st.AutoUpdate && st.DownloadURL != "" && !st.Updating && st.CurrentVersion != "dev" {
 		log.Printf("auto-updater: found %s (current %s), applying...", st.LatestVersion, st.CurrentVersion)
 		if err := m.Apply(ctx); err != nil {
 			log.Printf("auto-updater apply err: %v", err)
@@ -112,57 +112,89 @@ func (m *Manager) CheckAndMaybeApply(ctx context.Context) {
 }
 
 func (m *Manager) Check(ctx context.Context) Status {
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", Repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return m.setErr(err.Error())
-	}
-	req.Header.Set("User-Agent", "MikroMon-Updater")
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := m.client.Do(req)
-	if err != nil {
-		return m.setErr(err.Error())
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return m.setErr(fmt.Sprintf("GitHub API status %d", resp.StatusCode))
-	}
-
-	var rel struct {
-		TagName     string `json:"tag_name"`
-		Body        string `json:"body"`
-		PublishedAt string `json:"published_at"`
-		Assets      []struct {
-			Name               string `json:"name"`
-			BrowserDownloadURL string `json:"browser_download_url"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return m.setErr(err.Error())
-	}
-
-	targetAsset := fmt.Sprintf("mikromon-%s-%s", runtime.GOOS, runtime.GOARCH)
-	var dlURL string
-	for _, a := range rel.Assets {
-		if a.Name == targetAsset {
-			dlURL = a.BrowserDownloadURL
-			break
+	tag, err := m.checkViaRedirect(ctx)
+	if err != nil || tag == "" {
+		var apiErr error
+		tag, apiErr = m.checkViaAPI(ctx)
+		if apiErr != nil || tag == "" {
+			if apiErr != nil {
+				return m.setErr(apiErr.Error())
+			}
+			return m.setErr(err.Error())
 		}
 	}
 
+	assetName := fmt.Sprintf("mikromon-%s-%s", runtime.GOOS, runtime.GOARCH)
+	dlURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", Repo, tag, assetName)
+
 	m.mu.Lock()
-	m.status.LatestVersion = rel.TagName
-	m.status.ReleaseNotes = rel.Body
-	m.status.PublishedAt = rel.PublishedAt
+	m.status.LatestVersion = tag
 	m.status.DownloadURL = dlURL
 	m.status.LastChecked = time.Now().Unix()
 	m.status.LastError = ""
-	m.status.HasUpdate = m.status.CurrentVersion != "dev" && compareSemver(rel.TagName, m.status.CurrentVersion) > 0 && dlURL != ""
+	if m.status.CurrentVersion == "dev" {
+		m.status.HasUpdate = true
+	} else {
+		m.status.HasUpdate = compareSemver(tag, m.status.CurrentVersion) > 0
+	}
 	out := m.status
 	m.mu.Unlock()
 	return out
+}
+
+// 优先通过 GitHub releases/latest 重定向获取最新 Tag（无限流、永不 403）
+func (m *Manager) checkViaRedirect(ctx context.Context) (string, error) {
+	noRedir := &http.Client{
+		Timeout: 12 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	u := fmt.Sprintf("https://github.com/%s/releases/latest", Repo)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", u, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	resp, err := noRedir.Do(req)
+	if err != nil {
+		return "", err
+	}
+	resp.Body.Close()
+
+	loc := resp.Header.Get("Location")
+	if idx := strings.LastIndex(loc, "/releases/tag/"); idx >= 0 {
+		tag := strings.TrimSpace(loc[idx+len("/releases/tag/"):])
+		if tag != "" {
+			return tag, nil
+		}
+	}
+	return "", fmt.Errorf("redirect status %d", resp.StatusCode)
+}
+
+func (m *Manager) checkViaAPI(ctx context.Context) (string, error) {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", Repo)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "MikroMon-Updater")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := m.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("GitHub API status %d", resp.StatusCode)
+	}
+	var rel struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return "", err
+	}
+	return rel.TagName, nil
 }
 
 func (m *Manager) setErr(msg string) Status {
@@ -184,7 +216,7 @@ func (m *Manager) Apply(ctx context.Context) error {
 	mirror := m.status.MirrorPrefix
 	if dlURL == "" {
 		m.mu.Unlock()
-		return fmt.Errorf("no downloadable binary asset found for %s/%s", runtime.GOOS, runtime.GOARCH)
+		return fmt.Errorf("no downloadable binary asset found")
 	}
 	m.status.Updating = true
 	m.status.LastError = ""
@@ -199,7 +231,7 @@ func (m *Manager) Apply(ctx context.Context) error {
 		m.finishErr(err)
 		return err
 	}
-	req.Header.Set("User-Agent", "MikroMon-Updater")
+	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	dlClient := &http.Client{Timeout: 3 * time.Minute}
 	resp, err := dlClient.Do(req)
@@ -221,7 +253,7 @@ func (m *Manager) Apply(ctx context.Context) error {
 		return err
 	}
 	if len(data) < 1500000 || !bytes.HasPrefix(data, []byte{0x7f, 'E', 'L', 'F'}) {
-		err := fmt.Errorf("invalid binary file downloaded (size=%d)", len(data))
+		err := fmt.Errorf("invalid binary downloaded (size=%d)", len(data))
 		m.finishErr(err)
 		return err
 	}

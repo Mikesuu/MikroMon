@@ -18,17 +18,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Prepare image tags
         id: meta
         run: |
           REPO_LOWER=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
-          TAGS="ghcr.io/${REPO_LOWER}:latest"
-          VER="dev"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
-            TAGS="${TAGS},ghcr.io/${REPO_LOWER}:${TAG_NAME}"
+            TAGS="ghcr.io/${REPO_LOWER}:latest,ghcr.io/${REPO_LOWER}:${TAG_NAME}"
             VER="${TAG_NAME}"
+          else
+            TAGS="ghcr.io/${REPO_LOWER}:edge"
+            VER=$(git describe --tags --always 2>/dev/null || echo "dev")
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
           echo "ver=${VER}" >> "$GITHUB_OUTPUT"
