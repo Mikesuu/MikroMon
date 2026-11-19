@@ -127,37 +127,38 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <button onclick="toggleShowIPs()" id="btnToggleIP" class="luci-sub px-2.5 py-1 rounded text-xs font-medium hover:opacity-80">👁 查看 IP</button>
+        
         <button onclick="openSettings()" class="md:hidden luci-sub px-2 py-1 rounded text-xs" data-i18n="btn_settings">设置</button>
       </div>
     </header>
 
     <main class="p-4 space-y-4 flex-1">
       <!-- 1. 状态概览 -->
-      <section id="tab-overview" class="tab-panel grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div class="xl:col-span-9 space-y-4">
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div class="luci-card rounded-lg p-3">
+      <section id="tab-overview" class="tab-panel space-y-4">
+        <!-- 顶部首行：左侧5个在线KPI + 右侧系统信息与运行状态 -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+          <div class="xl:col-span-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
               <div class="text-xs luci-txt2" data-i18n="kpi_net">联网状态</div>
               <div id="kpiNetState" class="text-lg font-bold text-emerald-500 mt-1">-</div>
               <div id="kpiWanSummary" class="text-[11px] luci-txt2 mt-0.5 truncate">-</div>
             </div>
-            <div class="luci-card rounded-lg p-3">
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
               <div class="text-xs luci-txt2" data-i18n="kpi_apps">活跃 APP</div>
-              <div id="kpiApps" class="text-xl font-bold text-[#0099cc] mt-1">0</div>
+              <div id="kpiApps" class="text-2xl font-bold text-[#0099cc] mt-1">0</div>
               <div class="text-[11px] luci-txt2 mt-0.5" data-i18n="kpi_apps_sub">当前/近期真实应用</div>
             </div>
-            <div class="luci-card rounded-lg p-3">
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
               <div class="text-xs luci-txt2" data-i18n="kpi_users">在线终端</div>
-              <div id="kpiUsers" class="text-xl font-bold text-indigo-500 mt-1">0</div>
+              <div id="kpiUsers" class="text-2xl font-bold text-indigo-500 mt-1">0</div>
               <div id="kpiUsersSub" class="text-[11px] luci-txt2 mt-0.5">IPv4 / IPv6</div>
             </div>
-            <div class="luci-card rounded-lg p-3">
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
               <div class="text-xs luci-txt2" data-i18n="kpi_conns">活跃连接</div>
-              <div id="kpiConns" class="text-xl font-bold text-amber-500 mt-1">0</div>
+              <div id="kpiConns" class="text-2xl font-bold text-amber-500 mt-1">0</div>
               <div class="text-[11px] luci-txt2 mt-0.5" data-i18n="kpi_conns_sub">实时并发会话</div>
             </div>
-            <div class="luci-card rounded-lg p-3">
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between col-span-2 sm:col-span-1">
               <div class="text-xs luci-txt2"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span>)</div>
               <div class="mt-1 space-y-0.5 font-mono leading-tight">
                 <div class="text-sm font-bold text-[#0099cc]">↓ <span id="kpiTrafficDl">0 B</span></div>
@@ -166,6 +167,32 @@
               <div class="text-[11px] luci-txt2 mt-0.5"><span data-i18n="total_lbl">总计</span>: <span id="kpiTrafficTot">0 B</span></div>
             </div>
           </div>
+
+          <div class="xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="luci-card rounded-lg p-3 space-y-1.5 flex flex-col justify-center">
+              <div class="text-xs font-semibold border-b luci-border pb-1" data-i18n="side_sysinfo">系统信息</div>
+              <div class="text-xs space-y-1">
+                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_hostname">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
+                <div class="flex justify-between gap-2"><span class="luci-txt2 shrink-0" data-i18n="lbl_model">设备型号</span><span id="sysModel" class="truncate">-</span></div>
+                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_firmware">固件版本</span><span id="sysVer" class="text-[#0099cc]">-</span></div>
+                <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_uptime">运行时间</span><span id="sysUptime">-</span></div>
+                <div class="hidden"><span id="sysArch"></span></div>
+              </div>
+            </div>
+            <div class="luci-card rounded-lg p-3 flex flex-col justify-between">
+              <div class="text-xs font-semibold border-b luci-border pb-1" data-i18n="side_status">运行状态</div>
+              <div class="grid grid-cols-2 gap-1">
+                <div id="gaugeCpu" class="h-24"></div>
+                <div id="gaugeMem" class="h-24"></div>
+              </div>
+              <div id="sysMemDetail" class="text-center text-[10px] luci-txt2">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 主体两栏：左9列流量与图表 + 右3列(WAN与归属地置顶 + 接口速览 + 活跃域名) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div class="xl:col-span-9 space-y-4">
 
           <div class="luci-card rounded-lg p-4">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
@@ -216,27 +243,10 @@
 
         <div class="xl:col-span-3 space-y-4">
           <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_sysinfo">系统信息</h3>
-            <div class="text-xs space-y-1.5">
-              <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_hostname">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
-              <div class="flex justify-between gap-2"><span class="luci-txt2 shrink-0" data-i18n="lbl_model">设备型号</span><span id="sysModel" class="truncate">-</span></div>
-              <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_arch">架构</span><span id="sysArch">-</span></div>
-              <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_firmware">固件版本</span><span id="sysVer" class="text-[#0099cc]">-</span></div>
-              <div class="flex justify-between"><span class="luci-txt2" data-i18n="lbl_uptime">运行时间</span><span id="sysUptime">-</span></div>
+            <div class="flex items-center justify-between border-b luci-border pb-2">
+              <h3 class="text-sm font-semibold" data-i18n="side_wan">WAN 出口与归属地</h3>
+              <button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-0.5 rounded text-[11px] font-medium hover:opacity-80">👁 查看 IP</button>
             </div>
-          </div>
-
-          <div class="luci-card rounded-lg p-4">
-            <h3 class="text-sm font-semibold border-b luci-border pb-2 mb-1" data-i18n="side_status">运行状态</h3>
-            <div class="grid grid-cols-2 gap-1">
-              <div id="gaugeCpu" class="h-32"></div>
-              <div id="gaugeMem" class="h-32"></div>
-            </div>
-            <div id="sysMemDetail" class="text-center text-[11px] luci-txt2">-</div>
-          </div>
-
-          <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_wan">WAN 出口与归属地</h3>
             <div id="sideWanList" class="space-y-1.5 text-xs"></div>
           </div>
 
@@ -250,6 +260,7 @@
             <div id="sideDomainFeed" class="space-y-1 text-xs max-h-56 overflow-y-auto"></div>
           </div>
         </div>
+        </div>
       </section>
 
       <!-- 2. 终端列表 -->
@@ -258,7 +269,7 @@
           <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-sm font-semibold" data-i18n="dev_live_title">在线终端实时速率 (IPv4 + IPv6)</h2>
-              <input id="ipSearch" oninput="renderLiveIPs()" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+              <div class="flex items-center gap-2"><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><input id="ipSearch" oninput="renderLiveIPs()" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-48" /></div>
             </div>
             <div class="overflow-x-auto max-h-[460px]">
               <table class="w-full text-xs text-left">
@@ -316,7 +327,7 @@
             <input id="connFilterApp" oninput="renderConnections()" data-i18n-ph="ph_flt_app" placeholder="过滤应用 / 分类 / 域名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
             <input id="connFilterIsp" oninput="renderConnections()" data-i18n-ph="ph_flt_isp" placeholder="过滤归属地 / 服务商..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
           </div>
-          <span id="connCountLabel" class="text-xs luci-txt2">0</span>
+          <div class="flex items-center gap-2"><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><span id="connCountLabel" class="text-xs luci-txt2">0</span></div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
@@ -702,28 +713,55 @@ const I18N = {
 };
 
 const APP_EN = {
-  '微信':'WeChat', '抖音':'Douyin', '哔哩哔哩':'Bilibili', '淘宝':'Taobao', '天猫':'Tmall', '闲鱼':'IdleFish',
-  '支付宝':'Alipay', '京东':'JD.com', '拼多多':'Pinduoduo', '美团':'Meituan', '小红书':'RedNote', '高德地图':'Amap',
-  '百度':'Baidu', '百度网盘':'Baidu Netdisk', '百度地图':'Baidu Maps', '百度贴吧':'Tieba', '阿里云':'Alibaba Cloud',
-  '阿里云盘':'Aliyun Drive', '腾讯云':'Tencent Cloud', '华为云':'Huawei Cloud', '腾讯视频':'Tencent Video', '爱奇艺':'iQIYI',
-  '优酷':'Youku', '快手':'Kuaishou', '微博':'Weibo', '知乎':'Zhihu', '飞书':'Feishu/Lark', '钉钉':'DingTalk',
-  '企业微信':'WeCom', '腾讯会议':'Tencent Meeting', '米家':'Mi Home', '萤石云':'EZVIZ', '网易大神':'NetEase Dashen',
-  '网易云音乐':'NetEase Music', '工商银行':'ICBC', '招商银行':'CMB', '建设银行':'CCB', '农业银行':'ABC',
-  '中国银行':'BOC', '交通银行':'BOCOM', '云闪付':'UnionPay', '铁路12306':'12306', '顺丰速运':'SF Express',
-  '菜鸟':'Cainiao', '群晖 Synology':'Synology', '天翼网关':'ChinaNet GW', '教育网':'CERNET', '南京大学':'NJU',
-  '向日葵远程':'Sunlogin', '迅雷':'Thunder', '夸克网盘':'Quark Drive', '通义千问':'Qwen', '豆包':'Doubao',
-  '今日头条':'Toutiao', '喜马拉雅':'Ximalaya', '酷狗音乐':'Kugou', '酷我音乐':'Kuwo', '芒果TV':'MangoTV',
-  '虎牙直播':'Huya', '斗鱼直播':'Douyu', '大众点评':'Dianping', '饿了么':'Ele.me', '滴滴出行':'DiDi',
-  '携程旅行':'Trip.com', '去哪儿':'Qunar', '唯品会':'Vipshop', '得物':'Poizon', '交管12123':'12123',
-  '海康互联':'Hik-Connect', '拳头游戏':'Riot Games', '暴雪战网':'Battle.net', '米哈游':'HoYoverse', '王者荣耀':'Honor of Kings',
-  'RDP 远程桌面':'RDP Desktop', 'SMB 文件共享':'SMB Share', 'NTP 对时':'NTP', '文件共享':'SMB', '其他协议':'Other'
+  '微信':'WeChat', '抖音':'Douyin', '字节跳动':'ByteDance', '哔哩哔哩':'Bilibili', '淘宝':'Taobao', '天猫':'Tmall', '闲鱼':'IdleFish',
+  '支付宝':'Alipay', '京东':'JD.com', '京东物流':'JD Logistics', '拼多多':'Pinduoduo', '美团':'Meituan', '小红书':'RedNote', '高德地图':'Amap',
+  '百度':'Baidu', '百度网盘':'Baidu Netdisk', '百度地图':'Baidu Maps', '百度贴吧':'Tieba', '阿里云':'Alibaba Cloud', '阿里云 DNS':'AliDNS',
+  '阿里云盘':'Aliyun Drive', '腾讯云':'Tencent Cloud', '腾讯云 DNS':'Tencent DNS', '腾讯微云':'Weiyun', '华为云':'Huawei Cloud', '华为商城':'VMall',
+  '火山引擎':'Volcengine', '天翼云':'CTYun', '天翼云盘':'Cloud 189', '移动云盘':'Mobile Cloud', '七牛云':'Qiniu Cloud', '又拍云':'Upyun', '网宿CDN':'Wangsu CDN',
+  '腾讯视频':'Tencent Video', '爱奇艺':'iQIYI', '优酷':'Youku', '快手':'Kuaishou', '西瓜视频':'Xigua Video', '央视频':'CCTV Video', '央视影音':'CCTV',
+  '咪咕视频':'Migu Video', '搜狐视频':'Sohu Video', '映客直播':'Inke Live', '微博':'Weibo', '知乎':'Zhihu', '豆瓣':'Douban', '虎扑':'Hupu',
+  '飞书':'Feishu/Lark', '钉钉':'DingTalk', '企业微信':'WeCom', '腾讯会议':'Tencent Meeting', '腾讯文档':'QQ Docs', '石墨文档':'Shimo', '语雀':'Yuque',
+  '米家':'Mi Home', '美的美居':'Midea Smart', 'Aqara绿米':'Aqara', '涂鸦智能':'Tuya Smart', '易微联':'eWeLink', '萤石云':'EZVIZ', '海康互联':'Hik-Connect',
+  '乐橙监控':'Imou', '石头智能':'Roborock', '科沃斯':'Ecovacs', '追觅':'Dreame', '大疆 DJI':'DJI', '海尔智家':'Haier Smart', '格力+':'Gree+',
+  '网易大神':'NetEase Dashen', '网易云音乐':'NetEase Music', '网易游戏':'NetEase Games', '网易严选':'Yanxuan', '网易邮箱':'163 Mail', 'QQ邮箱':'QQ Mail',
+  'QQ音乐':'QQ Music', '全民K歌':'WeSing', '工商银行':'ICBC', '招商银行':'CMB', '建设银行':'CCB', '农业银行':'ABC', '中国银行':'BOC',
+  '交通银行':'BOCOM', '邮储银行':'PSBC', '浦发银行':'SPDB', '民生银行':'CMBC', '兴业银行':'CIB', '光大银行':'CEB', '中信银行':'CITIC',
+  '平安银行':'PingAn Bank', '微众银行':'WeBank', '云闪付':'UnionPay', '东方财富':'Eastmoney', '同花顺':'10jqka', '雪球':'Xueqiu', '富途牛牛':'Futu',
+  '铁路12306':'12306', '顺丰速运':'SF Express', '菜鸟':'Cainiao', '中通快递':'ZTO', '圆通速递':'YTO', '韵达快递':'Yunda', '申通快递':'STO', '极兔速递':'J&T', '中国邮政':'China Post',
+  '群晖 Synology':'Synology', '威联通 QNAP':'QNAP', '飞牛 fnOS':'fnOS', '极空间':'ZSpace', '天翼网关':'ChinaNet GW', '教育网':'CERNET', '南京大学':'NJU',
+  '向日葵远程':'Sunlogin', '迅雷':'Thunder', '夸克网盘':'Quark Drive', '123云盘':'123Pan', '坚果云':'Nutstore', '通义千问':'Qwen', '豆包':'Doubao',
+  '文心一言':'ERNIE Bot', '智谱清言':'ChatGLM', '讯飞星火':'SparkDesk', '秘塔AI':'Metaso AI', '今日头条':'Toutiao', '澎湃新闻':'The Paper', '观察者网':'Guancha',
+  '凤凰网':'Ifeng', '少数派':'Sspai', '36氪':'36Kr', '虎嗅':'Huxiu', '喜马拉雅':'Ximalaya', '蜻蜓FM':'Qingting', '荔枝FM':'Lizhi FM', '小宇宙':'Xiaoyuzhou',
+  '微信读书':'WeRead', '起点读书':'Qidian', '番茄小说':'Fanqie', '酷狗音乐':'Kugou', '酷我音乐':'Kuwo', '芒果TV':'MangoTV', '虎牙直播':'Huya', '斗鱼直播':'Douyu', 'YY直播':'YY Live',
+  '大众点评':'Dianping', '饿了么':'Ele.me', '滴滴出行':'DiDi', '哈啰出行':'HelloBike', 'T3出行':'T3 Go', '货拉拉':'Lalamove', '瑞幸咖啡':'Luckin Coffee',
+  '携程旅行':'Trip.com', '去哪儿':'Qunar', '飞猪':'Fliggy', '同程旅行':'LY.com', '航旅纵横':'Umetrip', '飞常准':'VariFlight', '唯品会':'Vipshop', '得物':'Poizon',
+  '转转':'Zhuanzhuan', '苏宁易购':'Suning', '盒马':'Freshippo', '山姆会员':'SamsClub', '叮咚买菜':'Dingdong', '什么值得买':'SMZDM',
+  '交管12123':'12123', '个人所得税':'China Tax', '学信网':'CHSI', '国家政务':'Gov CN', '贝壳找房':'Beike', '链家':'Lianjia', '58同城':'58.com', 'BOSS直聘':'Boss Zhipin',
+  '懂球帝':'Dongqiudi', '直播吧':'Zhibo8', '汽车之家':'Autohome', '懂车帝':'Dongchedi', '360安全':'360 Sec', '奇安信':'QiAnXin', '深信服':'Sangfor',
+  '拳头游戏':'Riot Games', '暴雪战网':'Battle.net', '米哈游':'HoYoverse', '原神':'Genshin', '王者荣耀':'Honor of Kings', '4399游戏':'4399', '好游快爆':'3839', '游民星空':'Gamersky',
+  'EA游戏':'EA Games', '育碧 Ubisoft':'Ubisoft', '用友软件':'Yonyou', '金蝶云':'Kingdee', '泛微OA':'Weaver', '问卷星':'WJX', '博客园':'Cnblogs', '思否':'SegmentFault', '掘金':'Juejin',
+  'RDP 远程桌面':'RDP Desktop', 'SMB 文件共享':'SMB Share', 'NTP 对时':'NTP', 'iPerf3 测速':'iPerf3', 'MQTT IoT':'MQTT IoT', 'RTSP 监控':'RTSP', '数据库服务':'Database', 'SIP 语音':'SIP Voice', '其他协议':'Other'
 };
 const CAT_EN = {
-  '视频娱乐':'Video & Music', '社交通讯':'Social & Chat', '购物金融':'Shopping & Finance',
-  '办公与AI':'Work & AI', '网盘下载':'Cloud & Download', '智能家居':'Smart Home & NAS',
-  '游戏平台':'Gaming', '云与终端':'Cloud & Services', 'VPN与P2P':'VPN & P2P',
-  '网页浏览':'Web', '办公与管理':'Admin & Remote', '基础网络':'Core Network', '其他协议':'Other'
+  '视频娱乐':'Video & Music', '社交通讯':'Social & Chat', '购物电商':'E-Commerce', '金融支付':'Finance & Pay',
+  '出行生活':'Travel & Life', '新闻资讯':'News & Reading', 'AI大模型':'AI Models', '办公协同':'Work & Dev',
+  '网盘传输':'Cloud Drive', '智能家居':'Smart Home & NAS', '游戏娱乐':'Gaming', '云与CDN':'Cloud & CDN',
+  'VPN与P2P':'VPN & P2P', '网页浏览':'Web', '安全与运维':'Security & Ops', '基础网络':'Core Network', '其他协议':'Other'
 };
+function tGeo(txt) {
+  if (!txt || currentLang !== 'en') return txt;
+  const rep = [
+    ['运营商内网','Carrier NAT'],['中国联通','China Unicom'],['中国电信','China Telecom'],['中国移动','China Mobile'],
+    ['局域网','LAN'],['内网','LAN'],['海外','Global'],['美国','USA'],['中国','China'],
+    ['北京市','Beijing'],['北京','Beijing'],['上海市','Shanghai'],['上海','Shanghai'],
+    ['四川','Sichuan'],['成都','Chengdu'],['广东','Guangdong'],['深圳','Shenzhen'],['广州','Guangzhou'],
+    ['浙江','Zhejiang'],['杭州','Hangzhou'],['江苏','Jiangsu'],['南京','Nanjing'],['金融街','Financial St'],
+    ['阿里云 DNS','AliDNS'],['腾讯云 DNSPod','Tencent DNSPod'],['阿里云','Alibaba Cloud'],['腾讯云','Tencent Cloud'],['百度云','Baidu Cloud'],['百度','Baidu']
+  ];
+  let out = txt;
+  rep.forEach(([k, v]) => { out = out.split(k).join(v); });
+  return out;
+}
 
 let currentLang = localStorage.getItem('mikromon_lang') || 'zh';
 let currentRouterId = 0;
@@ -747,8 +785,9 @@ function maskIP(ip) {
 }
 function toggleShowIPs() {
   showFullIPs = !showFullIPs;
-  const btn = document.getElementById('btnToggleIP');
-  if (btn) btn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
+  document.querySelectorAll('.btn-toggle-ip').forEach(btn => {
+    btn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
+  });
   loadRouters();
   pollSnapshot();
   refreshHistoryAll();
@@ -799,8 +838,9 @@ function applyLang(lang) {
   Array.from(document.getElementById('rangeSelect').options).forEach(opt => {
     opt.textContent = t('ranges')[opt.value] || opt.value;
   });
-  const ipBtn = document.getElementById('btnToggleIP');
-  if (ipBtn) ipBtn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
+  document.querySelectorAll('.btn-toggle-ip').forEach(btn => {
+    btn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
+  });
   document.querySelectorAll('.range-lbl').forEach(el => {
     el.textContent = t('ranges')[currentRange] || currentRange;
   });
@@ -1038,7 +1078,7 @@ async function pollSnapshot() {
           <span class="font-medium">${w.interface} (v${w.version})</span>
           <span class="font-mono ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
         </div>
-        <div class="text-[11px] luci-txt2">${shortISP(w.location, w.isp) || '-'}</div>
+        <div class="text-[11px] luci-txt2">${tGeo(shortISP(w.location, w.isp)) || '-'}</div>
       </div>
     `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
@@ -1222,7 +1262,7 @@ function renderConnections() {
       <td class="py-1.5 uppercase luci-txt2">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
       <td class="py-1.5 font-mono"><div>${maskIP(c.client_ip)}:${c.client_port}</div><div class="text-[10px] luci-txt2">${c.host_name || ''}</div></td>
       <td class="py-1.5 font-mono"><div>${maskIP(c.remote_ip)}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-500">${c.domain}</div>` : ''}</td>
-      <td class="py-1.5"><div>${c.location || '-'}</div><div class="text-[10px] text-[#0099cc]">${c.isp || ''}</div></td>
+      <td class="py-1.5"><div>${tGeo(c.location) || '-'}</div><div class="text-[10px] text-[#0099cc]">${tGeo(c.isp) || ''}</div></td>
       <td class="py-1.5 text-[#0099cc]">${fmtBps(c.rx_bps)}</td>
       <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
       <td class="py-1.5">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
