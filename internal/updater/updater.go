@@ -40,10 +40,10 @@ type Manager struct {
 	client *http.Client
 	mu     sync.RWMutex
 	status Status
-	onExit func()
+	onExit func(string)
 }
 
-func New(currentVersion string, st *store.Store, onExit func()) *Manager {
+func New(currentVersion string, st *store.Store, onExit func(string)) *Manager {
 	if currentVersion == "" {
 		currentVersion = "dev"
 	}
@@ -89,7 +89,7 @@ func (m *Manager) RunLoop(ctx context.Context) {
 	time.Sleep(15 * time.Second)
 	m.CheckAndMaybeApply(ctx)
 
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
@@ -222,40 +222,47 @@ func (m *Manager) Apply(ctx context.Context) error {
 	m.status.LastError = ""
 	m.mu.Unlock()
 
+	var urls []string
 	if mirror != "" {
-		dlURL = mirror + dlURL
+		urls = append(urls, mirror+dlURL)
 	}
+	urls = append(urls, dlURL)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", dlURL, nil)
-	if err != nil {
-		m.finishErr(err)
-		return err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-
+	var data []byte
+	var lastErr error
 	dlClient := &http.Client{Timeout: 3 * time.Minute}
-	resp, err := dlClient.Do(req)
-	if err != nil {
-		m.finishErr(err)
-		return err
+	for _, tryURL := range urls {
+		req, err := http.NewRequestWithContext(ctx, "GET", tryURL, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0")
+		resp, err := dlClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if resp.StatusCode != 200 {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("download status %d from %s", resp.StatusCode, tryURL)
+			continue
+		}
+		b, err := io.ReadAll(io.LimitReader(resp.Body, 80*1024*1024))
+		resp.Body.Close()
+		if err != nil || len(b) < 1500000 || !bytes.HasPrefix(b, []byte{0x7f, 'E', 'L', 'F'}) {
+			lastErr = fmt.Errorf("invalid binary (size=%d) from %s", len(b), tryURL)
+			continue
+		}
+		data = b
+		break
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		err := fmt.Errorf("download status %d", resp.StatusCode)
-		m.finishErr(err)
-		return err
-	}
-
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 80*1024*1024))
-	if err != nil {
-		m.finishErr(err)
-		return err
-	}
-	if len(data) < 1500000 || !bytes.HasPrefix(data, []byte{0x7f, 'E', 'L', 'F'}) {
-		err := fmt.Errorf("invalid binary downloaded (size=%d)", len(data))
-		m.finishErr(err)
-		return err
+	if len(data) == 0 {
+		if lastErr == nil {
+			lastErr = fmt.Errorf("download failed")
+		}
+		m.finishErr(lastErr)
+		return lastErr
 	}
 
 	targetPath := os.Getenv("MIKROMON_OTA_PATH")
@@ -283,9 +290,10 @@ func (m *Manager) Apply(ctx context.Context) error {
 	go func() {
 		time.Sleep(500 * time.Millisecond)
 		if m.onExit != nil {
-			m.onExit()
+			m.onExit(targetPath)
+		} else {
+			os.Exit(1)
 		}
-		os.Exit(0)
 	}()
 	return nil
 }

@@ -74,7 +74,7 @@ var appCatalog = map[string]appLookup{
 
 var forceSVG = map[string]bool{
 	"Cloudflare": true, "BitTorrent/P2P": true, "Apple": true,
-	"AppStore": true, "iCloud": true, "Microsoft": true, "SSH": true,
+	"AppStore": true, "iCloud": true, "Microsoft": true, "SSH": true, "Quad9 DNS": true,
 }
 
 type Manager struct {
@@ -111,7 +111,7 @@ func (m *Manager) Version() int64 {
 
 func cachePathFor(cacheDir, appName string) string {
 	sum := md5.Sum([]byte(appName))
-	return filepath.Join(cacheDir, hex.EncodeToString(sum[:])+".img")
+	return filepath.Join(cacheDir, "v2_"+hex.EncodeToString(sum[:])+".img")
 }
 
 // 启动时用 Apple 批量 Lookup 接口一次性预热所有已知 ID，彻底避免限流
@@ -249,12 +249,20 @@ func (m *Manager) fetchFromApple(spec appLookup) []byte {
 	defer resp.Body.Close()
 	var res struct {
 		Results []struct {
+			TrackName     string `json:"trackName"`
 			ArtworkUrl100 string `json:"artworkUrl100"`
 			ArtworkUrl512 string `json:"artworkUrl512"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil || len(res.Results) == 0 {
 		return nil
+	}
+	if spec.id == "" && spec.term != "" {
+		tn := strings.ToLower(res.Results[0].TrackName)
+		tk := strings.ToLower(spec.term)
+		if !strings.Contains(tn, tk) && !strings.Contains(tk, tn) {
+			return nil
+		}
 	}
 	imgURL := res.Results[0].ArtworkUrl100
 	if imgURL == "" {

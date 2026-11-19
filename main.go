@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"mikromon/internal/collector"
 	"mikromon/internal/store"
@@ -56,9 +57,15 @@ func main() {
 	col := collector.New(st)
 	go col.Run(ctx)
 
-	upd := updater.New(Version, st, func() {
+	upd := updater.New(Version, st, func(newBin string) {
 		cancel()
+		time.Sleep(600 * time.Millisecond)
 		_ = st.Close()
+		args := append([]string{newBin}, os.Args[1:]...)
+		if err := syscall.Exec(newBin, args, os.Environ()); err != nil {
+			log.Printf("exec restart err: %v", err)
+			os.Exit(1)
+		}
 	})
 	go upd.RunLoop(ctx)
 

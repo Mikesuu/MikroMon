@@ -45,7 +45,8 @@
 <body class="min-h-screen font-sans flex">
 
   <!-- 折叠式左侧边栏 -->
-  <aside class="luci-sidebar w-56 flex-shrink-0 hidden md:flex flex-col justify-between sticky top-0 h-screen select-none">
+  <div id="sidebarMask" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+  <aside id="sidebarDrawer" class="luci-sidebar w-60 flex-shrink-0 fixed inset-y-0 left-0 z-50 -translate-x-full transition-transform duration-200 flex flex-col justify-between select-none shadow-2xl">
     <div class="overflow-y-auto">
       <div class="px-4 py-3.5 border-b luci-border flex items-center gap-2.5">
         <div class="w-7 h-7 rounded bg-[#0099cc] flex items-center justify-center font-bold text-white text-sm">M</div>
@@ -117,23 +118,12 @@
   <div class="flex-1 flex flex-col min-w-0">
     <header class="luci-header px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30">
       <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="toggleSidebar()" class="luci-sub px-2.5 py-1 rounded text-sm font-bold" title="Menu">☰</button>
         <select id="routerSelect" class="luci-input rounded px-2.5 py-1 text-xs"></select>
         <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-500/15 luci-txt2">...</span>
-        <div id="headerWanPills" class="flex items-center gap-1.5 flex-wrap text-[11px]"></div>
+        
         <button id="updateHeaderBtn" onclick="openSettings()" class="hidden px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500 font-medium animate-pulse"></button>
-        <select onchange="switchTab(this.value)" class="md:hidden luci-input rounded px-2 py-1 text-xs">
-          <option value="overview" data-i18n="nav_overview">状态概览</option>
-          <option value="ips" data-i18n="nav_devices">终端列表</option>
-          <option value="interfaces" data-i18n="nav_ifaces">接口状态</option>
-          <option value="connections" data-i18n="nav_conns">实时连接</option>
-          <option value="network" data-i18n="nav_net_tables">DHCP/ARP/路由</option>
-          <option value="audit" data-i18n="nav_domain_audit">上网审计</option>
-          <option value="dpi" data-i18n="nav_app_rank">应用排行</option>
-          <option value="policy" data-i18n="nav_policy">限速黑名单</option>
-          <option value="firewall" data-i18n="nav_fw">防火墙命中</option>
-          <option value="tools" data-i18n="nav_tools">Torch/Ping</option>
-          <option value="logs" data-i18n="nav_logs">系统日志</option>
-        </select>
+        
       </div>
 
       <div class="flex items-center gap-2">
@@ -243,6 +233,11 @@
               <div id="gaugeMem" class="h-32"></div>
             </div>
             <div id="sysMemDetail" class="text-center text-[11px] luci-txt2">-</div>
+          </div>
+
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_wan">WAN 出口与归属地</h3>
+            <div id="sideWanList" class="space-y-1.5 text-xs"></div>
           </div>
 
           <div class="luci-card rounded-lg p-4 space-y-2">
@@ -619,7 +614,7 @@ const I18N = {
     sec_traffic: '流量统计', chk_invert_lan: 'LAN视角反转', sec_active_apps: '活跃 APP',
     hint_click_app: '点击任意 APP 查看连接明细', sec_cat_dist: '应用分类流量分布', sec_top8: '用户流量 Top 8',
     side_sysinfo: '系统信息', lbl_hostname: '主机名', lbl_model: '设备型号', lbl_arch: '架构',
-    lbl_firmware: '固件版本', lbl_uptime: '运行时间', side_status: '运行状态', side_ifaces: '接口实时速览', side_domains: '活跃域名 (URL)',
+    lbl_firmware: '固件版本', lbl_uptime: '运行时间', side_status: '运行状态', side_wan: 'WAN 出口与归属地', side_ifaces: '接口实时速览', side_domains: '活跃域名 (URL)',
     dev_live_title: '在线终端实时速率 (IPv4 + IPv6)', dev_hist_title: '历史流量排行', dev_curve_title: '单终端历史曲线',
     th_ip: '终端 IP', th_dev_vendor: '设备 / 厂商', th_dl: '下行', th_ul: '上行', th_top_app: '主要应用', th_actions: '操作',
     th_device: '设备名', th_dl_bytes: '下载量', th_ul_bytes: '上传量', th_total: '总计',
@@ -668,7 +663,7 @@ const I18N = {
     sec_traffic: 'Traffic Stats', chk_invert_lan: 'Invert LAN', sec_active_apps: 'Active Apps',
     hint_click_app: 'Click an app to filter connections', sec_cat_dist: 'Category Distribution', sec_top8: 'Top 8 Devices',
     side_sysinfo: 'System Info', lbl_hostname: 'Hostname', lbl_model: 'Model', lbl_arch: 'Arch',
-    lbl_firmware: 'RouterOS', lbl_uptime: 'Uptime', side_status: 'Runtime', side_ifaces: 'Interfaces', side_domains: 'Active Domains (URL)',
+    lbl_firmware: 'RouterOS', lbl_uptime: 'Uptime', side_status: 'Runtime', side_wan: 'WAN & ISP', side_ifaces: 'Interfaces', side_domains: 'Active Domains (URL)',
     dev_live_title: 'Live Devices (IPv4 + IPv6)', dev_hist_title: 'Traffic Ranking', dev_curve_title: 'Device History',
     th_ip: 'IP Address', th_dev_vendor: 'Device / Vendor', th_dl: 'Download', th_ul: 'Upload', th_top_app: 'Top App', th_actions: 'Actions',
     th_device: 'Hostname', th_dl_bytes: 'Downloaded', th_ul_bytes: 'Uploaded', th_total: 'Total',
@@ -768,6 +763,7 @@ const INLINE_ICONS = {
   "AppStore": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="as" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#19B5FE"/><stop offset="100%" stop-color="#0D6EFD"/></linearGradient></defs><rect width="48" height="48" rx="11" fill="url(#as)"/><path d="M24 12L14 32m10-20l10 20M11 26.5h26" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>`,
   "iCloud": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#38BDF8"/><path fill="#fff" d="M15.5 32h18a6 6 0 0 0 .8-11.9 8.2 8.2 0 0 0-15.8-2.1A6.5 6.5 0 0 0 15.5 32z"/></svg>`,
   "Microsoft": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#f8fafc"/><rect x="10" y="10" width="13" height="13" fill="#F25022"/><rect x="25" y="10" width="13" height="13" fill="#7FBA00"/><rect x="10" y="25" width="13" height="13" fill="#00A4EF"/><rect x="25" y="25" width="13" height="13" fill="#FFB900"/></svg>`,
+  "Quad9 DNS": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#1d4ed8"/><path fill="#fff" d="M24 8l13 5v10c0 8.5-5.5 15.8-13 18.5C16.5 38.8 11 31.5 11 23V13l13-5z" opacity=".2"/><text x="24" y="31" text-anchor="middle" fill="#fff" font-size="22" font-weight="bold">9</text></svg>`,
   "SSH": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#065f46"/><text x="24" y="30" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="18" font-weight="bold">&gt;_</text></svg>`
 };
 function getFallbackDataURI(app, color) {
@@ -934,7 +930,15 @@ function renderGauge(chart, title, val, color) {
   });
 }
 
+function toggleSidebar(force) {
+  const d = document.getElementById('sidebarDrawer');
+  const m = document.getElementById('sidebarMask');
+  const open = force !== undefined ? force : d.classList.contains('-translate-x-full');
+  d.classList.toggle('-translate-x-full', !open);
+  m.classList.toggle('hidden', !open);
+}
 function switchTab(name) {
+  toggleSidebar(false);
   if (name === 'overview' || name === 'ips') closeOtherMenus('');
   document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
   document.getElementById('tab-' + name).classList.remove('hidden');
@@ -1019,15 +1023,24 @@ async function pollSnapshot() {
       kpiNet.className = 'text-lg font-bold text-rose-500 mt-1';
     }
 
+    const shortISP = (loc, isp) => {
+      let s = isp || '';
+      if (/unicom|cnc/i.test(s)) s = '中国联通';
+      else if (/chinanet|telecom/i.test(s)) s = '中国电信';
+      else if (/mobile|cmnet/i.test(s)) s = '中国移动';
+      return [loc, s].filter(Boolean).join(' · ');
+    };
     const wans = snap.wan_ips || [];
-    document.getElementById('headerWanPills').innerHTML = wans.map(w => {
-      const geoTxt = [w.location, w.isp].filter(Boolean).join(' · ');
-      return `<span class="px-2 py-0.5 rounded luci-sub font-mono" title="${geoTxt}">
-        <span class="luci-txt2">${w.interface}:</span>
-        <span class="${w.version === 6 ? 'text-purple-400' : 'text-[#0099cc]'}">${maskIP(w.address)}</span>
-        ${geoTxt ? `<span class="luci-txt2 ml-1 text-[10px]">(${geoTxt})</span>` : ''}
-      </span>`;
-    }).join('');
+    const sw = document.getElementById('sideWanList');
+    if (sw) sw.innerHTML = wans.length ? wans.map(w => `
+      <div class="luci-sub rounded p-2 space-y-0.5">
+        <div class="flex justify-between items-center">
+          <span class="font-medium">${w.interface} (v${w.version})</span>
+          <span class="font-mono ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
+        </div>
+        <div class="text-[11px] luci-txt2">${shortISP(w.location, w.isp) || '-'}</div>
+      </div>
+    `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
     document.getElementById('kpiWanSummary').textContent = wanNames || 'WAN OK';
 
@@ -1221,7 +1234,7 @@ function renderConnections() {
 async function loadOverviewChart() {
   const iface = document.getElementById('overviewIface').value;
   if (!iface) return;
-  const inv = isLanIface(ovName);
+  const inv = isLanIface(iface);
   const res = await fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`);
   renderTrafficChart(chartOverview, await res.json(), inv);
 }
@@ -1508,7 +1521,7 @@ async function applyUpdateNow() {
   setTimeout(() => location.reload(), 4000);
 }
 
-function openSettings() { loadUpdateStatus(); document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
+function openSettings() { toggleSidebar(false); loadUpdateStatus(); document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
 function closeSettings() { document.getElementById('settingsModal').classList.replace('flex', 'hidden'); }
 function fillRouterForm(r) {
   document.getElementById('cfgId').value = r.id;
