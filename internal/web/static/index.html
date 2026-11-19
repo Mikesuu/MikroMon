@@ -51,7 +51,7 @@
         <div class="w-7 h-7 rounded bg-[#0099cc] flex items-center justify-center font-bold text-white text-sm">M</div>
         <div>
           <div class="text-sm font-bold">MikroMon</div>
-          <div class="text-[11px] luci-txt2">LuCI Style · v2.5</div>
+          <div class="text-[11px] luci-txt2">LuCI Style · v2.6</div>
         </div>
       </div>
 
@@ -713,6 +713,34 @@ let selectedIface = '';
 let selectedIp = '';
 let showAllApps = false;
 let torchTimer = null;
+
+const INLINE_ICONS = {
+  "Google": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#fff"/><path fill="#FFC107" d="M35.6 20.1H24v7.5h11.3c-1.1 5.2-5.7 8.4-11.3 8.4-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10 0 19-7.3 19-20 0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.6 0-10.3-3.6-11.9-8.6l-6.5 5C9.1 39.2 16 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H24v7.5h11.3c-.6 2.8-2.3 5.2-4.7 6.8l6.2 5.2c3.6-3.3 6.2-8.3 6.2-15.6 0-1.3-.1-2.6-.4-3.9z"/></svg>`,
+  "Cloudflare": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#fff7ed"/><path fill="#F38020" d="M35.5 23.2c-.3-4.8-4.3-8.6-9.2-8.6-3.9 0-7.2 2.4-8.6 5.9-.7-.4-1.5-.6-2.4-.6-2.9 0-5.3 2.3-5.4 5.2-2.6.5-4.5 2.8-4.5 5.5 0 3.1 2.5 5.6 5.6 5.6h24.3c3.5 0 6.3-2.8 6.3-6.3 0-3.3-2.5-6.1-6.1-6.7z"/><path fill="#FAAE40" d="M36.3 25.5c-.4 0-.8.1-1.2.2.8-3.6 4.1-6.1 7.8-5.7 3 .4 5.2 3 5.1 6 0 3.1-2.5 5.6-5.6 5.6h-6.1v-6.1z" opacity=".85"/></svg>`,
+  "BitTorrent/P2P": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#6D28D9"/><path fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" d="M24 37a13 13 0 1 1 11.2-19.5M24 32a8 8 0 1 1 6.9-12M24 27a3 3 0 1 1 0-6"/></svg>`,
+  "Apple": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#1e293b"/><path fill="#fff" d="M30.8 25.2c0-3.7 3-5.5 3.1-5.6-1.7-2.5-4.3-2.8-5.3-2.9-2.2-.2-4.4 1.3-5.5 1.3-1.1 0-2.9-1.3-4.7-1.3-2.4 0-4.7 1.4-5.9 3.6-2.5 4.4-.6 10.9 1.8 14.5 1.2 1.7 2.6 3.7 4.5 3.6 1.8-.1 2.5-1.2 4.7-1.2 2.2 0 2.8 1.2 4.7 1.2 2 0 3.2-1.8 4.4-3.5 1.4-2 1.9-4 2-4.1-.1-.1-3.8-1.5-3.8-5.6zM27.1 14.2c1-1.2 1.7-2.9 1.5-4.6-1.4.1-3.2 1-4.2 2.2-.9 1-1.7 2.8-1.5 4.4 1.6.1 3.2-.8 4.2-2z"/></svg>`,
+  "AppStore": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="as" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#19B5FE"/><stop offset="100%" stop-color="#0D6EFD"/></linearGradient></defs><rect width="48" height="48" rx="11" fill="url(#as)"/><path d="M24 12L14 32m10-20l10 20M11 26.5h26" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>`,
+  "iCloud": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#38BDF8"/><path fill="#fff" d="M15.5 32h18a6 6 0 0 0 .8-11.9 8.2 8.2 0 0 0-15.8-2.1A6.5 6.5 0 0 0 15.5 32z"/></svg>`,
+  "Microsoft": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#f8fafc"/><rect x="10" y="10" width="13" height="13" fill="#F25022"/><rect x="25" y="10" width="13" height="13" fill="#7FBA00"/><rect x="10" y="25" width="13" height="13" fill="#00A4EF"/><rect x="25" y="25" width="13" height="13" fill="#FFB900"/></svg>`,
+  "SSH": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#065f46"/><text x="24" y="30" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="18" font-weight="bold">&gt;_</text></svg>`
+};
+function getFallbackDataURI(app, color) {
+  let svg = INLINE_ICONS[app];
+  if (!svg) {
+    const lbl = (app || "AP").slice(0, 2);
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="${color || "#0099cc"}"/><text x="24" y="30" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="16" font-weight="bold">${lbl}</text></svg>`;
+  }
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+function getIconSrc(app, color) {
+  if (INLINE_ICONS[app]) return getFallbackDataURI(app, color);
+  return "/api/appicon?app=" + encodeURIComponent(app);
+}
+function imgFallback(el) {
+  el.onerror = null;
+  el.src = getFallbackDataURI(el.dataset.app, el.dataset.color);
+}
+
 let lastAppWallKey = '';
 
 function t(k) { return (I18N[currentLang] && I18N[currentLang][k]) || I18N.zh[k] || k; }
@@ -996,7 +1024,7 @@ async function pollSnapshot() {
         const dispName = tApp(a.app);
         return `
         <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
-          <img src="/api/appicon?app=${encodeURIComponent(a.app)}" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
+          <img src="${getIconSrc(a.app, a.color)}" data-app="${a.app}" data-color="${a.color}" onerror="imgFallback(this)" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
           <div class="text-xs font-semibold mt-1.5 truncate w-full">${dispName}</div>
           <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
             <div id="appLive_${idx}" class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">${t('live_lbl')}: ${fmtBps(liveSpeed)}</div>
@@ -1163,7 +1191,7 @@ async function loadAppCharts() {
   document.getElementById('kpiTotalTraffic').textContent = fmtBytes(totalBytes);
 
   document.getElementById('dpiRankBody').innerHTML = list.map(a => `
-    <tr class="luci-tr"><td class="py-1.5 font-medium flex items-center gap-2"><img src="/api/appicon?app=${encodeURIComponent(a.app)}" class="w-5 h-5 rounded object-cover" loading="lazy" /><span>${tApp(a.app)}</span></td><td class="py-1.5 luci-txt2">${tCat(a.category)}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
+    <tr class="luci-tr"><td class="py-1.5 font-medium flex items-center gap-2"><img src="${getIconSrc(a.app, '#0099cc')}" data-app="${a.app}" data-color="#0099cc" onerror="imgFallback(this)" class="w-5 h-5 rounded object-cover" /><span>${tApp(a.app)}</span></td><td class="py-1.5 luci-txt2">${tCat(a.category)}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
   `).join('');
 
   const catMap = {};

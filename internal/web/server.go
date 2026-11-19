@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 	"mikromon/internal/collector"
 	"mikromon/internal/dpi"
+	"mikromon/internal/icons"
 	"mikromon/internal/mikrotik"
 	"mikromon/internal/store"
 )
@@ -23,10 +25,15 @@ var staticFS embed.FS
 type Server struct {
 	store *store.Store
 	col   *collector.Collector
+	icons *icons.Manager
 }
 
 func NewServer(st *store.Store, col *collector.Collector) *Server {
-	return &Server{store: st, col: col}
+	dataDir := os.Getenv("MIKROMON_DATA")
+	if dataDir == "" {
+		dataDir = "./data"
+	}
+	return &Server{store: st, col: col, icons: icons.New(dataDir)}
 }
 
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
@@ -45,6 +52,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/system/logs", s.handleLogs)
 	mux.HandleFunc("/api/firewall/rules", s.handleFirewallRules)
 	mux.HandleFunc("/api/tools/wol", s.handleWoL)
+	mux.HandleFunc("/api/appicon", s.handleAppIcon)
 	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
 	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
@@ -97,6 +105,23 @@ func (s *Server) resolveRouterID(r *http.Request) int64 {
 		return list[0].ID
 	}
 	return 0
+}
+
+func (s *Server) handleAppIcon(w http.ResponseWriter, r *http.Request) {
+	app := r.URL.Query().Get("app")
+	if app == "" {
+		w.WriteHeader(400)
+		return
+	}
+	data, ct, cached := s.icons.GetIcon(app)
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if cached {
+		w.Header().Set("Cache-Control", "public, max-age=604800")
+	} else {
+		w.Header().Set("Cache-Control", "public, max-age=5")
+	}
+	w.Write(data)
 }
 
 func (s *Server) handleRouters(w http.ResponseWriter, r *http.Request) {
