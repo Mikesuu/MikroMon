@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MikroMon - MikroTik 行为与流量监控平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center font-bold text-slate-950">M</div>
+      <div>
+        <h1 class="text-lg font-semibold leading-tight">MikroMon</h1>
+        <p class="text-xs text-slate-400">RouterOS API (8728/8729) 行为与流量分析</p>
+      </div>
+      <span id="statusBadge" class="ml-3 px-2.5 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400">检测中...</span>
+    </div>
+
+    <div class="flex items-center gap-3 flex-wrap">
+      <select id="routerSelect" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"></select>
+      <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700" id="rangeBar">
+        <button data-range="1h" class="range-btn px-2.5 py-1 text-xs rounded-md bg-sky-500 text-slate-950 font-medium">1小时</button>
+        <button data-range="6h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">6小时</button>
+        <button data-range="12h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">12小时</button>
+        <button data-range="24h" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">24小时</button>
+        <button data-range="7d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">7天</button>
+        <button data-range="15d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">15天</button>
+        <button data-range="30d" class="range-btn px-2.5 py-1 text-xs rounded-md text-slate-300">30天</button>
+      </div>
+      <button onclick="openSettings()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-sm">路由器配置</button>
+    </div>
+  </header>
+
+  <nav class="bg-slate-900/60 border-b border-slate-800 px-6 flex gap-6 text-sm overflow-x-auto">
+    <button onclick="switchTab('overview')" data-tab="overview" class="tab-btn py-3 border-b-2 border-sky-400 text-sky-400 font-medium">总览仪表盘</button>
+    <button onclick="switchTab('interfaces')" data-tab="interfaces" class="tab-btn py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200">接口状态与趋势</button>
+    <button onclick="switchTab('ips')" data-tab="ips" class="tab-btn py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200">终端 IP 实时/历史流量</button>
+    <button onclick="switchTab('connections')" data-tab="connections" class="tab-btn py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200">实时连接与程序识别</button>
+    <button onclick="switchTab('torch')" data-tab="torch" class="tab-btn py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Torch 实时抓包</button>
+    <button onclick="switchTab('policy')" data-tab="policy" class="tab-btn py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200">限速与管控工具</button>
+  </nav>
+
+  <main class="p-6 max-w-[1440px] mx-auto space-y-6">
+    <section id="tab-overview" class="tab-panel space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-xs text-slate-400">设备型号 / 系统</div>
+          <div id="sysModel" class="text-base font-semibold mt-1 truncate">-</div>
+          <div id="sysVer" class="text-xs text-slate-400 mt-1">-</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-xs text-slate-400">CPU 负载</div>
+          <div id="sysCpu" class="text-2xl font-bold text-sky-400 mt-1">0%</div>
+          <div id="sysUptime" class="text-xs text-slate-400 mt-1">运行: -</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-xs text-slate-400">内存使用</div>
+          <div id="sysMem" class="text-2xl font-bold text-emerald-400 mt-1">0%</div>
+          <div id="sysMemDetail" class="text-xs text-slate-400 mt-1">-</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-xs text-slate-400">活跃连接 / 在线终端</div>
+          <div id="sysConns" class="text-2xl font-bold text-amber-400 mt-1">0 / 0</div>
+          <div class="text-xs text-slate-400 mt-1">实时连接追踪</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-xs text-slate-400">主接口实时速率</div>
+          <div id="sysWanRate" class="text-sm font-semibold mt-1 text-indigo-300">↓ 0 / ↑ 0</div>
+          <div class="mt-1">
+            <select id="overviewIface" onchange="loadOverviewChart()" class="bg-slate-800 border border-slate-700 rounded text-xs px-2 py-0.5 w-full"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="text-sm font-semibold">接口历史流量趋势 (<span id="overviewRangeLabel">1小时</span>)</h2>
+          </div>
+          <div id="overviewTrafficChart" class="h-72 w-full"></div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-sm font-semibold mb-2">应用/协议流量占比 (Panabit 视图)</h2>
+          <div id="appPieChart" class="h-72 w-full"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h2 class="text-sm font-semibold mb-3">实时终端速率 Top 10</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2">IP 地址</th><th class="py-2">主机名</th><th class="py-2">MAC</th>
+                <th class="py-2">当前下行</th><th class="py-2">当前上行</th><th class="py-2">活跃连接</th><th class="py-2">主要应用</th>
+              </tr>
+            </thead>
+            <tbody id="topLiveIpBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-interfaces" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h2 class="text-sm font-semibold mb-3">全部接口状态</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2">接口名</th><th class="py-2">类型</th><th class="py-2">状态</th><th class="py-2">MAC / MTU</th>
+                <th class="py-2">实时下行 (RX)</th><th class="py-2">实时上行 (TX)</th><th class="py-2">累计流量</th><th class="py-2">掉线/丢包</th><th class="py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody id="ifaceTableBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold">接口历史曲线: <span id="selectedIfaceTitle" class="text-sky-400">-</span></h2>
+        </div>
+        <div id="ifaceDetailChart" class="h-72 w-full"></div>
+      </div>
+    </section>
+
+    <section id="tab-ips" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-sm font-semibold mb-3">所有在线 IP 实时速率</h2>
+          <div class="overflow-x-auto max-h-[500px]">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-900">
+                <tr><th class="py-2">IP</th><th class="py-2">主机名</th><th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">主要应用</th></tr>
+              </thead>
+              <tbody id="allLiveIpBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-sm font-semibold mb-3">历史流量排行 (<span id="ipHistRangeLabel">1小时</span>) — 点击 IP 查看曲线</h2>
+          <div class="overflow-x-auto max-h-[500px]">
+            <table class="w-full text-sm text-left">
+              <thead class="text-xs text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-900">
+                <tr><th class="py-2">IP</th><th class="py-2">主机名</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr>
+              </thead>
+              <tbody id="histIpBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h2 class="text-sm font-semibold mb-2">单 IP 历史流量趋势: <span id="selectedIpTitle" class="text-sky-400">请在上方点击任意 IP</span></h2>
+        <div id="ipDetailChart" class="h-64 w-full"></div>
+      </div>
+    </section>
+
+    <section id="tab-connections" class="tab-panel hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex gap-3 flex-wrap">
+          <input id="connFilterIp" oninput="renderConnections()" placeholder="过滤终端 IP / 主机名..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm w-56" />
+          <input id="connFilterApp" oninput="renderConnections()" placeholder="过滤应用 / 域名 / 端口..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm w-56" />
+        </div>
+        <span id="connCountLabel" class="text-xs text-slate-400">显示 0 条连接</span>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="py-2">识别应用</th><th class="py-2">协议</th><th class="py-2">内网终端</th>
+              <th class="py-2">目标地址 / DNS 反查域名</th><th class="py-2">下行速率</th><th class="py-2">上行速率</th>
+              <th class="py-2">连接累计流量</th><th class="py-2">状态</th>
+            </tr>
+          </thead>
+          <tbody id="connTableBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-torch" class="tab-panel hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap gap-3 items-center">
+        <span class="text-sm">选择接口:</span>
+        <select id="torchIface" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"></select>
+        <button onclick="runTorch()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-medium px-4 py-1.5 rounded-lg text-sm">抓取实时 Torch 快照</button>
+        <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-1.5 rounded-lg text-sm">开启自动刷新</button>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+        <table class="w-full text-xs text-left">
+          <thead class="text-slate-400 border-b border-slate-800">
+            <tr><th class="py-2">源 IP:端口</th><th class="py-2">目标 IP:端口</th><th class="py-2">协议</th><th class="py-2">TX 速率</th><th class="py-2">RX 速率</th><th class="py-2">包数(TX/RX)</th></tr>
+          </thead>
+          <tbody id="torchBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-policy" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-sm font-semibold">终端限速策略 (Simple Queue)</h2>
+            <button onclick="loadPolicy()" class="text-xs text-sky-400 hover:underline">刷新</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="qTarget" placeholder="目标 IP (如 192.168.88.10)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs" />
+            <input id="qLimit" placeholder="上传/下载 (如 10M/50M)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs" />
+            <button onclick="addQueue()" class="bg-sky-500 text-slate-950 font-medium rounded px-3 py-1.5 text-xs">添加限速</button>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="text-slate-400 border-b border-slate-800"><tr><th class="py-2">名称</th><th class="py-2">目标</th><th class="py-2">限速上限</th><th class="py-2">当前速率</th><th class="py-2">操作</th></tr></thead>
+            <tbody id="queueBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+
+        <div class="space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h2 class="text-sm font-semibold">IP 黑名单 (Address-List: mikromon_blocked)</h2>
+            <div class="flex gap-2">
+              <input id="blockIpInput" placeholder="输入需阻断的 IP" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs flex-1" />
+              <input id="blockCommentInput" placeholder="备注" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs w-32" />
+              <button onclick="addBlockIP()" class="bg-rose-500 text-white font-medium rounded px-3 py-1.5 text-xs">拉黑</button>
+            </div>
+            <table class="w-full text-xs text-left">
+              <thead class="text-slate-400 border-b border-slate-800"><tr><th class="py-2">IP</th><th class="py-2">备注</th><th class="py-2">时间</th><th class="py-2">操作</th></tr></thead>
+              <tbody id="blockBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h2 class="text-sm font-semibold">路由器连通性诊断 (Ping)</h2>
+            <div class="flex gap-2">
+              <input id="pingTarget" value="223.5.5.5" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs flex-1" />
+              <button onclick="runPing()" class="bg-emerald-500 text-slate-950 font-medium rounded px-4 py-1.5 text-xs">执行 Ping</button>
+            </div>
+            <pre id="pingResult" class="bg-slate-950 p-3 rounded text-xs text-slate-300 overflow-x-auto max-h-40">等待执行...</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="settingsModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-semibold">MikroTik 路由器 API 配置</h3>
+        <button onclick="closeSettings()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div id="routerListBox" class="space-y-2 max-h-36 overflow-y-auto"></div>
+      <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-800 pt-4">
+        <input id="cfgId" type="hidden" />
+        <div class="col-span-2">
+          <label class="text-xs text-slate-400">备注名称</label>
+          <input id="cfgName" value="主路由 RB5009" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">路由器 IP / 域名</label>
+          <input id="cfgHost" placeholder="192.168.88.1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">API 端口 (8728 / 8729)</label>
+          <input id="cfgPort" type="number" value="8728" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">用户名</label>
+          <input id="cfgUser" value="admin" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">密码</label>
+          <input id="cfgPass" type="password" placeholder="留空表示不修改密码" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 mt-1" />
+        </div>
+        <div class="col-span-2 flex items-center gap-4 text-xs text-slate-300">
+          <label class="flex items-center gap-1.5"><input id="cfgTls" type="checkbox" /> 启用 API-SSL (8729)</label>
+          <label class="flex items-center gap-1.5"><input id="cfgSkipVerify" type="checkbox" checked /> 忽略自签名证书校验</label>
+        </div>
+      </div>
+      <div id="testResultMsg" class="text-xs hidden p-2 rounded"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="testRouter()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-1.5 rounded-lg text-sm">测试连接</button>
+        <button onclick="saveRouter()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-medium px-4 py-1.5 rounded-lg text-sm">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let currentRouterId = 0;
+let currentRange = '1h';
+let lastSnap = null;
+let selectedIface = '';
+let selectedIp = '';
+let torchTimer = null;
+
+const chartOverview = echarts.init(document.getElementById('overviewTrafficChart'));
+const chartAppPie = echarts.init(document.getElementById('appPieChart'));
+const chartIfaceDetail = echarts.init(document.getElementById('ifaceDetailChart'));
+const chartIpDetail = echarts.init(document.getElementById('ipDetailChart'));
+window.addEventListener('resize', () => {
+  chartOverview.resize(); chartAppPie.resize(); chartIfaceDetail.resize(); chartIpDetail.resize();
+});
+
+function fmtBps(bps) {
+  if (!bps || bps <= 0) return '0 bps';
+  const units = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+  let i = 0, v = bps;
+  while (v >= 1000 && i < units.length - 1) { v /= 1000; i++; }
+  return v.toFixed(v >= 100 ? 0 : 1) + ' ' + units[i];
+}
+function fmtBytes(b) {
+  if (!b || b <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, v = b;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return v.toFixed(v >= 100 ? 1 : 2) + ' ' + units[i];
+}
+function fmtTime(ts) {
+  const d = new Date(ts * 1000);
+  if (currentRange === '7d' || currentRange === '15d' || currentRange === '30d') {
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:00`;
+  }
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+function renderTrafficChart(chart, points) {
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', formatter: params => {
+      return params.map(p => `${p.seriesName}: <b>${fmtBps(p.value)}</b>`).join('<br/>');
+    }},
+    legend: { data: ['下行 (RX)', '上行 (TX)'], textStyle: { color: '#94a3b8' }, top: 0 },
+    grid: { left: 55, right: 15, top: 32, bottom: 25 },
+    xAxis: { type: 'category', data: points.map(p => fmtTime(p.ts)), axisLabel: { color: '#64748b', fontSize: 10 } },
+    yAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    series: [
+      { name: '下行 (RX)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.15 }, lineStyle: { color: '#38bdf8' }, itemStyle: { color: '#38bdf8' }, data: points.map(p => p.rx_bps) },
+      { name: '上行 (TX)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.15 }, lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, data: points.map(p => p.tx_bps) }
+    ]
+  });
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle('border-sky-400', active);
+    b.classList.toggle('text-sky-400', active);
+    b.classList.toggle('border-transparent', !active);
+    b.classList.toggle('text-slate-400', !active);
+  });
+  if (name === 'policy') loadPolicy();
+  if (name === 'ips') loadHistIPs();
+  if (name === 'interfaces' && selectedIface) loadIfaceDetailChart(selectedIface);
+  setTimeout(() => { chartOverview.resize(); chartAppPie.resize(); chartIfaceDetail.resize(); chartIpDetail.resize(); }, 50);
+}
+
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentRange = btn.dataset.range;
+    document.querySelectorAll('.range-btn').forEach(b => {
+      b.classList.remove('bg-sky-500', 'text-slate-950', 'font-medium');
+      b.classList.add('text-slate-300');
+    });
+    btn.classList.add('bg-sky-500', 'text-slate-950', 'font-medium');
+    btn.classList.remove('text-slate-300');
+    document.getElementById('overviewRangeLabel').textContent = btn.textContent;
+    document.getElementById('ipHistRangeLabel').textContent = btn.textContent;
+    refreshHistoryAll();
+  });
+});
+
+async function loadRouters() {
+  const res = await fetch('/api/routers');
+  const list = await res.json();
+  const sel = document.getElementById('routerSelect');
+  sel.innerHTML = '';
+  if (!list || list.length === 0) {
+    sel.innerHTML = '<option value="0">未配置路由器</option>';
+    openSettings();
+    return;
+  }
+  list.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = `${r.name} (${r.host}:${r.port})`;
+    sel.appendChild(opt);
+  });
+  if (!currentRouterId) currentRouterId = list[0].id;
+  sel.value = currentRouterId;
+  sel.onchange = () => { currentRouterId = Number(sel.value); pollSnapshot(); refreshHistoryAll(); };
+
+  const box = document.getElementById('routerListBox');
+  box.innerHTML = list.map(r => `
+    <div class="flex justify-between items-center bg-slate-800/70 px-3 py-2 rounded-lg text-xs">
+      <span><b>${r.name}</b> — ${r.host}:${r.port} ${r.use_tls ? '(TLS)' : ''}</span>
+      <div class="space-x-2">
+        <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-sky-400 hover:underline">编辑</button>
+        <button onclick="deleteRouter(${r.id})" class="text-rose-400 hover:underline">删除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function pollSnapshot() {
+  try {
+    const res = await fetch(`/api/snapshot?router_id=${currentRouterId}`);
+    const snap = await res.json();
+    lastSnap = snap;
+
+    const badge = document.getElementById('statusBadge');
+    if (snap.online) {
+      badge.className = 'ml-3 px-2.5 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-400';
+      badge.textContent = `● 在线 (${snap.system.identity || 'MikroTik'})`;
+    } else {
+      badge.className = 'ml-3 px-2.5 py-0.5 rounded-full text-xs bg-rose-500/20 text-rose-400';
+      badge.textContent = `● 离线: ${snap.last_error || '未连接'}`;
+    }
+
+    if (snap.system) {
+      document.getElementById('sysModel').textContent = snap.system.board_name || '-';
+      document.getElementById('sysVer').textContent = `RouterOS ${snap.system.version || ''}`;
+      document.getElementById('sysCpu').textContent = `${snap.system.cpu_load || 0}%`;
+      document.getElementById('sysUptime').textContent = `运行: ${snap.system.uptime || '-'}`;
+      document.getElementById('sysMem').textContent = `${(snap.system.mem_usage_pct || 0).toFixed(1)}%`;
+      document.getElementById('sysMemDetail').textContent = `${fmtBytes(snap.system.total_mem - snap.system.free_mem)} / ${fmtBytes(snap.system.total_mem)}`;
+    }
+
+    const conns = snap.connections || [];
+    const liveIps = snap.live_ips || [];
+    document.getElementById('sysConns').textContent = `${conns.length} / ${liveIps.length}`;
+
+    const ifaces = snap.interfaces || [];
+    syncIfaceSelects(ifaces);
+
+    const ovIface = document.getElementById('overviewIface').value;
+    const activeIf = ifaces.find(x => x.name === ovIface) || ifaces[0];
+    if (activeIf) {
+      document.getElementById('sysWanRate').textContent = `↓ ${fmtBps(activeIf.rx_bps)} / ↑ ${fmtBps(activeIf.tx_bps)}`;
+    }
+
+    document.getElementById('topLiveIpBody').innerHTML = liveIps.slice(0, 10).map(ip => `
+      <tr class="hover:bg-slate-800/40">
+        <td class="py-2 font-mono text-sky-300">${ip.ip}</td>
+        <td class="py-2">${ip.host_name || '-'}</td>
+        <td class="py-2 font-mono text-xs text-slate-400">${ip.mac || '-'}</td>
+        <td class="py-2 text-sky-400">${fmtBps(ip.rx_bps)}</td>
+        <td class="py-2 text-emerald-400">${fmtBps(ip.tx_bps)}</td>
+        <td class="py-2">${ip.active_conns}</td>
+        <td class="py-2"><span class="px-2 py-0.5 rounded bg-slate-800 text-xs">${ip.top_app || '-'}</span></td>
+      </tr>
+    `).join('');
+
+    document.getElementById('allLiveIpBody').innerHTML = liveIps.map(ip => `
+      <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
+        <td class="py-2 font-mono text-sky-300">${ip.ip}</td>
+        <td class="py-2">${ip.host_name || '-'}</td>
+        <td class="py-2 text-sky-400">${fmtBps(ip.rx_bps)}</td>
+        <td class="py-2 text-emerald-400">${fmtBps(ip.tx_bps)}</td>
+        <td class="py-2"><span class="px-2 py-0.5 rounded bg-slate-800 text-xs">${ip.top_app || '-'}</span></td>
+      </tr>
+    `).join('');
+
+    document.getElementById('ifaceTableBody').innerHTML = ifaces.map(i => `
+      <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIfaceDetailChart('${i.name}')">
+        <td class="py-2 font-medium text-sky-300">${i.name}</td>
+        <td class="py-2 text-slate-400">${i.type}</td>
+        <td class="py-2">${i.disabled ? '<span class="text-slate-500">已禁用</span>' : (i.running ? '<span class="text-emerald-400">UP</span>' : '<span class="text-rose-400">DOWN</span>')}</td>
+        <td class="py-2 font-mono text-xs text-slate-400">${i.mac_address || '-'} / ${i.mtu || '-'}</td>
+        <td class="py-2 text-sky-400">${fmtBps(i.rx_bps)}</td>
+        <td class="py-2 text-emerald-400">${fmtBps(i.tx_bps)}</td>
+        <td class="py-2 text-xs text-slate-300">↓${fmtBytes(i.rx_bytes)} / ↑${fmtBytes(i.tx_bytes)}</td>
+        <td class="py-2 text-xs text-slate-400">${i.link_downs} / ${i.rx_drops + i.tx_drops}</td>
+        <td class="py-2" onclick="event.stopPropagation()">
+          <button onclick="toggleIface('${i.name}', ${i.disabled})" class="px-2 py-1 rounded text-xs ${i.disabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">
+            ${i.disabled ? '启用' : '禁用'}
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderConnections();
+  } catch (e) { console.error(e); }
+}
+
+function syncIfaceSelects(ifaces) {
+  const ov = document.getElementById('overviewIface');
+  const tc = document.getElementById('torchIface');
+  if (ov.options.length === ifaces.length && ifaces.length > 0) return;
+  const oldOv = ov.value;
+  ov.innerHTML = ''; tc.innerHTML = '';
+  ifaces.forEach(i => {
+    ov.add(new Option(i.name, i.name));
+    tc.add(new Option(i.name, i.name));
+  });
+  if (oldOv) ov.value = oldOv;
+  else {
+    const wan = ifaces.find(x => x.running && !x.name.startsWith('bridge')) || ifaces[0];
+    if (wan) ov.value = wan.name;
+  }
+  if (!selectedIface && ov.value) {
+    selectedIface = ov.value;
+    loadOverviewChart();
+  }
+}
+
+function renderConnections() {
+  if (!lastSnap || !lastSnap.connections) return;
+  const fIp = document.getElementById('connFilterIp').value.trim().toLowerCase();
+  const fApp = document.getElementById('connFilterApp').value.trim().toLowerCase();
+  const filtered = lastSnap.connections.filter(c => {
+    const hitIp = !fIp || c.client_ip.toLowerCase().includes(fIp) || (c.host_name||'').toLowerCase().includes(fIp);
+    const hitApp = !fApp || c.app.toLowerCase().includes(fApp) || (c.domain||'').toLowerCase().includes(fApp) || String(c.remote_port).includes(fApp);
+    return hitIp && hitApp;
+  });
+  document.getElementById('connCountLabel').textContent = `显示 ${filtered.length} 条连接`;
+  document.getElementById('connTableBody').innerHTML = filtered.slice(0, 200).map(c => `
+    <tr class="hover:bg-slate-800/40">
+      <td class="py-1.5"><span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300">${c.app}</span></td>
+      <td class="py-1.5 uppercase text-slate-400">${c.protocol}${c.fasttrack ? ' ⚡' : ''}</td>
+      <td class="py-1.5 font-mono">${c.client_ip}:${c.client_port} <span class="text-slate-400">${c.host_name ? '('+c.host_name+')' : ''}</span></td>
+      <td class="py-1.5 font-mono">${c.remote_ip}:${c.remote_port} ${c.domain ? `<span class="text-amber-300 ml-1">[${c.domain}]</span>` : ''}</td>
+      <td class="py-1.5 text-sky-400">${fmtBps(c.rx_bps)}</td>
+      <td class="py-1.5 text-emerald-400">${fmtBps(c.tx_bps)}</td>
+      <td class="py-1.5 text-slate-300">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
+      <td class="py-1.5 text-slate-400">${c.tcp_state || c.timeout}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadOverviewChart() {
+  const iface = document.getElementById('overviewIface').value;
+  if (!iface) return;
+  const res = await fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`);
+  const pts = await res.json();
+  renderTrafficChart(chartOverview, pts);
+}
+
+async function loadIfaceDetailChart(iface) {
+  selectedIface = iface;
+  document.getElementById('selectedIfaceTitle').textContent = iface;
+  const res = await fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`);
+  const pts = await res.json();
+  renderTrafficChart(chartIfaceDetail, pts);
+}
+
+async function loadAppPie() {
+  const res = await fetch(`/api/history/apps?router_id=${currentRouterId}&range=${currentRange}`);
+  const list = await res.json();
+  chartAppPie.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'item', formatter: p => `${p.name}: ${fmtBytes(p.value)} (${p.percent}%)` },
+    series: [{
+      type: 'pie', radius: ['40%', '72%'],
+      label: { color: '#cbd5e1', fontSize: 11 },
+      data: list.map(a => ({ name: a.app, value: a.total_bytes }))
+    }]
+  });
+}
+
+async function loadHistIPs() {
+  const res = await fetch(`/api/history/ips?router_id=${currentRouterId}&range=${currentRange}`);
+  const list = await res.json();
+  document.getElementById('histIpBody').innerHTML = list.map(ip => `
+    <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
+      <td class="py-2 font-mono text-sky-300">${ip.ip}</td>
+      <td class="py-2">${ip.host_name || '-'}</td>
+      <td class="py-2 text-sky-400">${fmtBytes(ip.rx_bytes)}</td>
+      <td class="py-2 text-emerald-400">${fmtBytes(ip.tx_bytes)}</td>
+      <td class="py-2 font-semibold">${fmtBytes(ip.total_bytes)}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadIPDetail(ip) {
+  selectedIp = ip;
+  document.getElementById('selectedIpTitle').textContent = ip;
+  const res = await fetch(`/api/history/ip?router_id=${currentRouterId}&ip=${encodeURIComponent(ip)}&range=${currentRange}`);
+  const pts = await res.json();
+  renderTrafficChart(chartIpDetail, pts);
+}
+
+function refreshHistoryAll() {
+  loadOverviewChart();
+  loadAppPie();
+  loadHistIPs();
+  if (selectedIface) loadIfaceDetailChart(selectedIface);
+  if (selectedIp) loadIPDetail(selectedIp);
+}
+
+async function toggleIface(name, enable) {
+  await fetch('/api/action/interface', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ router_id: currentRouterId, name, enable })
+  });
+  pollSnapshot();
+}
+
+async function runTorch() {
+  const iface = document.getElementById('torchIface').value;
+  if (!iface) return;
+  const res = await fetch(`/api/tools/torch?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}`);
+  const rows = await res.json();
+  if (rows.error) { alert(rows.error); return; }
+  rows.sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps));
+  document.getElementById('torchBody').innerHTML = rows.map(r => `
+    <tr>
+      <td class="py-1.5 font-mono">${r.src_address}:${r.src_port}</td>
+      <td class="py-1.5 font-mono">${r.dst_address}:${r.dst_port}</td>
+      <td class="py-1.5 uppercase">${r.protocol}</td>
+      <td class="py-1.5 text-emerald-400">${fmtBps(r.tx_bps)}</td>
+      <td class="py-1.5 text-sky-400">${fmtBps(r.rx_bps)}</td>
+      <td class="py-1.5 text-slate-400">${r.tx_packets} / ${r.rx_packets}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleAutoTorch() {
+  const btn = document.getElementById('torchAutoBtn');
+  if (torchTimer) {
+    clearInterval(torchTimer); torchTimer = null;
+    btn.textContent = '开启自动刷新';
+  } else {
+    runTorch();
+    torchTimer = setInterval(runTorch, 2500);
+    btn.textContent = '停止自动刷新';
+  }
+}
+
+async function loadPolicy() {
+  const [qRes, bRes] = await Promise.all([
+    fetch(`/api/queues?router_id=${currentRouterId}`),
+    fetch(`/api/blocked?router_id=${currentRouterId}`)
+  ]);
+  const queues = await qRes.json();
+  if (Array.isArray(queues)) {
+    document.getElementById('queueBody').innerHTML = queues.map(q => `
+      <tr>
+        <td class="py-1.5">${q.name}</td><td class="py-1.5 font-mono">${q.target}</td>
+        <td class="py-1.5 text-amber-300">${q.max_limit}</td><td class="py-1.5">${q.rate}</td>
+        <td class="py-1.5"><button onclick="delQueue('${encodeURIComponent(q.id)}')" class="text-rose-400 hover:underline">删除</button></td>
+      </tr>
+    `).join('');
+  }
+  const blocked = await bRes.json();
+  if (Array.isArray(blocked)) {
+    document.getElementById('blockBody').innerHTML = blocked.map(b => `
+      <tr>
+        <td class="py-1.5 font-mono text-rose-300">${b.address}</td><td class="py-1.5">${b.comment||'-'}</td>
+        <td class="py-1.5 text-slate-400">${b.creation_time||''}</td>
+        <td class="py-1.5"><button onclick="unblockIP('${encodeURIComponent(b.id)}')" class="text-emerald-400 hover:underline">解封</button></td>
+      </tr>
+    `).join('');
+  }
+}
+
+async function addQueue() {
+  const target = document.getElementById('qTarget').value.trim();
+  const max_limit = document.getElementById('qLimit').value.trim();
+  if (!target || !max_limit) return;
+  await fetch(`/api/queues?router_id=${currentRouterId}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name: 'mikromon-' + target, target, max_limit, comment: 'MikroMon' })
+  });
+  loadPolicy();
+}
+async function delQueue(id) {
+  await fetch(`/api/queues?router_id=${currentRouterId}&id=${id}`, { method: 'DELETE' });
+  loadPolicy();
+}
+async function addBlockIP() {
+  const ip = document.getElementById('blockIpInput').value.trim();
+  const comment = document.getElementById('blockCommentInput').value.trim();
+  if (!ip) return;
+  await fetch(`/api/blocked?router_id=${currentRouterId}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ip, comment })
+  });
+  loadPolicy();
+}
+async function unblockIP(id) {
+  await fetch(`/api/blocked?router_id=${currentRouterId}&id=${id}`, { method: 'DELETE' });
+  loadPolicy();
+}
+async function runPing() {
+  const target = document.getElementById('pingTarget').value.trim();
+  document.getElementById('pingResult').textContent = '正在 Ping...';
+  const res = await fetch(`/api/tools/ping?router_id=${currentRouterId}&target=${encodeURIComponent(target)}`);
+  const data = await res.json();
+  document.getElementById('pingResult').textContent = JSON.stringify(data, null, 2);
+}
+
+function openSettings() { document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
+function closeSettings() { document.getElementById('settingsModal').classList.replace('flex', 'hidden'); }
+function fillRouterForm(r) {
+  document.getElementById('cfgId').value = r.id;
+  document.getElementById('cfgName').value = r.name;
+  document.getElementById('cfgHost').value = r.host;
+  document.getElementById('cfgPort').value = r.port;
+  document.getElementById('cfgUser').value = r.username;
+  document.getElementById('cfgPass').value = '';
+  document.getElementById('cfgTls').checked = r.use_tls;
+  document.getElementById('cfgSkipVerify').checked = r.tls_skip_verify;
+}
+function getRouterPayload() {
+  return {
+    id: Number(document.getElementById('cfgId').value || 0),
+    name: document.getElementById('cfgName').value,
+    host: document.getElementById('cfgHost').value,
+    port: Number(document.getElementById('cfgPort').value || 8728),
+    username: document.getElementById('cfgUser').value,
+    password: document.getElementById('cfgPass').value,
+    use_tls: document.getElementById('cfgTls').checked,
+    tls_skip_verify: document.getElementById('cfgSkipVerify').checked,
+    enabled: true
+  };
+}
+async function testRouter() {
+  const msg = document.getElementById('testResultMsg');
+  msg.classList.remove('hidden');
+  msg.className = 'text-xs p-2 rounded bg-slate-800 text-slate-300';
+  msg.textContent = '正在连接路由器...';
+  const res = await fetch('/api/routers/test', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getRouterPayload())
+  });
+  const data = await res.json();
+  if (data.ok) {
+    msg.className = 'text-xs p-2 rounded bg-emerald-500/20 text-emerald-300';
+    msg.textContent = `连接成功！设备: ${data.system.board_name} (${data.system.version})`;
+  } else {
+    msg.className = 'text-xs p-2 rounded bg-rose-500/20 text-rose-300';
+    msg.textContent = `连接失败: ${data.error}`;
+  }
+}
+async function saveRouter() {
+  await fetch('/api/routers', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getRouterPayload())
+  });
+  document.getElementById('cfgId').value = '';
+  await loadRouters();
+  closeSettings();
+  pollSnapshot();
+  refreshHistoryAll();
+}
+async function deleteRouter(id) {
+  await fetch(`/api/routers?router_id=${id}`, { method: 'DELETE' });
+  currentRouterId = 0;
+  await loadRouters();
+}
+
+(async function init() {
+  await loadRouters();
+  await pollSnapshot();
+  refreshHistoryAll();
+  setInterval(pollSnapshot, 2000);
+  setInterval(refreshHistoryAll, 15000);
+})();
+</script>
+</body>
+</html>

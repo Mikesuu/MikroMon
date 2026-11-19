@@ -1,0 +1,11 @@
+services:
+  mikromon:
+    image: ghcr.io/mikesuu/mikromon:latest
+    container_name: mikromon
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /volume1/docker/mikromon/data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
