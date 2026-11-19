@@ -53,6 +53,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/firewall/rules", s.handleFirewallRules)
 	mux.HandleFunc("/api/tools/wol", s.handleWoL)
 	mux.HandleFunc("/api/appicon", s.handleAppIcon)
+	mux.HandleFunc("/api/appicon/ver", s.handleAppIconVer)
 	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
 	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
@@ -540,4 +541,8 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, rows)
+}
+
+func (s *Server) handleAppIconVer(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, map[string]any{"ver": s.icons.Version()})
 }

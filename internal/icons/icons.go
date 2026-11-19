@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -37,18 +38,23 @@ var appCatalog = map[string]appLookup{
 	"快手":            {id: "440948110", country: "cn"},
 	"QQ音乐":          {id: "414603431", country: "cn"},
 	"萤石云":           {id: "507161324", country: "cn"},
+	"西瓜视频":          {id: "1134496215", country: "cn"},
+	"今日头条":          {id: "529092160", country: "cn"},
+	"美团":            {id: "423084029", country: "cn"},
+	"飞书":            {id: "1401729613", country: "cn"},
 	"阿里云":           {term: "阿里云", country: "cn"},
 	"阿里云 DNS":       {term: "阿里云", country: "cn"},
-	"腾讯云":           {term: "腾讯云", country: "cn"},
-	"腾讯云 DNS":       {term: "腾讯云", country: "cn"},
+	"腾讯云":           {term: "腾讯云IM", country: "cn"},
+	"腾讯云 DNS":       {term: "腾讯云IM", country: "cn"},
 	"GitHub":        {id: "1477376905", country: "us"},
 	"Steam":         {id: "495369748", country: "us"},
 	"RDP 远程桌面":      {id: "714464092", country: "us"},
 	"WireGuard VPN": {id: "1441195209", country: "us"},
+	"YouTube":       {id: "544007664", country: "us"},
+	"HomeAssistant": {id: "1099568401", country: "us"},
 	"OpenAI":        {term: "ChatGPT", country: "us"},
 	"Claude":        {term: "Claude by Anthropic", country: "us"},
 	"Google":        {term: "Google", country: "us"},
-	"YouTube":       {term: "YouTube", country: "us"},
 	"Telegram":      {term: "Telegram Messenger", country: "us"},
 	"Discord":       {term: "Discord", country: "us"},
 	"Netflix":       {term: "Netflix", country: "us"},
@@ -64,7 +70,6 @@ var appCatalog = map[string]appLookup{
 	"向日葵远程":         {term: "向日葵远程控制", country: "cn"},
 	"WPS":           {term: "WPS Office", country: "cn"},
 	"群晖 Synology":   {term: "DS finder", country: "cn"},
-	"HomeAssistant": {term: "Home Assistant", country: "us"},
 }
 
 var forceSVG = map[string]bool{
@@ -79,6 +84,7 @@ type Manager struct {
 	inflight map[string]bool
 	failAt   map[string]int64
 	queue    chan string
+	ver      int64
 }
 
 func New(dataDir string) *Manager {
@@ -86,20 +92,88 @@ func New(dataDir string) *Manager {
 	_ = os.MkdirAll(dir, 0755)
 	m := &Manager{
 		cacheDir: dir,
-		client:   &http.Client{Timeout: 6 * time.Second},
+		client:   &http.Client{Timeout: 8 * time.Second},
 		inflight: make(map[string]bool),
 		failAt:   make(map[string]int64),
 		queue:    make(chan string, 256),
 	}
-	for i := 0; i < 3; i++ {
+	go m.batchWarm("cn")
+	go m.batchWarm("us")
+	for i := 0; i < 2; i++ {
 		go m.worker()
 	}
 	return m
 }
 
+func (m *Manager) Version() int64 {
+	return atomic.LoadInt64(&m.ver)
+}
+
 func cachePathFor(cacheDir, appName string) string {
 	sum := md5.Sum([]byte(appName))
 	return filepath.Join(cacheDir, hex.EncodeToString(sum[:])+".img")
+}
+
+// 启动时用 Apple 批量 Lookup 接口一次性预热所有已知 ID，彻底避免限流
+func (m *Manager) batchWarm(country string) {
+	idToApps := make(map[string][]string)
+	var ids []string
+	for app, spec := range appCatalog {
+		if spec.id == "" || spec.country != country {
+			continue
+		}
+		if b, err := os.ReadFile(cachePathFor(m.cacheDir, app)); err == nil && len(b) > 100 {
+			continue
+		}
+		if _, seen := idToApps[spec.id]; !seen {
+			ids = append(ids, spec.id)
+		}
+		idToApps[spec.id] = append(idToApps[spec.id], app)
+	}
+	if len(ids) == 0 {
+		return
+	}
+	apiURL := fmt.Sprintf("https://itunes.apple.com/lookup?id=%s&country=%s", strings.Join(ids, ","), country)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	resp, err := m.client.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return
+	}
+	defer resp.Body.Close()
+	var res struct {
+		Results []struct {
+			TrackId       int64  `json:"trackId"`
+			ArtworkUrl100 string `json:"artworkUrl100"`
+			ArtworkUrl512 string `json:"artworkUrl512"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return
+	}
+	for _, r := range res.Results {
+		idStr := fmt.Sprintf("%d", r.TrackId)
+		imgURL := r.ArtworkUrl100
+		if imgURL == "" {
+			imgURL = r.ArtworkUrl512
+		}
+		if imgURL == "" {
+			continue
+		}
+		imgBytes := m.downloadBytes(imgURL)
+		if len(imgBytes) > 100 && strings.HasPrefix(http.DetectContentType(imgBytes), "image/") {
+			for _, appName := range idToApps[idStr] {
+				_ = os.WriteFile(cachePathFor(m.cacheDir, appName), imgBytes, 0644)
+			}
+			atomic.AddInt64(&m.ver, 1)
+		}
+	}
 }
 
 func (m *Manager) GetIcon(appName string) ([]byte, string, bool) {
@@ -116,7 +190,7 @@ func (m *Manager) GetIcon(appName string) ([]byte, string, bool) {
 	}
 	m.mu.Lock()
 	already := m.inflight[appName]
-	failed := time.Now().Unix()-m.failAt[appName] < 300
+	failed := time.Now().Unix()-m.failAt[appName] < 120
 	if !already && !failed {
 		m.inflight[appName] = true
 		select {
@@ -131,6 +205,7 @@ func (m *Manager) GetIcon(appName string) ([]byte, string, bool) {
 
 func (m *Manager) worker() {
 	for appName := range m.queue {
+		time.Sleep(250 * time.Millisecond)
 		var imgBytes []byte
 		if spec, ok := appCatalog[appName]; ok {
 			imgBytes = m.fetchFromApple(spec)
@@ -142,6 +217,7 @@ func (m *Manager) worker() {
 		}
 		if len(imgBytes) > 100 && strings.HasPrefix(http.DetectContentType(imgBytes), "image/") {
 			_ = os.WriteFile(cachePathFor(m.cacheDir, appName), imgBytes, 0644)
+			atomic.AddInt64(&m.ver, 1)
 		} else {
 			m.mu.Lock()
 			m.failAt[appName] = time.Now().Unix()
@@ -187,6 +263,10 @@ func (m *Manager) fetchFromApple(spec appLookup) []byte {
 	if imgURL == "" {
 		return nil
 	}
+	return m.downloadBytes(imgURL)
+}
+
+func (m *Manager) downloadBytes(imgURL string) []byte {
 	imgResp, err := m.client.Get(imgURL)
 	if err != nil || imgResp.StatusCode != 200 {
 		if imgResp != nil {

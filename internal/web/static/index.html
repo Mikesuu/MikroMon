@@ -734,7 +734,7 @@ function getFallbackDataURI(app, color) {
 }
 function getIconSrc(app, color) {
   if (INLINE_ICONS[app]) return getFallbackDataURI(app, color);
-  return "/api/appicon?app=" + encodeURIComponent(app);
+  return "/api/appicon?app=" + encodeURIComponent(app) + "&v=" + lastIconVer;
 }
 function imgFallback(el) {
   el.onerror = null;
@@ -742,6 +742,7 @@ function imgFallback(el) {
 }
 
 let lastAppWallKey = '';
+let lastIconVer = 0;
 
 function t(k) { return (I18N[currentLang] && I18N[currentLang][k]) || I18N.zh[k] || k; }
 function tApp(a) { return currentLang === 'en' ? (APP_EN[a] || a) : a; }
@@ -1012,7 +1013,7 @@ async function pollSnapshot() {
 
     const appRows = showAllApps ? apps : apps.slice(0, 18);
     const wallEl = document.getElementById('activeAppsWall');
-    const wallKey = currentLang + '|' + appRows.map(a => a.app).join(',');
+    const wallKey = currentLang + '|' + lastIconVer + '|' + appRows.map(a => a.app).join(',');
     if (!appRows.length) {
       lastAppWallKey = '';
       wallEl.innerHTML = `<div class="col-span-full text-xs luci-txt2 py-4 text-center">...</div>`;
@@ -1471,6 +1472,7 @@ async function deleteRouter(id) {
   refreshHistoryAll();
   setInterval(pollSnapshot, 2000);
   setInterval(refreshHistoryAll, 15000);
+  setInterval(async () => { try { const r = await fetch('/api/appicon/ver'); const d = await r.json(); if (d.ver !== undefined && d.ver !== lastIconVer) { lastIconVer = d.ver; pollSnapshot(); } } catch(e){} }, 5000);
 })();
 </script>
 </body>
