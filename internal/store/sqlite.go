@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -22,6 +23,9 @@ type RouterConfig struct {
 	UseTLS        bool   `json:"use_tls"`
 	TLSSkipVerify bool   `json:"tls_skip_verify"`
 	Enabled       bool   `json:"enabled"`
+	AdgURL        string `json:"adg_url"`
+	AdgUser       string `json:"adg_user"`
+	AdgPass       string `json:"adg_pass,omitempty"`
 }
 
 type IfaceSample struct {
@@ -51,10 +55,11 @@ type IPStat struct {
 }
 
 type AppStat struct {
-	App     string `json:"app"`
-	RxBytes int64  `json:"rx_bytes"`
-	TxBytes int64  `json:"tx_bytes"`
-	Total   int64  `json:"total_bytes"`
+	App      string `json:"app"`
+	Category string `json:"category"`
+	RxBytes  int64  `json:"rx_bytes"`
+	TxBytes  int64  `json:"tx_bytes"`
+	Total    int64  `json:"total_bytes"`
 }
 
 type IPTrafficDelta struct {
@@ -69,6 +74,25 @@ type AppTrafficDelta struct {
 	App     string
 	RxBytes int64
 	TxBytes int64
+}
+
+type ISPRecord struct {
+	IP        string `json:"ip"`
+	Location  string `json:"location"`
+	ISP       string `json:"isp"`
+	Org       string `json:"org"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+type DomainAuditEntry struct {
+	TS       int64  `json:"ts"`
+	RouterID int64  `json:"router_id"`
+	ClientIP string `json:"client_ip"`
+	HostName string `json:"host_name"`
+	Domain   string `json:"domain"`
+	App      string `json:"app"`
+	Category string `json:"category"`
+	Source   string `json:"source"`
 }
 
 func New(dbPath string) (*Store, error) {
@@ -113,6 +137,9 @@ func (s *Store) migrate() error {
 		use_tls INTEGER NOT NULL DEFAULT 0,
 		tls_skip_verify INTEGER NOT NULL DEFAULT 1,
 		enabled INTEGER NOT NULL DEFAULT 1,
+		adg_url TEXT NOT NULL DEFAULT '',
+		adg_user TEXT NOT NULL DEFAULT '',
+		adg_pass TEXT NOT NULL DEFAULT '',
 		created_at INTEGER NOT NULL
 	);
 
@@ -183,13 +210,40 @@ func (s *Store) migrate() error {
 		tx_bytes INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY (bucket_ts, router_id, app)
 	);
+
+	CREATE TABLE IF NOT EXISTS ip_isp_cache (
+		ip TEXT PRIMARY KEY,
+		location TEXT NOT NULL DEFAULT '',
+		isp TEXT NOT NULL DEFAULT '',
+		org TEXT NOT NULL DEFAULT '',
+		updated_at INTEGER NOT NULL
+	);
+
+	CREATE TABLE IF NOT EXISTS domain_audit (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ts INTEGER NOT NULL,
+		router_id INTEGER NOT NULL,
+		client_ip TEXT NOT NULL,
+		host_name TEXT NOT NULL DEFAULT '',
+		domain TEXT NOT NULL,
+		app TEXT NOT NULL DEFAULT '',
+		category TEXT NOT NULL DEFAULT '',
+		source TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX IF NOT EXISTS idx_domain_audit_q ON domain_audit(router_id, ts DESC);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+	// 兼容 v1.0.0 旧表自动补列
+	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_url TEXT NOT NULL DEFAULT '';`)
+	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_user TEXT NOT NULL DEFAULT '';`)
+	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_pass TEXT NOT NULL DEFAULT '';`)
+	return nil
 }
 
 func (s *Store) ListRouters() ([]RouterConfig, error) {
-	rows, err := s.db.Query(`SELECT id, name, host, port, username, password, use_tls, tls_skip_verify, enabled FROM routers ORDER BY id ASC`)
+	rows, err := s.db.Query(`SELECT id, name, host, port, username, password, use_tls, tls_skip_verify, enabled, adg_url, adg_user, adg_pass FROM routers ORDER BY id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +252,7 @@ func (s *Store) ListRouters() ([]RouterConfig, error) {
 	for rows.Next() {
 		var r RouterConfig
 		var tlsInt, skipInt, enInt int
-		if err := rows.Scan(&r.ID, &r.Name, &r.Host, &r.Port, &r.Username, &r.Password, &tlsInt, &skipInt, &enInt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Host, &r.Port, &r.Username, &r.Password, &tlsInt, &skipInt, &enInt, &r.AdgURL, &r.AdgUser, &r.AdgPass); err != nil {
 			return nil, err
 		}
 		r.UseTLS = tlsInt == 1
@@ -239,17 +293,21 @@ func (s *Store) SaveRouter(cfg RouterConfig) (int64, error) {
 		en = 0
 	}
 	if cfg.ID > 0 {
-		if cfg.Password == "" {
-			_, err := s.db.Exec(`UPDATE routers SET name=?, host=?, port=?, username=?, use_tls=?, tls_skip_verify=?, enabled=? WHERE id=?`,
-				cfg.Name, cfg.Host, cfg.Port, cfg.Username, useTLS, skip, en, cfg.ID)
-			return cfg.ID, err
+		old, err := s.GetRouter(cfg.ID)
+		if err == nil {
+			if cfg.Password == "" {
+				cfg.Password = old.Password
+			}
+			if cfg.AdgPass == "" {
+				cfg.AdgPass = old.AdgPass
+			}
 		}
-		_, err := s.db.Exec(`UPDATE routers SET name=?, host=?, port=?, username=?, password=?, use_tls=?, tls_skip_verify=?, enabled=? WHERE id=?`,
-			cfg.Name, cfg.Host, cfg.Port, cfg.Username, cfg.Password, useTLS, skip, en, cfg.ID)
+		_, err = s.db.Exec(`UPDATE routers SET name=?, host=?, port=?, username=?, password=?, use_tls=?, tls_skip_verify=?, enabled=?, adg_url=?, adg_user=?, adg_pass=? WHERE id=?`,
+			cfg.Name, cfg.Host, cfg.Port, cfg.Username, cfg.Password, useTLS, skip, en, cfg.AdgURL, cfg.AdgUser, cfg.AdgPass, cfg.ID)
 		return cfg.ID, err
 	}
-	res, err := s.db.Exec(`INSERT INTO routers (name, host, port, username, password, use_tls, tls_skip_verify, enabled, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
-		cfg.Name, cfg.Host, cfg.Port, cfg.Username, cfg.Password, useTLS, skip, en, time.Now().Unix())
+	res, err := s.db.Exec(`INSERT INTO routers (name, host, port, username, password, use_tls, tls_skip_verify, enabled, adg_url, adg_user, adg_pass, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		cfg.Name, cfg.Host, cfg.Port, cfg.Username, cfg.Password, useTLS, skip, en, cfg.AdgURL, cfg.AdgUser, cfg.AdgPass, time.Now().Unix())
 	if err != nil {
 		return 0, err
 	}
@@ -259,6 +317,95 @@ func (s *Store) SaveRouter(cfg RouterConfig) (int64, error) {
 func (s *Store) DeleteRouter(id int64) error {
 	_, err := s.db.Exec(`DELETE FROM routers WHERE id=?`, id)
 	return err
+}
+
+func (s *Store) LoadISPCache() (map[string]ISPRecord, error) {
+	since := time.Now().Add(-30 * 24 * time.Hour).Unix()
+	rows, err := s.db.Query(`SELECT ip, location, isp, org, updated_at FROM ip_isp_cache WHERE updated_at >= ?`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]ISPRecord)
+	for rows.Next() {
+		var r ISPRecord
+		if err := rows.Scan(&r.IP, &r.Location, &r.ISP, &r.Org, &r.UpdatedAt); err == nil {
+			out[r.IP] = r
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) SaveISPCache(items []ISPRecord) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO ip_isp_cache (ip, location, isp, org, updated_at) VALUES (?,?,?,?,?) ON CONFLICT(ip) DO UPDATE SET location=excluded.location, isp=excluded.isp, org=excluded.org, updated_at=excluded.updated_at`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, it := range items {
+		if _, err := stmt.Exec(it.IP, it.Location, it.ISP, it.Org, it.UpdatedAt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) InsertDomainAudits(items []DomainAuditEntry) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO domain_audit (ts, router_id, client_ip, host_name, domain, app, category, source) VALUES (?,?,?,?,?,?,?,?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, it := range items {
+		if _, err := stmt.Exec(it.TS, it.RouterID, it.ClientIP, it.HostName, it.Domain, it.App, it.Category, it.Source); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) QueryDomainAudit(routerID int64, q string, limit int) ([]DomainAuditEntry, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var rows *sql.Rows
+	var err error
+	if q != "" {
+		like := "%" + strings.ToLower(q) + "%"
+		rows, err = s.db.Query(`SELECT ts, router_id, client_ip, host_name, domain, app, category, source FROM domain_audit WHERE router_id=? AND (LOWER(client_ip) LIKE ? OR LOWER(host_name) LIKE ? OR LOWER(domain) LIKE ? OR LOWER(app) LIKE ?) ORDER BY ts DESC, id DESC LIMIT ?`,
+			routerID, like, like, like, like, limit)
+	} else {
+		rows, err = s.db.Query(`SELECT ts, router_id, client_ip, host_name, domain, app, category, source FROM domain_audit WHERE router_id=? ORDER BY ts DESC, id DESC LIMIT ?`,
+			routerID, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]DomainAuditEntry, 0)
+	for rows.Next() {
+		var it DomainAuditEntry
+		if err := rows.Scan(&it.TS, &it.RouterID, &it.ClientIP, &it.HostName, &it.Domain, &it.App, &it.Category, &it.Source); err == nil {
+			out = append(out, it)
+		}
+	}
+	return out, nil
 }
 
 func (s *Store) InsertIfaceSamples(samples []IfaceSample) error {
@@ -527,7 +674,7 @@ func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppS
 		table = "app_traffic_1h"
 	}
 	if limit <= 0 {
-		limit = 20
+		limit = 30
 	}
 	q := fmt.Sprintf(`
 		SELECT app, SUM(rx_bytes) as rx, SUM(tx_bytes) as tx
@@ -563,4 +710,6 @@ func (s *Store) PruneOldData() {
 	s.db.Exec(`DELETE FROM ip_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
 	s.db.Exec(`DELETE FROM app_traffic_5m WHERE bucket_ts < ?`, now-7*86400)
 	s.db.Exec(`DELETE FROM app_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
+	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-7*86400)
+	s.db.Exec(`DELETE FROM ip_isp_cache WHERE updated_at < ?`, now-30*86400)
 }

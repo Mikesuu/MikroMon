@@ -12,6 +12,7 @@ import (
 	"github.com/go-routeros/routeros/v3"
 
 	"mikromon/internal/collector"
+	"mikromon/internal/dpi"
 	"mikromon/internal/mikrotik"
 	"mikromon/internal/store"
 )
@@ -38,6 +39,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/history/ips", s.handleIPTop)
 	mux.HandleFunc("/api/history/ip", s.handleIPDetailHistory)
 	mux.HandleFunc("/api/history/apps", s.handleAppTop)
+	mux.HandleFunc("/api/audit/domains", s.handleDomainAudit)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
 	mux.HandleFunc("/api/queues", s.handleQueues)
 	mux.HandleFunc("/api/blocked", s.handleBlocked)
@@ -100,6 +102,7 @@ func (s *Server) handleRouters(w http.ResponseWriter, r *http.Request) {
 		}
 		for i := range list {
 			list[i].Password = ""
+			list[i].AdgPass = ""
 		}
 		writeJSON(w, 200, list)
 	case http.MethodPost:
@@ -137,6 +140,11 @@ func (s *Server) handleTestRouter(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
 		return
+	}
+	if cfg.ID > 0 && cfg.Password == "" {
+		if old, err := s.store.GetRouter(cfg.ID); err == nil {
+			cfg.Password = old.Password
+		}
 	}
 	cl, err := mikrotik.Dial(mikrotik.ConnConfig{
 		Host:          cfg.Host,
@@ -202,10 +210,30 @@ func (s *Server) handleIPDetailHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppTop(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	rng := r.URL.Query().Get("range")
-	list, err := s.store.QueryTopApps(id, rng, 15)
+	list, err := s.store.QueryTopApps(id, rng, 30)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
+	}
+	for i := range list {
+		list[i].Category = dpi.CategoryOf(list[i].App)
+	}
+	writeJSON(w, 200, list)
+}
+
+func (s *Server) handleDomainAudit(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	q := r.URL.Query().Get("q")
+	list, err := s.store.QueryDomainAudit(id, q, 200)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	if len(list) == 0 {
+		snap := s.col.GetSnapshot(id)
+		if snap != nil && len(snap.RecentDomains) > 0 {
+			list = snap.RecentDomains
+		}
 	}
 	writeJSON(w, 200, list)
 }

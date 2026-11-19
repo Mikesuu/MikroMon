@@ -61,6 +61,7 @@ type DHCPLease struct {
 
 type RawConnection struct {
 	ID        string
+	IPVersion int
 	Protocol  string
 	SrcIP     string
 	SrcPort   int
@@ -196,34 +197,55 @@ func GetInterfaces(c *routeros.Client) ([]InterfaceInfo, error) {
 	return out, nil
 }
 
-func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, error) {
+func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLease, error) {
 	r, err := c.Run("/ip/dhcp-server/lease/print")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	res := make(map[string]DHCPLease, len(r.Re))
+	byIP := make(map[string]DHCPLease, len(r.Re))
+	byMAC := make(map[string]DHCPLease, len(r.Re))
 	for _, re := range r.Re {
 		m := re.Map
 		ip := m["active-address"]
 		if ip == "" {
 			ip = m["address"]
 		}
-		if ip == "" {
-			continue
-		}
-		mac := m["active-mac-address"]
+		mac := strings.ToUpper(m["active-mac-address"])
 		if mac == "" {
-			mac = m["mac-address"]
+			mac = strings.ToUpper(m["mac-address"])
 		}
-		res[ip] = DHCPLease{
+		lease := DHCPLease{
 			Address:  ip,
 			MAC:      mac,
 			HostName: m["host-name"],
 			Status:   m["status"],
 			Comment:  m["comment"],
 		}
+		if ip != "" {
+			byIP[ip] = lease
+		}
+		if mac != "" && lease.HostName != "" {
+			byMAC[mac] = lease
+		}
 	}
-	return res, nil
+	return byIP, byMAC, nil
+}
+
+func GetIPv6Neighbors(c *routeros.Client) map[string]string {
+	r, err := c.Run("/ipv6/neighbor/print")
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]string, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		addr := m["address"]
+		mac := strings.ToUpper(m["mac-address"])
+		if addr != "" && mac != "" {
+			out[addr] = mac
+		}
+	}
+	return out
 }
 
 func GetDNSCache(c *routeros.Client) (map[string]string, error) {
@@ -247,20 +269,46 @@ func GetDNSCache(c *routeros.Client) (map[string]string, error) {
 	return ipToDomain, nil
 }
 
-func GetConnections(c *routeros.Client) ([]RawConnection, error) {
-	r, err := c.Run("/ip/firewall/connection/print")
+func GetLocalIPv6Prefixes(c *routeros.Client) []*net.IPNet {
+	r, err := c.Run("/ipv6/address/print")
 	if err != nil {
-		return nil, err
+		return nil
 	}
+	var nets []*net.IPNet
+	for _, re := range r.Re {
+		m := re.Map
+		if m["disabled"] == "true" {
+			continue
+		}
+		ip, ipNet, err := net.ParseCIDR(m["address"])
+		if err != nil || ip.IsLinkLocalUnicast() {
+			continue
+		}
+		ones, bits := ipNet.Mask.Size()
+		if bits == 128 && ones <= 64 {
+			nets = append(nets, ipNet)
+		}
+	}
+	return nets
+}
+
+func parseConnSentences(r *routeros.Reply, prefix string, ipVer int) []RawConnection {
 	out := make([]RawConnection, 0, len(r.Re))
 	for _, re := range r.Re {
 		m := re.Map
 		srcIP, srcPort := splitHostPort(m["src-address"])
+		if srcPort == 0 && m["src-port"] != "" {
+			srcPort = int(parseInt64(m["src-port"]))
+		}
 		dstIP, dstPort := splitHostPort(m["dst-address"])
+		if dstPort == 0 && m["dst-port"] != "" {
+			dstPort = int(parseInt64(m["dst-port"]))
+		}
 		origBytes := parseInt64(m["orig-bytes"]) + parseInt64(m["orig-fasttrack-bytes"])
 		replBytes := parseInt64(m["repl-bytes"]) + parseInt64(m["repl-fasttrack-bytes"])
 		out = append(out, RawConnection{
-			ID:        m[".id"],
+			ID:        prefix + m[".id"],
+			IPVersion: ipVer,
 			Protocol:  m["protocol"],
 			SrcIP:     srcIP,
 			SrcPort:   srcPort,
@@ -274,6 +322,18 @@ func GetConnections(c *routeros.Client) ([]RawConnection, error) {
 			ReplBytes: replBytes,
 			FastTrack: m["fasttrack"] == "true",
 		})
+	}
+	return out
+}
+
+func GetConnections(c *routeros.Client) ([]RawConnection, error) {
+	r4, err := c.Run("/ip/firewall/connection/print")
+	if err != nil {
+		return nil, err
+	}
+	out := parseConnSentences(r4, "v4:", 4)
+	if r6, err := c.Run("/ipv6/firewall/connection/print"); err == nil {
+		out = append(out, parseConnSentences(r6, "v6:", 6)...)
 	}
 	return out, nil
 }

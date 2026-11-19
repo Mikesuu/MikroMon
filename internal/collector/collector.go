@@ -5,12 +5,15 @@ import (
 	"log"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-routeros/routeros/v3"
 
+	"mikromon/internal/adguard"
 	"mikromon/internal/dpi"
+	"mikromon/internal/geo"
 	"mikromon/internal/mikrotik"
 	"mikromon/internal/store"
 )
@@ -23,6 +26,7 @@ type LiveInterface struct {
 
 type LiveConnection struct {
 	ID         string `json:"id"`
+	IPVersion  int    `json:"ip_version"`
 	Protocol   string `json:"protocol"`
 	ClientIP   string `json:"client_ip"`
 	HostName   string `json:"host_name"`
@@ -30,7 +34,11 @@ type LiveConnection struct {
 	RemoteIP   string `json:"remote_ip"`
 	RemotePort int    `json:"remote_port"`
 	Domain     string `json:"domain"`
+	Location   string `json:"location"`
+	ISP        string `json:"isp"`
 	App        string `json:"app"`
+	Category   string `json:"category"`
+	Color      string `json:"color"`
 	RxBps      int64  `json:"rx_bps"`
 	TxBps      int64  `json:"tx_bps"`
 	RxBytes    int64  `json:"rx_bytes"`
@@ -42,6 +50,7 @@ type LiveConnection struct {
 
 type LiveIP struct {
 	IP          string `json:"ip"`
+	IPVersion   int    `json:"ip_version"`
 	HostName    string `json:"host_name"`
 	MAC         string `json:"mac"`
 	RxBps       int64  `json:"rx_bps"`
@@ -50,15 +59,26 @@ type LiveIP struct {
 	TopApp      string `json:"top_app"`
 }
 
+type ActiveAppSummary struct {
+	App      string `json:"app"`
+	Category string `json:"category"`
+	Color    string `json:"color"`
+	RxBps    int64  `json:"rx_bps"`
+	TxBps    int64  `json:"tx_bps"`
+	Conns    int    `json:"conns"`
+}
+
 type RouterSnapshot struct {
-	RouterID    int64                   `json:"router_id"`
-	Online      bool                    `json:"online"`
-	LastError   string                  `json:"last_error,omitempty"`
-	UpdatedAt   int64                   `json:"updated_at"`
-	System      mikrotik.SystemResource `json:"system"`
-	Interfaces  []LiveInterface         `json:"interfaces"`
-	LiveIPs     []LiveIP                `json:"live_ips"`
-	Connections []LiveConnection        `json:"connections"`
+	RouterID      int64                   `json:"router_id"`
+	Online        bool                    `json:"online"`
+	LastError     string                  `json:"last_error,omitempty"`
+	UpdatedAt     int64                   `json:"updated_at"`
+	System        mikrotik.SystemResource `json:"system"`
+	Interfaces    []LiveInterface         `json:"interfaces"`
+	LiveIPs       []LiveIP                `json:"live_ips"`
+	ActiveApps    []ActiveAppSummary      `json:"active_apps"`
+	Connections   []LiveConnection        `json:"connections"`
+	RecentDomains []store.DomainAuditEntry `json:"recent_domains"`
 }
 
 type prevIfaceCounter struct {
@@ -78,14 +98,21 @@ type routerWorker struct {
 	prevIfaces    map[string]prevIfaceCounter
 	prevConns     map[string]prevConnCounter
 	connFirstPoll bool
-	leases        map[string]mikrotik.DHCPLease
+	leasesByIP    map[string]mikrotik.DHCPLease
+	leasesByMAC   map[string]mikrotik.DHCPLease
+	v6Neighbors   map[string]string
+	v6Prefixes    []*net.IPNet
 	dnsCache      map[string]string
+	adgIPDomain   map[string]string
+	lastAdgTS     int64
 	lastMetaAt    time.Time
 	lastConnAt    time.Time
+	recentDomains []store.DomainAuditEntry
 }
 
 type Collector struct {
 	store     *store.Store
+	enricher  *geo.Enricher
 	mu        sync.RWMutex
 	snapshots map[int64]*RouterSnapshot
 	workers   map[int64]*routerWorker
@@ -94,6 +121,7 @@ type Collector struct {
 func New(st *store.Store) *Collector {
 	return &Collector{
 		store:     st,
+		enricher:  geo.New(st),
 		snapshots: make(map[int64]*RouterSnapshot),
 		workers:   make(map[int64]*routerWorker),
 	}
@@ -132,6 +160,9 @@ func (c *Collector) WithClient(routerID int64, fn func(*routeros.Client) error) 
 }
 
 func (c *Collector) Run(ctx context.Context) {
+	stopGeo := make(chan struct{})
+	go c.enricher.RunWorker(stopGeo)
+
 	ticker := time.NewTicker(2 * time.Second)
 	pruneTicker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
@@ -141,6 +172,7 @@ func (c *Collector) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			close(stopGeo)
 			c.closeAll()
 			return
 		case <-pruneTicker.C:
@@ -183,18 +215,23 @@ func (c *Collector) pollAll() {
 				prevIfaces:    make(map[string]prevIfaceCounter),
 				prevConns:     make(map[string]prevConnCounter),
 				connFirstPoll: true,
-				leases:        make(map[string]mikrotik.DHCPLease),
+				leasesByIP:    make(map[string]mikrotik.DHCPLease),
+				leasesByMAC:   make(map[string]mikrotik.DHCPLease),
+				v6Neighbors:   make(map[string]string),
 				dnsCache:      make(map[string]string),
+				adgIPDomain:   make(map[string]string),
 			}
 			c.workers[cfg.ID] = w
-		} else if w.cfg.Host != cfg.Host || w.cfg.Port != cfg.Port || w.cfg.Username != cfg.Username || (cfg.Password != "" && w.cfg.Password != cfg.Password) || w.cfg.UseTLS != cfg.UseTLS {
-			if w.client != nil {
-				w.client.Close()
-				w.client = nil
+		} else {
+			if w.cfg.Host != cfg.Host || w.cfg.Port != cfg.Port || w.cfg.Username != cfg.Username || w.cfg.Password != cfg.Password || w.cfg.UseTLS != cfg.UseTLS {
+				if w.client != nil {
+					w.client.Close()
+					w.client = nil
+				}
+				w.connFirstPoll = true
+				w.prevConns = make(map[string]prevConnCounter)
 			}
 			w.cfg = cfg
-			w.connFirstPoll = true
-			w.prevConns = make(map[string]prevConnCounter)
 		}
 		c.mu.Unlock()
 
@@ -243,6 +280,22 @@ func isPrivateIP(ipStr string) bool {
 	}
 	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
 		return true
+	}
+	return false
+}
+
+func isLocalClient(ipStr string, v6Prefixes []*net.IPNet) bool {
+	if isPrivateIP(ipStr) {
+		return true
+	}
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	for _, n := range v6Prefixes {
+		if n.Contains(ip) {
+			return true
+		}
 	}
 	return false
 }
@@ -315,13 +368,17 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		log.Printf("insert iface samples err: %v", err)
 	}
 
-	if now.Sub(w.lastMetaAt) >= 15*time.Second {
-		if leases, err := mikrotik.GetDHCPLeases(w.client); err == nil {
-			w.leases = leases
+	if now.Sub(w.lastMetaAt) >= 12*time.Second {
+		if byIP, byMAC, err := mikrotik.GetDHCPLeases(w.client); err == nil {
+			w.leasesByIP = byIP
+			w.leasesByMAC = byMAC
 		}
 		if dns, err := mikrotik.GetDNSCache(w.client); err == nil {
 			w.dnsCache = dns
 		}
+		w.v6Neighbors = mikrotik.GetIPv6Neighbors(w.client)
+		w.v6Prefixes = mikrotik.GetLocalIPv6Prefixes(w.client)
+		c.syncAdGuard(w)
 		w.lastMetaAt = now
 	}
 
@@ -331,31 +388,104 @@ func (c *Collector) pollWorker(w *routerWorker) {
 
 	var liveConns []LiveConnection
 	var liveIPs []LiveIP
+	var activeApps []ActiveAppSummary
 	if prevSnap != nil {
 		liveConns = prevSnap.Connections
 		liveIPs = prevSnap.LiveIPs
+		activeApps = prevSnap.ActiveApps
 	}
 
 	if now.Sub(w.lastConnAt) >= 4*time.Second {
 		w.lastConnAt = now
 		if rawConns, err := mikrotik.GetConnections(w.client); err == nil {
-			liveConns, liveIPs = c.processConnections(w, nowUnix, rawConns)
+			liveConns, liveIPs, activeApps = c.processConnections(w, nowUnix, rawConns)
 		}
 	}
 
 	snap := &RouterSnapshot{
-		RouterID:    w.cfg.ID,
-		Online:      true,
-		UpdatedAt:   nowUnix,
-		System:      sys,
-		Interfaces:  liveIfaces,
-		LiveIPs:     liveIPs,
-		Connections: liveConns,
+		RouterID:      w.cfg.ID,
+		Online:        true,
+		UpdatedAt:     nowUnix,
+		System:        sys,
+		Interfaces:    liveIfaces,
+		LiveIPs:       liveIPs,
+		ActiveApps:    activeApps,
+		Connections:   liveConns,
+		RecentDomains: w.recentDomains,
 	}
 
 	c.mu.Lock()
 	c.snapshots[w.cfg.ID] = snap
 	c.mu.Unlock()
+}
+
+func (c *Collector) resolveClientMeta(w *routerWorker, clientIP string) (hostName, mac string) {
+	if l, ok := w.leasesByIP[clientIP]; ok {
+		return l.HostName, l.MAC
+	}
+	if m, ok := w.v6Neighbors[clientIP]; ok {
+		mac = m
+		if l, ok := w.leasesByMAC[m]; ok {
+			hostName = l.HostName
+		}
+	}
+	return hostName, mac
+}
+
+func (c *Collector) syncAdGuard(w *routerWorker) {
+	if w.cfg.AdgURL == "" {
+		return
+	}
+	entries, err := adguard.FetchQueryLog(w.cfg.AdgURL, w.cfg.AdgUser, w.cfg.AdgPass, 300)
+	if err != nil {
+		return
+	}
+	var maxTS int64 = w.lastAdgTS
+	var audits []store.DomainAuditEntry
+	recent := make([]store.DomainAuditEntry, 0, 50)
+	seen := make(map[string]bool)
+
+	for _, e := range entries {
+		for _, ip := range e.Answers {
+			w.adgIPDomain[ip] = e.Domain
+		}
+		if len(w.adgIPDomain) > 8000 {
+			w.adgIPDomain = make(map[string]string)
+		}
+
+		host, _ := c.resolveClientMeta(w, e.ClientIP)
+		appInfo := dpi.Classify("tcp", 443, e.Domain, "")
+		item := store.DomainAuditEntry{
+			TS:       e.TS,
+			RouterID: w.cfg.ID,
+			ClientIP: e.ClientIP,
+			HostName: host,
+			Domain:   e.Domain,
+			App:      appInfo.App,
+			Category: appInfo.Category,
+			Source:   "AdGuard",
+		}
+		if len(recent) < 40 {
+			key := e.ClientIP + "|" + e.Domain
+			if !seen[key] && !strings.HasSuffix(e.Domain, ".arpa") {
+				seen[key] = true
+				recent = append(recent, item)
+			}
+		}
+		if e.TS > w.lastAdgTS && !strings.HasSuffix(e.Domain, ".arpa") {
+			audits = append(audits, item)
+			if e.TS > maxTS {
+				maxTS = e.TS
+			}
+		}
+	}
+	if len(recent) > 0 {
+		w.recentDomains = recent
+	}
+	if len(audits) > 0 {
+		w.lastAdgTS = maxTS
+		_ = c.store.InsertDomainAudits(audits)
+	}
 }
 
 func (c *Collector) setOffline(routerID int64, errMsg string) {
@@ -374,12 +504,15 @@ func (c *Collector) setOffline(routerID int64, errMsg string) {
 	c.snapshots[routerID] = snap
 }
 
-func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []mikrotik.RawConnection) ([]LiveConnection, []LiveIP) {
+func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []mikrotik.RawConnection) ([]LiveConnection, []LiveIP, []ActiveAppSummary) {
 	newPrev := make(map[string]prevConnCounter, len(conns))
 	ipDeltaMap := make(map[string]*store.IPTrafficDelta)
 	appDeltaMap := make(map[string]*store.AppTrafficDelta)
 	liveIPMap := make(map[string]*LiveIP)
 	ipAppBytes := make(map[string]map[string]int64)
+	activeAppMap := make(map[string]*ActiveAppSummary)
+	var fallbackDomains []store.DomainAuditEntry
+	seenDomain := make(map[string]bool)
 
 	liveConns := make([]LiveConnection, 0, len(conns))
 
@@ -410,7 +543,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		rxBytes, txBytes := rc.ReplBytes, rc.OrigBytes
 		dRx, dTx := dRepl, dOrig
 
-		if !isPrivateIP(rc.SrcIP) && isPrivateIP(rc.DstIP) {
+		if !isLocalClient(rc.SrcIP, w.v6Prefixes) && isLocalClient(rc.DstIP, w.v6Prefixes) {
 			clientIP, clientPort = rc.DstIP, rc.DstPort
 			remoteIP, remotePort = rc.SrcIP, rc.SrcPort
 			rxBps, txBps = rc.OrigRate, rc.ReplRate
@@ -418,20 +551,46 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			dRx, dTx = dOrig, dRepl
 		}
 
-		lease := w.leases[clientIP]
-		domain := w.dnsCache[remoteIP]
-		app := dpi.Classify(rc.Protocol, remotePort, domain)
+		hostName, mac := c.resolveClientMeta(w, clientIP)
+		domain := w.adgIPDomain[remoteIP]
+		if domain == "" {
+			domain = w.dnsCache[remoteIP]
+		}
+		loc, isp := c.enricher.Lookup(remoteIP)
+		appInfo := dpi.Classify(rc.Protocol, remotePort, domain, isp)
+
+		if domain != "" && len(fallbackDomains) < 40 {
+			dk := clientIP + "|" + domain
+			if !seenDomain[dk] {
+				seenDomain[dk] = true
+				fallbackDomains = append(fallbackDomains, store.DomainAuditEntry{
+					TS:       nowUnix,
+					RouterID: w.cfg.ID,
+					ClientIP: clientIP,
+					HostName: hostName,
+					Domain:   domain,
+					App:      appInfo.App,
+					Category: appInfo.Category,
+					Source:   "RouterOS",
+				})
+			}
+		}
 
 		liveConns = append(liveConns, LiveConnection{
 			ID:         rc.ID,
+			IPVersion:  rc.IPVersion,
 			Protocol:   rc.Protocol,
 			ClientIP:   clientIP,
-			HostName:   lease.HostName,
+			HostName:   hostName,
 			ClientPort: clientPort,
 			RemoteIP:   remoteIP,
 			RemotePort: remotePort,
 			Domain:     domain,
-			App:        app,
+			Location:   loc,
+			ISP:        isp,
+			App:        appInfo.App,
+			Category:   appInfo.Category,
+			Color:      appInfo.Color,
 			RxBps:      rxBps,
 			TxBps:      txBps,
 			RxBytes:    rxBytes,
@@ -441,13 +600,23 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			FastTrack:  rc.FastTrack,
 		})
 
+		aa, ok := activeAppMap[appInfo.App]
+		if !ok {
+			aa = &ActiveAppSummary{App: appInfo.App, Category: appInfo.Category, Color: appInfo.Color}
+			activeAppMap[appInfo.App] = aa
+		}
+		aa.RxBps += rxBps
+		aa.TxBps += txBps
+		aa.Conns++
+
 		if clientIP != "" {
 			lip, ok := liveIPMap[clientIP]
 			if !ok {
 				lip = &LiveIP{
-					IP:       clientIP,
-					HostName: lease.HostName,
-					MAC:      lease.MAC,
+					IP:        clientIP,
+					IPVersion: rc.IPVersion,
+					HostName:  hostName,
+					MAC:       mac,
 				}
 				liveIPMap[clientIP] = lip
 				ipAppBytes[clientIP] = make(map[string]int64)
@@ -455,15 +624,15 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			lip.RxBps += rxBps
 			lip.TxBps += txBps
 			lip.ActiveConns++
-			ipAppBytes[clientIP][app] += rxBps + txBps + 1
+			ipAppBytes[clientIP][appInfo.App] += rxBps + txBps + 1
 
 			if dRx > 0 || dTx > 0 {
 				d, ok := ipDeltaMap[clientIP]
 				if !ok {
 					d = &store.IPTrafficDelta{
 						IP:       clientIP,
-						HostName: lease.HostName,
-						MAC:      lease.MAC,
+						HostName: hostName,
+						MAC:      mac,
 					}
 					ipDeltaMap[clientIP] = d
 				}
@@ -473,14 +642,18 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		}
 
 		if dRx > 0 || dTx > 0 {
-			ad, ok := appDeltaMap[app]
+			ad, ok := appDeltaMap[appInfo.App]
 			if !ok {
-				ad = &store.AppTrafficDelta{App: app}
-				appDeltaMap[app] = ad
+				ad = &store.AppTrafficDelta{App: appInfo.App}
+				appDeltaMap[appInfo.App] = ad
 			}
 			ad.RxBytes += dRx
 			ad.TxBytes += dTx
 		}
+	}
+
+	if w.cfg.AdgURL == "" && len(fallbackDomains) > 0 {
+		w.recentDomains = fallbackDomains
 	}
 
 	w.prevConns = newPrev
@@ -517,6 +690,19 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		return (liveIPs[i].RxBps + liveIPs[i].TxBps) > (liveIPs[j].RxBps + liveIPs[j].TxBps)
 	})
 
+	activeApps := make([]ActiveAppSummary, 0, len(activeAppMap))
+	for _, v := range activeAppMap {
+		activeApps = append(activeApps, *v)
+	}
+	sort.Slice(activeApps, func(i, j int) bool {
+		si := activeApps[i].RxBps + activeApps[i].TxBps
+		sj := activeApps[j].RxBps + activeApps[j].TxBps
+		if si != sj {
+			return si > sj
+		}
+		return activeApps[i].Conns > activeApps[j].Conns
+	})
+
 	sort.Slice(liveConns, func(i, j int) bool {
 		si := liveConns[i].RxBps + liveConns[i].TxBps
 		sj := liveConns[j].RxBps + liveConns[j].TxBps
@@ -529,5 +715,5 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		liveConns = liveConns[:400]
 	}
 
-	return liveConns, liveIPs
+	return liveConns, liveIPs, activeApps
 }
