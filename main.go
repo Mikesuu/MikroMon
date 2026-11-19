@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -12,8 +13,11 @@ import (
 
 	"mikromon/internal/collector"
 	"mikromon/internal/store"
+	"mikromon/internal/updater"
 	"mikromon/internal/web"
 )
+
+var Version = "dev"
 
 func envOrDefault(key, def string) string {
 	if v := os.Getenv(key); v != "" {
@@ -25,7 +29,13 @@ func envOrDefault(key, def string) string {
 func main() {
 	listenAddr := flag.String("listen", envOrDefault("MIKROMON_LISTEN", ":8080"), "HTTP listen address")
 	dataDir := flag.String("data", envOrDefault("MIKROMON_DATA", "./data"), "Data directory for SQLite")
+	showVer := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *showVer {
+		fmt.Println(Version)
+		return
+	}
 
 	if err := os.MkdirAll(*dataDir, 0755); err != nil {
 		log.Fatalf("failed to create data dir %s: %v", *dataDir, err)
@@ -46,8 +56,14 @@ func main() {
 	col := collector.New(st)
 	go col.Run(ctx)
 
-	srv := web.NewServer(st, col)
-	log.Printf("MikroMon starting on %s (data: %s)", *listenAddr, dbPath)
+	upd := updater.New(Version, st, func() {
+		cancel()
+		_ = st.Close()
+	})
+	go upd.RunLoop(ctx)
+
+	srv := web.NewServer(st, col, upd)
+	log.Printf("MikroMon %s starting on %s (data: %s)", Version, *listenAddr, dbPath)
 	if err := srv.ListenAndServe(ctx, *listenAddr); err != nil {
 		log.Fatalf("http server error: %v", err)
 	}

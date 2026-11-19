@@ -51,7 +51,7 @@
         <div class="w-7 h-7 rounded bg-[#0099cc] flex items-center justify-center font-bold text-white text-sm">M</div>
         <div>
           <div class="text-sm font-bold">MikroMon</div>
-          <div class="text-[11px] luci-txt2">LuCI Style · v2.6</div>
+          <div class="text-[11px] luci-txt2"><span id="appVerBadge">LuCI Style · v2.7</span></div>
         </div>
       </div>
 
@@ -120,6 +120,7 @@
         <select id="routerSelect" class="luci-input rounded px-2.5 py-1 text-xs"></select>
         <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-500/15 luci-txt2">...</span>
         <div id="headerWanPills" class="flex items-center gap-1.5 flex-wrap text-[11px]"></div>
+        <button id="updateHeaderBtn" onclick="openSettings()" class="hidden px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500 font-medium animate-pulse"></button>
         <select onchange="switchTab(this.value)" class="md:hidden luci-input rounded px-2 py-1 text-xs">
           <option value="overview" data-i18n="nav_overview">状态概览</option>
           <option value="ips" data-i18n="nav_devices">终端列表</option>
@@ -526,6 +527,27 @@
         </div>
       </div>
 
+      <div class="luci-sub rounded-lg p-3 space-y-2 text-xs">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <span class="font-medium" data-i18n="upd_title">在线升级 (GitHub Releases)</span>
+            <span id="updVersionText" class="ml-2 font-mono text-[#0099cc]">-</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="checkUpdateNow()" class="luci-card px-2.5 py-1 rounded hover:opacity-80" data-i18n="btn_check_upd">检查更新</button>
+            <button id="btnApplyUpd" onclick="applyUpdateNow()" class="hidden bg-emerald-600 text-white px-2.5 py-1 rounded font-medium" data-i18n="btn_apply_upd">立即更新</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input id="chkAutoUpd" type="checkbox" onchange="saveUpdateCfg()" />
+            <span data-i18n="upd_auto">发现新版本自动下载并重启</span>
+          </label>
+          <input id="inpGhMirror" onchange="saveUpdateCfg()" placeholder="GitHub 加速前缀(可选, 如 https://ghfast.top/)" class="luci-input rounded px-2 py-1 text-xs flex-1 min-w-[200px]" />
+        </div>
+        <div id="updMsg" class="text-[11px] luci-txt2"></div>
+      </div>
+
       <div id="routerListBox" class="space-y-2 max-h-32 overflow-y-auto"></div>
       <div class="grid grid-cols-2 gap-3 text-xs border-t luci-border pt-4">
         <input id="cfgId" type="hidden" />
@@ -612,7 +634,7 @@ const I18N = {
     torch_title: '实时 Torch 抓包', btn_snap: '抓取快照', btn_auto_on: '开启自动刷新', btn_auto_off: '停止自动刷新',
     th_src_ep: '源', th_dst_ep: '目标', ping_title: '路由器 Ping 诊断', logs_title: '路由器实时系统日志 (最近 120 条)', th_msg: '日志内容',
     db_title: 'DPI 应用特征库 & Geo/ASN 数据库状态', db_sig: '内置 DPI 特征', db_geo: '已缓存 Geo/ASN IP', db_audit: '域名审计记录', db_samples: '24h 原始采样',
-    btn_clear_geo: '清空 Geo/ASN 缓存重抓',
+    btn_clear_geo: '清空 Geo/ASN 缓存重抓', upd_title: '在线升级', btn_check_upd: '检查更新', btn_apply_upd: '立即更新', upd_auto: '发现新版本自动下载并重启',
     set_title: '路由器、主题、语言与数据源配置', set_theme: '外观主题', theme_dark: '黑夜', theme_light: '白天', set_lang: '界面语言',
     set_rname: '备注名称', set_rhost: '路由器 IP / 域名', set_rport: 'API 端口 (8728 / 8729)', set_ruser: 'RouterOS 用户名', set_rpass: 'RouterOS 密码',
     set_tls: '启用 API-SSL (8729)', set_skip_verify: '忽略自签名证书校验',
@@ -661,7 +683,7 @@ const I18N = {
     torch_title: 'Live Torch Capture', btn_snap: 'Capture', btn_auto_on: 'Auto Refresh', btn_auto_off: 'Stop Auto',
     th_src_ep: 'Source', th_dst_ep: 'Destination', ping_title: 'Router Ping Tool', logs_title: 'RouterOS System Logs (Last 120)', th_msg: 'Message',
     db_title: 'DPI Signatures & Geo/ASN Cache', db_sig: 'DPI Signatures', db_geo: 'Cached Geo IPs', db_audit: 'Audit Rows', db_samples: '24h Raw Samples',
-    btn_clear_geo: 'Clear Geo Cache',
+    btn_clear_geo: 'Clear Geo Cache', upd_title: 'OTA Update', btn_check_upd: 'Check', btn_apply_upd: 'Update Now', upd_auto: 'Auto-download & restart on new release',
     set_title: 'Router, Theme, Language & Data Sources', set_theme: 'Theme', theme_dark: 'Dark', theme_light: 'Light', set_lang: 'Language',
     set_rname: 'Router Name', set_rhost: 'Router IP / Host', set_rport: 'API Port (8728 / 8729)', set_ruser: 'Username', set_rpass: 'Password',
     set_tls: 'Enable API-SSL (8729)', set_skip_verify: 'Skip TLS Cert Verify',
@@ -1404,7 +1426,56 @@ async function runPing() {
   document.getElementById('pingResult').textContent = JSON.stringify(await res.json(), null, 2);
 }
 
-function openSettings() { document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
+
+function renderUpdateStatus(st) {
+  if (!st) return;
+  document.getElementById('appVerBadge').textContent = `LuCI Style · ${st.current_version}`;
+  document.getElementById('chkAutoUpd').checked = !!st.auto_update;
+  if (document.activeElement !== document.getElementById('inpGhMirror')) {
+    document.getElementById('inpGhMirror').value = st.mirror_prefix || '';
+  }
+  const vTxt = document.getElementById('updVersionText');
+  const hBtn = document.getElementById('updateHeaderBtn');
+  const aBtn = document.getElementById('btnApplyUpd');
+  const msg = document.getElementById('updMsg');
+  if (st.has_update) {
+    vTxt.textContent = `${st.current_version} → ${st.latest_version}`;
+    hBtn.textContent = `⬆ ${st.latest_version}`;
+    hBtn.classList.remove('hidden');
+    aBtn.classList.remove('hidden');
+  } else {
+    vTxt.textContent = st.latest_version ? `${st.current_version} (Latest: ${st.latest_version})` : st.current_version;
+    hBtn.classList.add('hidden');
+    aBtn.classList.add('hidden');
+  }
+  msg.textContent = st.last_error ? `Error: ${st.last_error}` : (st.last_checked ? `Last check: ${new Date(st.last_checked*1000).toLocaleTimeString()}` : '');
+}
+async function loadUpdateStatus() {
+  try { renderUpdateStatus(await (await fetch('/api/update/status')).json()); } catch(e){}
+}
+async function checkUpdateNow() {
+  document.getElementById('updMsg').textContent = 'Checking GitHub Releases...';
+  renderUpdateStatus(await (await fetch('/api/update/check')).json());
+}
+async function saveUpdateCfg() {
+  const res = await fetch('/api/update/config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      auto_update: document.getElementById('chkAutoUpd').checked,
+      mirror_prefix: document.getElementById('inpGhMirror').value.trim()
+    })
+  });
+  renderUpdateStatus(await res.json());
+}
+async function applyUpdateNow() {
+  document.getElementById('updMsg').textContent = 'Downloading & restarting...';
+  const res = await fetch('/api/update/apply', { method: 'POST' });
+  const d = await res.json();
+  if (d.error) { document.getElementById('updMsg').textContent = d.error; return; }
+  setTimeout(() => location.reload(), 4000);
+}
+
+function openSettings() { loadUpdateStatus(); document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
 function closeSettings() { document.getElementById('settingsModal').classList.replace('flex', 'hidden'); }
 function fillRouterForm(r) {
   document.getElementById('cfgId').value = r.id;
@@ -1454,6 +1525,8 @@ async function saveRouter() {
   await fetch('/api/routers', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getRouterPayload()) });
   document.getElementById('cfgId').value = '';
   await loadRouters();
+  loadUpdateStatus();
+  setInterval(loadUpdateStatus, 60000);
   closeSettings();
   pollSnapshot();
   refreshHistoryAll();
@@ -1462,12 +1535,16 @@ async function deleteRouter(id) {
   await fetch(`/api/routers?router_id=${id}`, { method: 'DELETE' });
   currentRouterId = 0;
   await loadRouters();
+  loadUpdateStatus();
+  setInterval(loadUpdateStatus, 60000);
 }
 
 (async function init() {
   applyTheme(localStorage.getItem('mikromon_theme') || 'dark');
   applyLang(localStorage.getItem('mikromon_lang') || 'zh');
   await loadRouters();
+  loadUpdateStatus();
+  setInterval(loadUpdateStatus, 60000);
   await pollSnapshot();
   refreshHistoryAll();
   setInterval(pollSnapshot, 2000);

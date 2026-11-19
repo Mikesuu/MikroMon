@@ -15,7 +15,7 @@ mkdir -p "${BUILD_DIR}/DEBIAN" \
 
 echo "==> Building static binary for linux/${ARCH} (v${VERSION})..."
 go mod tidy
-CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build -trimpath -ldflags="-s -w" -o "${BUILD_DIR}/usr/local/bin/${APP_NAME}" .
+CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build -trimpath -ldflags="-s -w -X main.Version=v${VERSION}" -o "${BUILD_DIR}/usr/local/bin/${APP_NAME}" .
 chmod 755 "${BUILD_DIR}/usr/local/bin/${APP_NAME}"
 
 cat > "${BUILD_DIR}/DEBIAN/control" <<EOF

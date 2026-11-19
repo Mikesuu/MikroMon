@@ -227,6 +227,11 @@ func (s *Store) migrate() error {
 		updated_at INTEGER NOT NULL
 	);
 
+	CREATE TABLE IF NOT EXISTS app_settings (
+		k TEXT PRIMARY KEY,
+		v TEXT NOT NULL
+	);
+
 	CREATE TABLE IF NOT EXISTS domain_audit (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		ts INTEGER NOT NULL,
@@ -733,4 +738,15 @@ func (s *Store) PruneOldData() {
 	s.db.Exec(`DELETE FROM app_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
 	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-7*86400)
 	s.db.Exec(`DELETE FROM ip_isp_cache WHERE updated_at < ?`, now-30*86400)
+}
+
+func (s *Store) GetSetting(k string) string {
+	var v string
+	_ = s.db.QueryRow(`SELECT v FROM app_settings WHERE k=?`, k).Scan(&v)
+	return v
+}
+
+func (s *Store) SetSetting(k, v string) error {
+	_, err := s.db.Exec(`INSERT INTO app_settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v`, k, v)
+	return err
 }

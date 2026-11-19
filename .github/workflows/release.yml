@@ -24,11 +24,14 @@ jobs:
         run: |
           REPO_LOWER=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
           TAGS="ghcr.io/${REPO_LOWER}:latest"
+          VER="dev"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
             TAGS="${TAGS},ghcr.io/${REPO_LOWER}:${TAG_NAME}"
+            VER="${TAG_NAME}"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "ver=${VER}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -50,6 +53,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           provenance: false
+          build-args: VERSION=${{ steps.meta.outputs.ver }}
           tags: ${{ steps.meta.outputs.tags }}
 
   build-deb:
@@ -63,7 +67,7 @@ jobs:
         with:
           go-version: "1.26"
 
-      - name: Build .deb packages (amd64 & arm64)
+      - name: Build .deb & OTA binaries (amd64 & arm64)
         run: |
           VER="1.0.0"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
@@ -72,16 +76,20 @@ jobs:
           chmod +x scripts/build-deb.sh
           ./scripts/build-deb.sh amd64 "${VER}"
           ./scripts/build-deb.sh arm64 "${VER}"
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.Version=${VER}" -o dist/mikromon-linux-amd64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.Version=${VER}" -o dist/mikromon-linux-arm64 .
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mikromon-deb-packages
-          path: dist/*.deb
+          path: dist/*
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          files: dist/*.deb
+          files: |
+            dist/*.deb
+            dist/mikromon-linux-*

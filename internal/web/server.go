@@ -17,6 +17,7 @@ import (
 	"mikromon/internal/icons"
 	"mikromon/internal/mikrotik"
 	"mikromon/internal/store"
+	"mikromon/internal/updater"
 )
 
 //go:embed static/*
@@ -26,14 +27,15 @@ type Server struct {
 	store *store.Store
 	col   *collector.Collector
 	icons *icons.Manager
+	upd   *updater.Manager
 }
 
-func NewServer(st *store.Store, col *collector.Collector) *Server {
+func NewServer(st *store.Store, col *collector.Collector, upd *updater.Manager) *Server {
 	dataDir := os.Getenv("MIKROMON_DATA")
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	return &Server{store: st, col: col, icons: icons.New(dataDir)}
+	return &Server{store: st, col: col, icons: icons.New(dataDir), upd: upd}
 }
 
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
@@ -54,6 +56,10 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/tools/wol", s.handleWoL)
 	mux.HandleFunc("/api/appicon", s.handleAppIcon)
 	mux.HandleFunc("/api/appicon/ver", s.handleAppIconVer)
+	mux.HandleFunc("/api/update/status", s.handleUpdateStatus)
+	mux.HandleFunc("/api/update/check", s.handleUpdateCheck)
+	mux.HandleFunc("/api/update/config", s.handleUpdateConfig)
+	mux.HandleFunc("/api/update/apply", s.handleUpdateApply)
 	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
 	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
@@ -545,4 +551,37 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAppIconVer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ver": s.icons.Version()})
+}
+
+func (s *Server) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, s.upd.GetStatus())
+}
+
+func (s *Server) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, s.upd.Check(r.Context()))
+}
+
+func (s *Server) handleUpdateConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AutoUpdate   bool   `json:"auto_update"`
+		MirrorPrefix string `json:"mirror_prefix"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	s.upd.SaveConfig(req.AutoUpdate, req.MirrorPrefix)
+	writeJSON(w, 200, s.upd.GetStatus())
+}
+
+func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	if err := s.upd.Apply(r.Context()); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "restarting"})
 }
