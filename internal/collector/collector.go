@@ -39,7 +39,7 @@ type LiveConnection struct {
 	App        string `json:"app"`
 	Category   string `json:"category"`
 	Color      string `json:"color"`
-	Icon       string `json:"icon"`
+	
 	IsRealApp  bool   `json:"is_real_app"`
 	RxBps      int64  `json:"rx_bps"`
 	TxBps      int64  `json:"tx_bps"`
@@ -66,7 +66,7 @@ type ActiveAppSummary struct {
 	App      string `json:"app"`
 	Category string `json:"category"`
 	Color    string `json:"color"`
-	Icon     string `json:"icon"`
+	
 	RxBps    int64  `json:"rx_bps"`
 	TxBps    int64  `json:"tx_bps"`
 	Conns    int    `json:"conns"`
@@ -467,7 +467,7 @@ func (c *Collector) recordDNSApps(w *routerWorker, dns map[string]string, nowUni
 			prev.App = info.App
 			prev.Category = info.Category
 			prev.Color = info.Color
-			prev.Icon = info.Icon
+			
 			prev.LastSeen = nowUnix
 			w.recentAppHits[info.App] = prev
 		}
@@ -516,7 +516,7 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 			prev.App = appInfo.App
 			prev.Category = appInfo.Category
 			prev.Color = appInfo.Color
-			prev.Icon = appInfo.Icon
+			
 			if e.TS > prev.LastSeen {
 				prev.LastSeen = e.TS
 			}
@@ -659,7 +659,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			App:        appInfo.App,
 			Category:   appInfo.Category,
 			Color:      appInfo.Color,
-			Icon:       appInfo.Icon,
+			
 			IsRealApp:  appInfo.IsRealApp,
 			RxBps:      rxBps,
 			TxBps:      txBps,
@@ -677,7 +677,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 					App:      appInfo.App,
 					Category: appInfo.Category,
 					Color:    appInfo.Color,
-					Icon:     appInfo.Icon,
+					
 					LastSeen: nowUnix,
 				}
 				realAppMap[appInfo.App] = aa

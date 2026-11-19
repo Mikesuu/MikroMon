@@ -641,3 +641,71 @@ func TorchSnapshot(ctx context.Context, c *routeros.Client, iface string) ([]Tor
 		}
 	}
 }
+
+type LogEntry struct {
+	Time    string `json:"time"`
+	Topics  string `json:"topics"`
+	Message string `json:"message"`
+}
+
+type FirewallRule struct {
+	ID       string `json:"id"`
+	Chain    string `json:"chain"`
+	Action   string `json:"action"`
+	Comment  string `json:"comment"`
+	Packets  int64  `json:"packets"`
+	Bytes    int64  `json:"bytes"`
+	Disabled bool   `json:"disabled"`
+}
+
+func GetLogs(c *routeros.Client) ([]LogEntry, error) {
+	r, err := c.Run("/log/print")
+	if err != nil {
+		return nil, err
+	}
+	n := len(r.Re)
+	start := 0
+	if n > 120 {
+		start = n - 120
+	}
+	out := make([]LogEntry, 0, n-start)
+	for i := n - 1; i >= start; i-- {
+		m := r.Re[i].Map
+		out = append(out, LogEntry{
+			Time:    m["time"],
+			Topics:  m["topics"],
+			Message: m["message"],
+		})
+	}
+	return out, nil
+}
+
+func GetFirewallFilters(c *routeros.Client) ([]FirewallRule, error) {
+	r, err := c.Run("/ip/firewall/filter/print")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FirewallRule, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		out = append(out, FirewallRule{
+			ID:       m[".id"],
+			Chain:    m["chain"],
+			Action:   m["action"],
+			Comment:  m["comment"],
+			Packets:  parseInt64(m["packets"]),
+			Bytes:    parseInt64(m["bytes"]),
+			Disabled: m["disabled"] == "true",
+		})
+	}
+	return out, nil
+}
+
+func WakeOnLAN(c *routeros.Client, mac, iface string) error {
+	args := []string{"/tool/wol", "=mac=" + mac}
+	if iface != "" {
+		args = append(args, "=interface="+iface)
+	}
+	_, err := c.RunArgs(args)
+	return err
+}

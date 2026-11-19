@@ -42,6 +42,9 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/audit/domains", s.handleDomainAudit)
 	mux.HandleFunc("/api/network/details", s.handleNetworkDetails)
 	mux.HandleFunc("/api/dhcp/static", s.handleDHCPStatic)
+	mux.HandleFunc("/api/system/logs", s.handleLogs)
+	mux.HandleFunc("/api/firewall/rules", s.handleFirewallRules)
+	mux.HandleFunc("/api/tools/wol", s.handleWoL)
 	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
 	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
@@ -214,7 +217,7 @@ func (s *Server) handleIPDetailHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppTop(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	rng := r.URL.Query().Get("range")
-	list, err := s.store.QueryTopApps(id, rng, 50)
+	list, err := s.store.QueryTopApps(id, rng, 100)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
@@ -276,6 +279,58 @@ func (s *Server) handleDHCPStatic(w http.ResponseWriter, r *http.Request) {
 	leaseID := r.URL.Query().Get("id")
 	err := s.col.WithClient(id, func(c *routeros.Client) error {
 		return mikrotik.MakeDHCPStatic(c, leaseID)
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var logs []mikrotik.LogEntry
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		var e error
+		logs, e = mikrotik.GetLogs(c)
+		return e
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, logs)
+}
+
+func (s *Server) handleFirewallRules(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var rules []mikrotik.FirewallRule
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		var e error
+		rules, e = mikrotik.GetFirewallFilters(c)
+		return e
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, rules)
+}
+
+func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	mac := r.URL.Query().Get("mac")
+	iface := r.URL.Query().Get("iface")
+	if mac == "" {
+		writeJSON(w, 400, map[string]string{"error": "mac required"})
+		return
+	}
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		return mikrotik.WakeOnLAN(c, mac, iface)
 	})
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})

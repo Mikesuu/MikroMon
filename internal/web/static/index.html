@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,10 +7,39 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <style>
-    body { background-color: #16191e; color: #e2e8f0; }
-    .luci-card { background-color: #1e2229; border: 1px solid #2d333d; }
-    .luci-sidebar { background-color: #1a1e24; border-right: 1px solid #2d333d; }
-    .luci-header { background-color: #1b1f26; border-bottom: 1px solid #2d333d; }
+    :root, html[data-theme="dark"] {
+      --bg-body: #14171c;
+      --bg-sidebar: #1a1e24;
+      --bg-header: #1b1f26;
+      --bg-card: #1e232b;
+      --bg-sub: #252b35;
+      --border: #2e3542;
+      --text-1: #f1f5f9;
+      --text-2: #94a3b8;
+      --grid-line: #282f3b;
+      --hover-row: rgba(51, 65, 85, 0.35);
+    }
+    html[data-theme="light"] {
+      --bg-body: #f1f5f9;
+      --bg-sidebar: #ffffff;
+      --bg-header: #ffffff;
+      --bg-card: #ffffff;
+      --bg-sub: #f8fafc;
+      --border: #e2e8f0;
+      --text-1: #0f172a;
+      --text-2: #64748b;
+      --grid-line: #e2e8f0;
+      --hover-row: rgba(226, 232, 240, 0.55);
+    }
+    body { background-color: var(--bg-body); color: var(--text-1); transition: background-color .2s, color .2s; }
+    .luci-card { background-color: var(--bg-card); border: 1px solid var(--border); }
+    .luci-sidebar { background-color: var(--bg-sidebar); border-right: 1px solid var(--border); }
+    .luci-header { background-color: var(--bg-header); border-bottom: 1px solid var(--border); }
+    .luci-sub { background-color: var(--bg-sub); border: 1px solid var(--border); }
+    .luci-input { background-color: var(--bg-sub); border: 1px solid var(--border); color: var(--text-1); }
+    .luci-txt2 { color: var(--text-2); }
+    .luci-border { border-color: var(--border); }
+    tr.luci-tr:hover { background-color: var(--hover-row); }
   </style>
 </head>
 <body class="min-h-screen font-sans flex">
@@ -18,86 +47,81 @@
   <!-- OpenWrt 原版折叠式左侧边栏 -->
   <aside class="luci-sidebar w-56 flex-shrink-0 hidden md:flex flex-col justify-between sticky top-0 h-screen select-none">
     <div class="overflow-y-auto">
-      <div class="px-4 py-3.5 border-b border-[#2d333d] flex items-center gap-2.5">
+      <div class="px-4 py-3.5 border-b luci-border flex items-center gap-2.5">
         <div class="w-7 h-7 rounded bg-[#0099cc] flex items-center justify-center font-bold text-white text-sm">M</div>
         <div>
-          <div class="text-sm font-bold text-slate-100">MikroMon</div>
-          <div class="text-[11px] text-slate-400">LuCI Style · v2.1</div>
+          <div class="text-sm font-bold">MikroMon</div>
+          <div class="text-[11px] luci-txt2">LuCI Style · v2.2</div>
         </div>
       </div>
 
       <nav class="p-2.5 space-y-1 text-[13px]">
-        <!-- 直达项 -->
-        <button onclick="switchTab('overview')" data-tab="overview" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded bg-[#0099cc]/20 text-[#38bdf8] font-medium">
+        <button onclick="switchTab('overview')" data-tab="overview" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded bg-[#0099cc]/20 text-[#0099cc] font-medium">
           <span>状态概览</span>
         </button>
-        <button onclick="switchTab('ips')" data-tab="ips" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
+        <button onclick="switchTab('ips')" data-tab="ips" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
           <span>终端列表</span>
         </button>
 
-        <!-- 折叠组 1: 网络监控 -->
         <div>
-          <button onclick="toggleMenu('grp-net', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
-            <span>网络监控</span><span class="chev text-xs transition-transform">▸</span>
+          <button onclick="toggleMenu('grp-net', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
+            <span>网络监控</span><span class="chev text-xs">▸</span>
           </button>
           <div id="grp-net" class="hidden pl-4 space-y-0.5 mt-0.5">
-            <button onclick="switchTab('interfaces')" data-tab="interfaces" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">接口状态与趋势</button>
-            <button onclick="switchTab('connections')" data-tab="connections" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">实时连接与归属地</button>
-            <button onclick="switchTab('network')" data-tab="network" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">DHCP / ARP / 路由表</button>
+            <button onclick="switchTab('interfaces')" data-tab="interfaces" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">接口状态与趋势</button>
+            <button onclick="switchTab('connections')" data-tab="connections" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">实时连接与归属地</button>
+            <button onclick="switchTab('network')" data-tab="network" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">DHCP / ARP / 路由表</button>
           </div>
         </div>
 
-        <!-- 折叠组 2: 行为审计 -->
         <div>
-          <button onclick="toggleMenu('grp-audit', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
-            <span>行为审计</span><span class="chev text-xs transition-transform">▸</span>
+          <button onclick="toggleMenu('grp-audit', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
+            <span>行为审计</span><span class="chev text-xs">▸</span>
           </button>
           <div id="grp-audit" class="hidden pl-4 space-y-0.5 mt-0.5">
-            <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">上网审计 (域名/URL)</button>
-            <button onclick="switchTab('dpi')" data-tab="dpi" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">应用流量排行</button>
+            <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">上网审计 (域名/URL)</button>
+            <button onclick="switchTab('dpi')" data-tab="dpi" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">应用流量排行</button>
           </div>
         </div>
 
-        <!-- 折叠组 3: 管控与工具 -->
         <div>
-          <button onclick="toggleMenu('grp-ctrl', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
-            <span>管控与工具</span><span class="chev text-xs transition-transform">▸</span>
+          <button onclick="toggleMenu('grp-ctrl', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
+            <span>管控与工具</span><span class="chev text-xs">▸</span>
           </button>
           <div id="grp-ctrl" class="hidden pl-4 space-y-0.5 mt-0.5">
-            <button onclick="switchTab('policy')" data-tab="policy" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">限速与 IP 黑名单</button>
-            <button onclick="switchTab('tools')" data-tab="tools" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">Torch 抓包与 Ping</button>
+            <button onclick="switchTab('policy')" data-tab="policy" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">限速与 IP 黑名单</button>
+            <button onclick="switchTab('firewall')" data-tab="firewall" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">防火墙命中监控</button>
+            <button onclick="switchTab('tools')" data-tab="tools" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">Torch 抓包与 Ping</button>
+            <button onclick="switchTab('logs')" data-tab="logs" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">路由器系统日志</button>
           </div>
         </div>
 
-        <!-- 折叠组 4: 系统设置 -->
         <div>
-          <button onclick="toggleMenu('grp-sys', this)" class="w-full flex items-center justify-between px-3 py-2 rounded text-slate-300 hover:bg-slate-800/70">
-            <span>系统设置</span><span class="chev text-xs transition-transform">▸</span>
+          <button onclick="toggleMenu('grp-sys', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
+            <span>系统设置</span><span class="chev text-xs">▸</span>
           </button>
           <div id="grp-sys" class="hidden pl-4 space-y-0.5 mt-0.5">
-            <button onclick="openSettings()" class="w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">路由器与 ADG 对接</button>
-            <button onclick="switchTab('dbstatus')" data-tab="dbstatus" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/50">DPI / Geo 数据库</button>
+            <button onclick="openSettings()" class="w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">路由器与主题/ADG</button>
+            <button onclick="switchTab('dbstatus')" data-tab="dbstatus" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10">DPI / Geo 数据库</button>
           </div>
         </div>
       </nav>
     </div>
 
-    <div class="p-3 border-t border-[#2d333d] text-[11px] text-slate-500 flex justify-between items-center">
+    <div class="p-3 border-t luci-border text-[11px] luci-txt2 flex justify-between items-center">
       <span>RouterOS API</span>
-      <span class="text-[#38bdf8]">8728 / 8729</span>
+      <button onclick="toggleThemeQuick()" id="themeToggleBtn" class="px-2 py-0.5 rounded luci-sub text-[11px]">切换白天</button>
     </div>
   </aside>
 
-  <!-- 主区域 -->
   <div class="flex-1 flex flex-col min-w-0">
-    <!-- 顶部栏：路由切换 + 公网 IP 展示 + 时间尺度 -->
+    <!-- 顶部精简栏（唯一公网 IP 展示区） -->
     <header class="luci-header px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30">
-      <div class="flex items-center gap-2.5 flex-wrap">
-        <select id="routerSelect" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs"></select>
-        <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-400">连接中...</span>
-        <!-- 公网 IP 徽章区 (填补原来空白区域) -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <select id="routerSelect" class="luci-input rounded px-2.5 py-1 text-xs"></select>
+        <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-500/15 luci-txt2">连接中...</span>
         <div id="headerWanPills" class="flex items-center gap-1.5 flex-wrap text-[11px]"></div>
-        <select onchange="switchTab(this.value)" class="md:hidden bg-[#252a33] border border-[#373f4b] rounded px-2 py-1 text-xs">
+        <select onchange="switchTab(this.value)" class="md:hidden luci-input rounded px-2 py-1 text-xs">
           <option value="overview">状态概览</option>
           <option value="ips">终端列表</option>
           <option value="interfaces">接口状态</option>
@@ -106,21 +130,23 @@
           <option value="audit">上网审计</option>
           <option value="dpi">应用排行</option>
           <option value="policy">限速黑名单</option>
+          <option value="firewall">防火墙命中</option>
           <option value="tools">Torch/Ping</option>
+          <option value="logs">系统日志</option>
         </select>
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="flex bg-[#252a33] rounded p-0.5 border border-[#373f4b]" id="rangeBar">
+        <div class="flex luci-sub rounded p-0.5" id="rangeBar">
           <button data-range="1h" class="range-btn px-2 py-0.5 text-xs rounded bg-[#0099cc] text-white font-medium">1小时</button>
-          <button data-range="6h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">6小时</button>
-          <button data-range="12h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">12小时</button>
-          <button data-range="24h" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">24小时</button>
-          <button data-range="7d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">7天</button>
-          <button data-range="15d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">15天</button>
-          <button data-range="30d" class="range-btn px-2 py-0.5 text-xs rounded text-slate-300">30天</button>
+          <button data-range="6h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">6小时</button>
+          <button data-range="12h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">12小时</button>
+          <button data-range="24h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">24小时</button>
+          <button data-range="7d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">7天</button>
+          <button data-range="15d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">15天</button>
+          <button data-range="30d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">30天</button>
         </div>
-        <button onclick="openSettings()" class="md:hidden bg-[#252a33] border border-[#373f4b] px-2 py-1 rounded text-xs">设置</button>
+        <button onclick="openSettings()" class="md:hidden luci-sub px-2 py-1 rounded text-xs">设置</button>
       </div>
     </header>
 
@@ -128,63 +154,60 @@
       <!-- 1. 状态概览 -->
       <section id="tab-overview" class="tab-panel grid grid-cols-1 xl:grid-cols-12 gap-4">
         <div class="xl:col-span-9 space-y-4">
-          <!-- 5个核心卡片 -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div class="luci-card rounded-lg p-3">
-              <div class="text-xs text-slate-400">联网状态与公网 IP</div>
-              <div id="kpiNetState" class="text-base font-bold text-emerald-400 mt-1">检测中</div>
-              <div id="kpiPublicIps" class="text-[11px] text-sky-300 font-mono mt-0.5 break-all">-</div>
+              <div class="text-xs luci-txt2">联网状态</div>
+              <div id="kpiNetState" class="text-lg font-bold text-emerald-500 mt-1">检测中</div>
+              <div id="kpiWanSummary" class="text-[11px] luci-txt2 mt-0.5 truncate">-</div>
             </div>
             <div class="luci-card rounded-lg p-3">
-              <div class="text-xs text-slate-400">活跃 APP</div>
-              <div id="kpiApps" class="text-xl font-bold text-sky-400 mt-1">0</div>
-              <div class="text-[11px] text-slate-500 mt-0.5">DPI 真实应用数</div>
+              <div class="text-xs luci-txt2">活跃 APP</div>
+              <div id="kpiApps" class="text-xl font-bold text-[#0099cc] mt-1">0</div>
+              <div class="text-[11px] luci-txt2 mt-0.5">当前/近期真实应用</div>
             </div>
             <div class="luci-card rounded-lg p-3">
-              <div class="text-xs text-slate-400">在线终端</div>
-              <div id="kpiUsers" class="text-xl font-bold text-indigo-400 mt-1">0</div>
-              <div id="kpiUsersSub" class="text-[11px] text-slate-500 mt-0.5">IPv4 / IPv6</div>
+              <div class="text-xs luci-txt2">在线终端</div>
+              <div id="kpiUsers" class="text-xl font-bold text-indigo-500 mt-1">0</div>
+              <div id="kpiUsersSub" class="text-[11px] luci-txt2 mt-0.5">IPv4 / IPv6</div>
             </div>
             <div class="luci-card rounded-lg p-3">
-              <div class="text-xs text-slate-400">活跃连接</div>
-              <div id="kpiConns" class="text-xl font-bold text-amber-400 mt-1">0</div>
-              <div class="text-[11px] text-slate-500 mt-0.5">实时并发会话</div>
+              <div class="text-xs luci-txt2">活跃连接</div>
+              <div id="kpiConns" class="text-xl font-bold text-amber-500 mt-1">0</div>
+              <div class="text-[11px] luci-txt2 mt-0.5">实时并发会话</div>
             </div>
             <div class="luci-card rounded-lg p-3">
-              <div class="text-xs text-slate-400">统计流量 (<span class="range-lbl">1小时</span>)</div>
-              <div id="kpiTotalTraffic" class="text-lg font-bold text-emerald-300 mt-1">0 B</div>
-              <div class="text-[11px] text-slate-500 mt-0.5">区间累计总流量</div>
+              <div class="text-xs luci-txt2">统计流量 (<span class="range-lbl">1小时</span>)</div>
+              <div id="kpiTotalTraffic" class="text-lg font-bold text-emerald-500 mt-1">0 B</div>
+              <div class="text-[11px] luci-txt2 mt-0.5">区间累计总流量</div>
             </div>
           </div>
 
-          <!-- 流量统计 -->
           <div class="luci-card rounded-lg p-4">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
               <div class="flex items-center gap-3">
                 <h2 class="text-sm font-semibold">流量统计</h2>
-                <select id="overviewIface" onchange="onOverviewIfaceChange()" class="bg-[#252a33] border border-[#373f4b] rounded text-xs px-2.5 py-1"></select>
-                <label class="flex items-center gap-1 text-xs text-slate-400 cursor-pointer">
-                  <input id="invertLanChk" type="checkbox" onchange="loadOverviewChart()" />
+                <select id="overviewIface" onchange="onOverviewIfaceChange()" class="luci-input rounded text-xs px-2.5 py-1"></select>
+                <label class="flex items-center gap-1 text-xs luci-txt2 cursor-pointer">
+                  <input id="invertLanChk" type="checkbox" onchange="onInvertChange()" />
                   <span>LAN视角反转</span>
                 </label>
               </div>
-              <div id="overviewRatePill" class="text-xs font-mono bg-[#252a33] px-3 py-1 rounded">
-                <span class="text-sky-400">下行 0 bps</span> · <span class="text-emerald-400">上行 0 bps</span>
+              <div id="overviewRatePill" class="text-xs font-mono luci-sub px-3 py-1 rounded">
+                <span class="text-[#0099cc]">下行 0 bps</span> · <span class="text-emerald-500">上行 0 bps</span>
               </div>
             </div>
             <div id="overviewTrafficChart" class="h-60 w-full"></div>
           </div>
 
-          <!-- 活跃 APP 图标墙 -->
+          <!-- 真实矢量图标活跃 APP 墙（含实时/总流量双字段） -->
           <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
-              <h2 class="text-sm font-semibold">活跃 APP（实时 & 近 15 分钟真实应用）</h2>
-              <span class="text-[11px] text-slate-400">点击任意 APP 查看对应连接明细</span>
+              <h2 class="text-sm font-semibold">活跃 APP</h2>
+              <span class="text-[11px] luci-txt2">点击任意 APP 查看对应连接明细（展示实时速率 / 周期总流量）</span>
             </div>
-            <div id="activeAppsWall" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 gap-2.5"></div>
+            <div id="activeAppsWall" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5"></div>
           </div>
 
-          <!-- 下方双图 -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="luci-card rounded-lg p-4">
               <h2 class="text-sm font-semibold mb-2">应用分类流量分布 (<span class="range-lbl">1小时</span>)</h2>
@@ -197,37 +220,36 @@
           </div>
         </div>
 
-        <!-- 右侧 OpenWrt 系统栏 -->
+        <!-- 右侧系统信息栏 -->
         <div class="xl:col-span-3 space-y-4">
           <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">系统信息</h3>
+            <h3 class="text-sm font-semibold border-b luci-border pb-2">系统信息</h3>
             <div class="text-xs space-y-1.5">
-              <div class="flex justify-between"><span class="text-slate-400">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
-              <div class="flex justify-between gap-2"><span class="text-slate-400 shrink-0">设备型号</span><span id="sysModel" class="truncate">-</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">架构</span><span id="sysArch">-</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">固件版本</span><span id="sysVer" class="text-[#38bdf8]">-</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">运行时间</span><span id="sysUptime">-</span></div>
+              <div class="flex justify-between"><span class="luci-txt2">主机名</span><span id="sysIdentity" class="font-medium">-</span></div>
+              <div class="flex justify-between gap-2"><span class="luci-txt2 shrink-0">设备型号</span><span id="sysModel" class="truncate">-</span></div>
+              <div class="flex justify-between"><span class="luci-txt2">架构</span><span id="sysArch">-</span></div>
+              <div class="flex justify-between"><span class="luci-txt2">固件版本</span><span id="sysVer" class="text-[#0099cc]">-</span></div>
+              <div class="flex justify-between"><span class="luci-txt2">运行时间</span><span id="sysUptime">-</span></div>
             </div>
           </div>
 
           <div class="luci-card rounded-lg p-4">
-            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2 mb-1">运行状态</h3>
+            <h3 class="text-sm font-semibold border-b luci-border pb-2 mb-1">运行状态</h3>
             <div class="grid grid-cols-2 gap-1">
               <div id="gaugeCpu" class="h-32"></div>
               <div id="gaugeMem" class="h-32"></div>
             </div>
-            <div id="sysMemDetail" class="text-center text-[11px] text-slate-400">-</div>
+            <div id="sysMemDetail" class="text-center text-[11px] luci-txt2">-</div>
           </div>
 
           <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">WAN 公网与接口速览</h3>
-            <div id="sideWanBox" class="space-y-1 text-[11px] font-mono bg-[#16191e] p-2 rounded"></div>
-            <div id="sideIfaceList" class="space-y-1.5 text-xs pt-1"></div>
+            <h3 class="text-sm font-semibold border-b luci-border pb-2">接口实时速览</h3>
+            <div id="sideIfaceList" class="space-y-1.5 text-xs"></div>
           </div>
 
           <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b border-[#2d333d] pb-2">活跃域名 (URL)</h3>
-            <div id="sideDomainFeed" class="space-y-1 text-xs max-h-52 overflow-y-auto"></div>
+            <h3 class="text-sm font-semibold border-b luci-border pb-2">活跃域名 (URL)</h3>
+            <div id="sideDomainFeed" class="space-y-1 text-xs max-h-56 overflow-y-auto"></div>
           </div>
         </div>
       </section>
@@ -238,14 +260,14 @@
           <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-sm font-semibold">在线终端实时速率 (IPv4 + IPv6)</h2>
-              <input id="ipSearch" oninput="renderLiveIPs()" placeholder="搜索 IP / 设备名 / MAC..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
+              <input id="ipSearch" oninput="renderLiveIPs()" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
             </div>
             <div class="overflow-x-auto max-h-[460px]">
               <table class="w-full text-xs text-left">
-                <thead class="text-slate-400 border-b border-[#2d333d] sticky top-0 bg-[#1e2229]">
+                <thead class="luci-txt2 border-b luci-border sticky top-0" style="background:var(--bg-card)">
                   <tr><th class="py-2">终端 IP</th><th class="py-2">设备 / 厂商</th><th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">主要应用</th><th class="py-2">操作</th></tr>
                 </thead>
-                <tbody id="allLiveIpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+                <tbody id="allLiveIpBody" class="divide-y luci-border"></tbody>
               </table>
             </div>
           </div>
@@ -254,16 +276,16 @@
             <h2 class="text-sm font-semibold mb-3">历史流量排行 (<span class="range-lbl">1小时</span>) — 点击查看趋势</h2>
             <div class="overflow-x-auto max-h-[460px]">
               <table class="w-full text-xs text-left">
-                <thead class="text-slate-400 border-b border-[#2d333d] sticky top-0 bg-[#1e2229]">
+                <thead class="luci-txt2 border-b luci-border sticky top-0" style="background:var(--bg-card)">
                   <tr><th class="py-2">IP</th><th class="py-2">设备名</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr>
                 </thead>
-                <tbody id="histIpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+                <tbody id="histIpBody" class="divide-y luci-border"></tbody>
               </table>
             </div>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-2">单终端历史曲线: <span id="selectedIpTitle" class="text-[#38bdf8]">请在上方点击任意 IP</span></h2>
+          <h2 class="text-sm font-semibold mb-2">单终端历史曲线: <span id="selectedIpTitle" class="text-[#0099cc]">请在上方点击任意 IP</span></h2>
           <div id="ipDetailChart" class="h-64 w-full"></div>
         </div>
       </section>
@@ -273,17 +295,17 @@
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <h2 class="text-sm font-semibold mb-3">全部接口状态</h2>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]">
+            <thead class="luci-txt2 border-b luci-border">
               <tr>
                 <th class="py-2">接口名</th><th class="py-2">类型</th><th class="py-2">状态</th><th class="py-2">MAC / MTU</th>
                 <th class="py-2">实时 RX</th><th class="py-2">实时 TX</th><th class="py-2">累计收发</th><th class="py-2">掉线/丢包</th><th class="py-2">操作</th>
               </tr>
             </thead>
-            <tbody id="ifaceTableBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <tbody id="ifaceTableBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
         <div class="luci-card rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-2">接口历史曲线: <span id="selectedIfaceTitle" class="text-[#38bdf8]">-</span></h2>
+          <h2 class="text-sm font-semibold mb-2">接口历史曲线: <span id="selectedIfaceTitle" class="text-[#0099cc]">-</span></h2>
           <div id="ifaceDetailChart" class="h-72 w-full"></div>
         </div>
       </section>
@@ -292,22 +314,22 @@
       <section id="tab-connections" class="tab-panel hidden space-y-4">
         <div class="luci-card rounded-lg p-3 flex flex-wrap gap-2.5 items-center justify-between">
           <div class="flex gap-2 flex-wrap">
-            <input id="connFilterIp" oninput="renderConnections()" placeholder="过滤内网 IP / 设备名..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
-            <input id="connFilterApp" oninput="renderConnections()" placeholder="过滤应用 / 分类 / 域名..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
-            <input id="connFilterIsp" oninput="renderConnections()" placeholder="过滤归属地 / 服务商..." class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterIp" oninput="renderConnections()" placeholder="过滤内网 IP / 设备名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterApp" oninput="renderConnections()" placeholder="过滤应用 / 分类 / 域名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterIsp" oninput="renderConnections()" placeholder="过滤归属地 / 服务商..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
           </div>
-          <span id="connCountLabel" class="text-xs text-slate-400">显示 0 条连接</span>
+          <span id="connCountLabel" class="text-xs luci-txt2">显示 0 条连接</span>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]">
+            <thead class="luci-txt2 border-b luci-border">
               <tr>
                 <th class="py-2">识别应用</th><th class="py-2">协议</th><th class="py-2">内网终端</th>
                 <th class="py-2">目标地址 / DNS 域名</th><th class="py-2">归属地 / 服务商 (ISP)</th>
                 <th class="py-2">下行</th><th class="py-2">上行</th><th class="py-2">累计流量</th><th class="py-2">状态</th>
               </tr>
             </thead>
-            <tbody id="connTableBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <tbody id="connTableBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
       </section>
@@ -315,30 +337,30 @@
       <!-- 5. DHCP / ARP / 路由表 -->
       <section id="tab-network" class="tab-panel hidden space-y-4">
         <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold">OpenWrt 风格网络表（DHCP 租约 / ARP / 路由表）</h2>
+          <h2 class="text-sm font-semibold">DHCP 租约 / ARP / 路由表（支持 Wake-on-LAN 网络唤醒）</h2>
           <button onclick="loadNetworkDetails()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新网络表</button>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
-            <h3 class="text-xs font-semibold text-slate-300 mb-2">DHCP 租约列表</h3>
+            <h3 class="text-xs font-semibold mb-2">DHCP 租约列表</h3>
             <table class="w-full text-xs text-left">
-              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">IP</th><th class="py-1.5">主机名</th><th class="py-1.5">MAC</th><th class="py-1.5">类型</th><th class="py-1.5">操作</th></tr></thead>
-              <tbody id="dhcpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+              <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">IP</th><th class="py-1.5">主机名</th><th class="py-1.5">MAC</th><th class="py-1.5">类型</th><th class="py-1.5">操作</th></tr></thead>
+              <tbody id="dhcpBody" class="divide-y luci-border"></tbody>
             </table>
           </div>
           <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
-            <h3 class="text-xs font-semibold text-slate-300 mb-2">ARP 邻接表</h3>
+            <h3 class="text-xs font-semibold mb-2">ARP 邻接表</h3>
             <table class="w-full text-xs text-left">
-              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">IP</th><th class="py-1.5">MAC</th><th class="py-1.5">接口</th><th class="py-1.5">状态</th></tr></thead>
-              <tbody id="arpBody" class="divide-y divide-[#2d333d]/60"></tbody>
+              <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">IP</th><th class="py-1.5">MAC</th><th class="py-1.5">接口</th><th class="py-1.5">状态</th><th class="py-1.5">唤醒</th></tr></thead>
+              <tbody id="arpBody" class="divide-y luci-border"></tbody>
             </table>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-80">
-          <h3 class="text-xs font-semibold text-slate-300 mb-2">活动路由表 (/ip/route)</h3>
+          <h3 class="text-xs font-semibold mb-2">活动路由表 (/ip/route)</h3>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">目标网段</th><th class="py-1.5">网关 / 接口</th><th class="py-1.5">路由表</th><th class="py-1.5">距离</th><th class="py-1.5">状态</th></tr></thead>
-            <tbody id="routeBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">目标网段</th><th class="py-1.5">网关 / 接口</th><th class="py-1.5">路由表</th><th class="py-1.5">距离</th><th class="py-1.5">状态</th></tr></thead>
+            <tbody id="routeBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
       </section>
@@ -348,30 +370,30 @@
         <div class="luci-card rounded-lg p-4 flex flex-wrap justify-between items-center gap-3">
           <div>
             <h2 class="text-sm font-semibold">域名访问审计记录</h2>
-            <p class="text-xs text-slate-400 mt-0.5">支持 RouterOS DNS 缓存与 AdGuard Home 实时查询同步</p>
+            <p class="text-xs luci-txt2 mt-0.5">支持 RouterOS DNS 缓存与 AdGuard Home 实时查询同步</p>
           </div>
           <div class="flex gap-2">
-            <input id="auditSearch" placeholder="搜索 IP / 域名 / 应用..." class="bg-[#252a33] border border-[#373f4b] rounded px-3 py-1 text-xs w-56" />
+            <input id="auditSearch" placeholder="搜索 IP / 域名 / 应用..." class="luci-input rounded px-3 py-1 text-xs w-56" />
             <button onclick="loadAudit()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新查询</button>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]">
+            <thead class="luci-txt2 border-b luci-border">
               <tr><th class="py-2">时间</th><th class="py-2">终端 IP</th><th class="py-2">设备名</th><th class="py-2">访问域名</th><th class="py-2">识别应用</th><th class="py-2">分类</th><th class="py-2">来源</th></tr>
             </thead>
-            <tbody id="auditBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <tbody id="auditBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- 7. 应用流量排行 -->
+      <!-- 7. 应用排行 -->
       <section id="tab-dpi" class="tab-panel hidden space-y-4">
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <h2 class="text-sm font-semibold mb-3">应用历史流量明细排行 (<span class="range-lbl">1小时</span>)</h2>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">应用 / 协议</th><th class="py-2">分类</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr></thead>
-            <tbody id="dpiRankBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">应用 / 协议</th><th class="py-2">分类</th><th class="py-2">下载量</th><th class="py-2">上传量</th><th class="py-2">总计</th></tr></thead>
+            <tbody id="dpiRankBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
       </section>
@@ -381,71 +403,99 @@
         <div class="luci-card rounded-lg p-4 space-y-3">
           <div class="flex justify-between items-center">
             <h2 class="text-sm font-semibold">终端限速策略 (Simple Queue)</h2>
-            <button onclick="loadPolicy()" class="text-xs text-[#38bdf8] hover:underline">刷新</button>
+            <button onclick="loadPolicy()" class="text-xs text-[#0099cc] hover:underline">刷新</button>
           </div>
           <div class="grid grid-cols-3 gap-2">
-            <input id="qTarget" placeholder="目标 IP (如 10.10.10.44)" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs" />
-            <input id="qLimit" placeholder="上传/下载 (如 10M/50M)" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs" />
+            <input id="qTarget" placeholder="目标 IP (如 10.10.10.44)" class="luci-input rounded px-2.5 py-1.5 text-xs" />
+            <input id="qLimit" placeholder="上传/下载 (如 10M/50M)" class="luci-input rounded px-2.5 py-1.5 text-xs" />
             <button onclick="addQueue()" class="bg-[#0099cc] text-white font-medium rounded px-3 py-1.5 text-xs">添加限速</button>
           </div>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">名称</th><th class="py-2">目标</th><th class="py-2">限速上限</th><th class="py-2">当前速率</th><th class="py-2">操作</th></tr></thead>
-            <tbody id="queueBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">名称</th><th class="py-2">目标</th><th class="py-2">限速上限</th><th class="py-2">当前速率</th><th class="py-2">操作</th></tr></thead>
+            <tbody id="queueBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
 
         <div class="luci-card rounded-lg p-4 space-y-3">
           <h2 class="text-sm font-semibold">IP 黑名单 (mikromon_blocked)</h2>
           <div class="flex gap-2">
-            <input id="blockIpInput" placeholder="输入需阻断的 IP" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs flex-1" />
-            <input id="blockCommentInput" placeholder="备注" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1.5 text-xs w-28" />
+            <input id="blockIpInput" placeholder="输入需阻断的 IP" class="luci-input rounded px-2.5 py-1.5 text-xs flex-1" />
+            <input id="blockCommentInput" placeholder="备注" class="luci-input rounded px-2.5 py-1.5 text-xs w-28" />
             <button onclick="addBlockIP()" class="bg-rose-600 text-white font-medium rounded px-3 py-1.5 text-xs">拉黑</button>
           </div>
           <table class="w-full text-xs text-left">
-            <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-2">IP</th><th class="py-2">备注</th><th class="py-2">时间</th><th class="py-2">操作</th></tr></thead>
-            <tbody id="blockBody" class="divide-y divide-[#2d333d]/60"></tbody>
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">IP</th><th class="py-2">备注</th><th class="py-2">时间</th><th class="py-2">操作</th></tr></thead>
+            <tbody id="blockBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- 9. Torch 与 Ping -->
+      <!-- 9. 防火墙规则命中 -->
+      <section id="tab-firewall" class="tab-panel hidden space-y-4">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-sm font-semibold">防火墙规则命中统计 (/ip/firewall/filter)</h2>
+            <button onclick="loadFirewallRules()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新规则统计</button>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">链 (Chain)</th><th class="py-2">动作</th><th class="py-2">规则备注</th><th class="py-2">命中数据包</th><th class="py-2">命中流量</th><th class="py-2">状态</th></tr></thead>
+            <tbody id="fwBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 10. Torch 与 Ping -->
       <section id="tab-tools" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2 luci-card rounded-lg p-4 space-y-3">
           <div class="flex flex-wrap gap-2 items-center">
             <h2 class="text-sm font-semibold mr-2">实时 Torch 抓包</h2>
-            <select id="torchIface" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs"></select>
+            <select id="torchIface" class="luci-input rounded px-2.5 py-1 text-xs"></select>
             <button onclick="runTorch()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">抓取快照</button>
-            <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="bg-[#252a33] border border-[#373f4b] px-3 py-1 rounded text-xs">开启自动刷新</button>
+            <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="luci-sub px-3 py-1 rounded text-xs">开启自动刷新</button>
           </div>
           <div class="overflow-x-auto max-h-96">
             <table class="w-full text-xs text-left">
-              <thead class="text-slate-400 border-b border-[#2d333d]"><tr><th class="py-1.5">源</th><th class="py-1.5">目标</th><th class="py-1.5">协议</th><th class="py-1.5">TX</th><th class="py-1.5">RX</th></tr></thead>
-              <tbody id="torchBody" class="divide-y divide-[#2d333d]/60"></tbody>
+              <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">源</th><th class="py-1.5">目标</th><th class="py-1.5">协议</th><th class="py-1.5">TX</th><th class="py-1.5">RX</th></tr></thead>
+              <tbody id="torchBody" class="divide-y luci-border"></tbody>
             </table>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4 space-y-3">
           <h2 class="text-sm font-semibold">路由器 Ping 诊断</h2>
           <div class="flex gap-2">
-            <input id="pingTarget" value="223.5.5.5" class="bg-[#252a33] border border-[#373f4b] rounded px-2.5 py-1 text-xs flex-1" />
+            <input id="pingTarget" value="223.5.5.5" class="luci-input rounded px-2.5 py-1 text-xs flex-1" />
             <button onclick="runPing()" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs">Ping</button>
           </div>
-          <pre id="pingResult" class="bg-[#16191e] p-2.5 rounded text-[11px] text-slate-300 overflow-x-auto max-h-80">等待执行...</pre>
+          <pre id="pingResult" class="luci-sub p-2.5 rounded text-[11px] overflow-x-auto max-h-80">等待执行...</pre>
         </div>
       </section>
 
-      <!-- 10. DPI / Geo 数据库状态 -->
+      <!-- 11. 路由器系统日志 -->
+      <section id="tab-logs" class="tab-panel hidden space-y-4">
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-sm font-semibold">路由器实时系统日志 (最近 120 条)</h2>
+            <button onclick="loadLogs()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs">刷新日志</button>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">时间</th><th class="py-1.5">主题 (Topics)</th><th class="py-1.5">日志内容</th></tr></thead>
+            <tbody id="logsBody" class="divide-y luci-border font-mono"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 12. DPI / Geo 数据库状态 -->
       <section id="tab-dbstatus" class="tab-panel hidden space-y-4">
         <div class="luci-card rounded-lg p-5 space-y-4 max-w-2xl">
           <h2 class="text-sm font-semibold">DPI 应用特征库 & Geo/ASN 数据库状态</h2>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">内置 DPI 特征</div><div id="dbSigCnt" class="text-lg font-bold text-[#38bdf8] mt-1">-</div></div>
-            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">已缓存 Geo/ASN IP</div><div id="dbGeoCnt" class="text-lg font-bold text-emerald-400 mt-1">-</div></div>
-            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">域名审计记录</div><div id="dbAuditCnt" class="text-lg font-bold text-amber-400 mt-1">-</div></div>
-            <div class="bg-[#16191e] p-3 rounded border border-[#2d333d]"><div class="text-slate-400">24h 原始采样</div><div id="dbSampleCnt" class="text-lg font-bold text-indigo-400 mt-1">-</div></div>
+            <div class="luci-sub p-3 rounded"><div class="luci-txt2">内置 DPI 特征</div><div id="dbSigCnt" class="text-lg font-bold text-[#0099cc] mt-1">-</div></div>
+            <div class="luci-sub p-3 rounded"><div class="luci-txt2">已缓存 Geo/ASN IP</div><div id="dbGeoCnt" class="text-lg font-bold text-emerald-500 mt-1">-</div></div>
+            <div class="luci-sub p-3 rounded"><div class="luci-txt2">域名审计记录</div><div id="dbAuditCnt" class="text-lg font-bold text-amber-500 mt-1">-</div></div>
+            <div class="luci-sub p-3 rounded"><div class="luci-txt2">24h 原始采样</div><div id="dbSampleCnt" class="text-lg font-bold text-indigo-500 mt-1">-</div></div>
           </div>
           <div class="flex gap-3">
-            <button onclick="loadDBStats()" class="bg-[#252a33] border border-[#373f4b] px-3 py-1.5 rounded text-xs">刷新统计</button>
+            <button onclick="loadDBStats()" class="luci-sub px-3 py-1.5 rounded text-xs">刷新统计</button>
             <button onclick="clearGeoCache()" class="bg-rose-600 text-white px-3 py-1.5 rounded text-xs">清空 Geo/ASN 缓存重抓</button>
           </div>
         </div>
@@ -453,60 +503,70 @@
     </main>
   </div>
 
-  <!-- 设置弹窗 -->
+  <!-- 设置弹窗（包含主题切换） -->
   <div id="settingsModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
     <div class="luci-card rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center">
-        <h3 class="text-base font-semibold">路由器与数据源配置</h3>
-        <button onclick="closeSettings()" class="text-slate-400 hover:text-white">✕</button>
+        <h3 class="text-base font-semibold">路由器、主题与数据源配置</h3>
+        <button onclick="closeSettings()" class="luci-txt2 hover:opacity-75">✕</button>
       </div>
+
+      <!-- 白天/黑夜主题切换 -->
+      <div class="luci-sub rounded-lg p-3 flex items-center justify-between text-xs">
+        <span class="font-medium">界面外观主题</span>
+        <div class="flex gap-2">
+          <button onclick="setTheme('dark')" id="btnThemeDark" class="px-3 py-1 rounded border luci-border">深邃黑夜</button>
+          <button onclick="setTheme('light')" id="btnThemeLight" class="px-3 py-1 rounded border luci-border">明亮白天 (LuCI)</button>
+        </div>
+      </div>
+
       <div id="routerListBox" class="space-y-2 max-h-32 overflow-y-auto"></div>
-      <div class="grid grid-cols-2 gap-3 text-xs border-t border-[#2d333d] pt-4">
+      <div class="grid grid-cols-2 gap-3 text-xs border-t luci-border pt-4">
         <input id="cfgId" type="hidden" />
         <div class="col-span-2">
-          <label class="text-slate-400">备注名称</label>
-          <input id="cfgName" value="主路由 MikroTik" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">备注名称</label>
+          <input id="cfgName" value="主路由 MikroTik" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">路由器 IP / 域名</label>
-          <input id="cfgHost" placeholder="10.10.10.2" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">路由器 IP / 域名</label>
+          <input id="cfgHost" placeholder="10.10.10.2" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">API 端口 (8728 / 8729)</label>
-          <input id="cfgPort" type="number" value="8728" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">API 端口 (8728 / 8729)</label>
+          <input id="cfgPort" type="number" value="8728" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">RouterOS 用户名</label>
-          <input id="cfgUser" value="admin" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">RouterOS 用户名</label>
+          <input id="cfgUser" value="admin" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">RouterOS 密码</label>
-          <input id="cfgPass" type="password" placeholder="留空表示不修改原密码" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">RouterOS 密码</label>
+          <input id="cfgPass" type="password" placeholder="留空表示不修改原密码" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
-        <div class="col-span-2 flex items-center gap-4 text-slate-300">
+        <div class="col-span-2 flex items-center gap-4">
           <label class="flex items-center gap-1.5"><input id="cfgTls" type="checkbox" /> 启用 API-SSL (8729)</label>
           <label class="flex items-center gap-1.5"><input id="cfgSkipVerify" type="checkbox" checked /> 忽略自签名证书校验</label>
         </div>
 
-        <div class="col-span-2 border-t border-[#2d333d] pt-3 mt-1">
-          <div class="text-[#38bdf8] font-medium">可选：对接 AdGuard Home（强烈推荐，大幅提升微信/抖音/淘宝等 App 精准度）</div>
+        <div class="col-span-2 border-t luci-border pt-3 mt-1">
+          <div class="text-[#0099cc] font-medium">可选：对接 AdGuard Home（强烈推荐，用于补全微信/抖音/淘宝等域名识别）</div>
         </div>
         <div class="col-span-2">
-          <label class="text-slate-400">AdGuard Home 地址 (如 http://10.10.10.10)</label>
-          <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">AdGuard Home 地址 (如 http://10.10.10.10)</label>
+          <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">ADG 用户名 (若无留空)</label>
-          <input id="cfgAdgUser" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">ADG 用户名 (若无留空)</label>
+          <input id="cfgAdgUser" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
         <div>
-          <label class="text-slate-400">ADG 密码 (留空不修改)</label>
-          <input id="cfgAdgPass" type="password" class="w-full bg-[#252a33] border border-[#373f4b] rounded px-3 py-1.5 mt-1 text-sm" />
+          <label class="luci-txt2">ADG 密码 (留空不修改)</label>
+          <input id="cfgAdgPass" type="password" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
         </div>
       </div>
       <div id="testResultMsg" class="text-xs hidden p-2 rounded"></div>
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="testRouter()" class="bg-[#252a33] border border-[#373f4b] px-4 py-1.5 rounded text-sm">测试连接</button>
+        <button onclick="testRouter()" class="luci-sub px-4 py-1.5 rounded text-sm">测试连接</button>
         <button onclick="saveRouter()" class="bg-[#0099cc] text-white font-medium px-4 py-1.5 rounded text-sm">保存配置</button>
       </div>
     </div>
@@ -516,9 +576,86 @@
 let currentRouterId = 0;
 let currentRange = '1h';
 let lastSnap = null;
+let appTotalBytesMap = {};
 let selectedIface = '';
 let selectedIp = '';
 let torchTimer = null;
+
+// 真实 iOS 风格矢量品牌 SVG 图标库（零外部依赖，高清晰度）
+function getAppSVG(app, color) {
+  const mk = (bg, inner) => `<svg viewBox="0 0 40 40" class="w-9 h-9 rounded-xl shadow-sm shrink-0"><rect width="40" height="40" rx="10" fill="${bg}"/>${inner}</svg>`;
+  const icons = {
+    '微信': mk('#07C160', '<circle cx="16" cy="18" r="7" fill="#fff"/><circle cx="25" cy="23" r="5.5" fill="#fff" opacity=".95"/><circle cx="13.5" cy="17" r="1" fill="#07C160"/><circle cx="18.5" cy="17" r="1" fill="#07C160"/>'),
+    'QQ': mk('#12B7F5', '<ellipse cx="20" cy="20" rx="8" ry="10" fill="#1e293b"/><ellipse cx="20" cy="23" rx="6" ry="5.5" fill="#fff"/><ellipse cx="20" cy="16" rx="2.5" ry="1.2" fill="#f59e0b"/><path d="M12 22c3-2 13-2 16 0v2.5c-3-1.5-13-1.5-16 0z" fill="#ef4444"/>'),
+    '抖音': mk('#161823', '<path d="M23 9v14.5a4.5 4.5 0 1 1-3.5-4.4V15a8.5 8.5 0 1 0 7.5 8.5V16c2 1.4 4.2 2 6 2v-3.8c-3-.2-5.5-2.3-6.2-5.2H23z" fill="#25F4EE"/><path d="M21.5 10v14.5a4.5 4.5 0 1 1-3.5-4.4V16a8.5 8.5 0 1 0 7.5 8.5V17c2 1.4 4.2 2 6 2v-3.8c-3-.2-5.5-2.3-6.2-5.2h-3.8z" fill="#FE2C55" opacity=".9"/>'),
+    '哔哩哔哩': mk('#FB7299', '<path d="M14 10l3 3.5h6L26 10" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="9" y="13.5" width="22" height="16" rx="4" fill="#fff"/><path d="M14 20l3 1.5M26 20l-3 1.5" stroke="#FB7299" stroke-width="2" stroke-linecap="round"/>'),
+    '微博': mk('#E6162D', '<path d="M18 28c-5.5 0-9-2.7-9-6 0-3 3.5-7.5 8.5-7.5 2 0 3 .8 2.5 2.5-.3 1 1 1.2 2.2.8 1.8-.6 3.8.5 3.8 3.2 0 4-4 7-8 7z" fill="#fff"/><circle cx="17" cy="22.5" r="2.2" fill="#1e293b"/><path d="M25 11c3.5.3 6 2.8 6.3 6.2M24.5 14.5c1.8.2 3.2 1.6 3.4 3.4" stroke="#FCD34D" stroke-width="2" fill="none" stroke-linecap="round"/>'),
+    '淘宝': mk('#FF5000', '<text x="20" y="27" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">淘</text>'),
+    '天猫': mk('#FF0036', '<path d="M11 13l4 4h10l4-4v15H11z" fill="#fff"/><circle cx="16" cy="21" r="1.5" fill="#FF0036"/><circle cx="24" cy="21" r="1.5" fill="#FF0036"/>'),
+    '支付宝': mk('#1677FF', '<text x="20" y="27" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">支</text>'),
+    '京东': mk('#E1251B', '<text x="20" y="26.5" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">JD</text>'),
+    '拼多多': mk('#E02E24', '<text x="20" y="27" text-anchor="middle" fill="#fff" font-size="19" font-weight="bold">拼</text>'),
+    '美团': mk('#FFC300', '<text x="20" y="26.5" text-anchor="middle" fill="#1e293b" font-size="17" font-weight="bold">美团</text>'),
+    '小红书': mk('#FF2442', '<text x="20" y="24.5" text-anchor="middle" fill="#fff" font-size="11.5" font-weight="bold">小红书</text>'),
+    '爱奇艺': mk('#00BE06', '<text x="20" y="25.5" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">iQIYI</text>'),
+    '腾讯视频': mk('#FF7A00', '<polygon points="15,12 29,20 15,28" fill="#fff"/><polygon points="17,15.5 25,20 17,24.5" fill="#00A0E9"/>'),
+    '优酷': mk('#00A0E9', '<circle cx="20" cy="20" r="9" fill="#fff"/><polygon points="18,15.5 25,20 18,24.5" fill="#FF2D55"/>'),
+    '工商银行': mk('#C8161D', '<circle cx="20" cy="20" r="10" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="16.5" y="16.5" width="7" height="7" fill="none" stroke="#fff" stroke-width="2"/>'),
+    '招商银行': mk('#C8161D', '<circle cx="20" cy="20" r="9.5" fill="none" stroke="#fff" stroke-width="2.5"/><text x="20" y="24" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">招</text>'),
+    '萤石云': mk('#2563EB', '<circle cx="15" cy="15" r="4" fill="#38bdf8"/><circle cx="25" cy="15" r="4" fill="#f43f5e"/><circle cx="15" cy="25" r="4" fill="#facc15"/><circle cx="25" cy="25" r="4" fill="#4ade80"/>'),
+    '网易大神': mk('#1E293B', '<text x="20" y="24.5" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">大神</text>'),
+    '网易云音乐': mk('#D43C33', '<circle cx="20" cy="20" r="9" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M22 14v9a3 3 0 1 1-2-2.8V14l5-1.5" stroke="#fff" stroke-width="2" fill="none"/>'),
+    'AppStore': mk('#0D84FF', '<path d="M20 10l-7.5 16M20 10l7.5 16M11 22.5h18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>'),
+    'Apple': mk('#334155', '<path d="M24.2 21c0-2.7 2.2-4 2.3-4.1-1.3-1.8-3.2-2.1-3.9-2.1-1.6-.2-3.2 1-4 1s-2.1-1-3.5-1c-1.8 0-3.5 1.1-4.4 2.7-1.9 3.3-.5 8.1 1.3 10.8.9 1.3 2 2.8 3.4 2.7 1.3-.1 1.9-.9 3.5-.9 1.6 0 2.1.9 3.5.9 1.5 0 2.4-1.3 3.3-2.6 1-1.5 1.4-2.9 1.5-3-.1-.1-3-1.2-3-4.4zM21.5 12.8c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.6.7-1.2 2-1 3.1 1.1.1 2.2-.5 2.9-1.4z" fill="#fff"/>'),
+    'iCloud': mk('#3693F3', '<path d="M13 26h14.5a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4.5 4.5 0 0 0 13 26z" fill="#fff"/>'),
+    'Google': mk('#FFFFFF', '<text x="20" y="27" text-anchor="middle" fill="#4285F4" font-size="21" font-weight="bold">G</text>'),
+    'YouTube': mk('#FF0000', '<rect x="8" y="12" width="24" height="16" rx="4" fill="#fff"/><polygon points="18,16 25,20 18,24" fill="#FF0000"/>'),
+    'Telegram': mk('#26A5E4', '<path d="M29 11L9.5 18.6c-1.3.5-1.3 1.3-.2 1.6l5 1.6 11.5-7.3c.5-.3 1-.1.6.2L17 23.2l-.4 5.2c.6 0 .8-.3 1.1-.6l2.6-2.5 5.4 4c1 .5 1.7.3 2-.9L30.8 12.4c.4-1.4-.5-2-1.8-1.4z" fill="#fff"/>'),
+    'GitHub': mk('#24292F', '<path d="M20 9a11 11 0 0 0-3.5 21.4c.5.1.7-.2.7-.5v-1.8c-3 .6-3.7-1.4-3.7-1.4-.5-1.2-1.2-1.6-1.2-1.6-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.7 2.6 1.2 3.2.9.1-.7.4-1.2.7-1.5-2.4-.3-5-1.2-5-5.4 0-1.2.4-2.2 1.1-3-.1-.3-.5-1.4.1-2.9 0 0 .9-.3 3 1.1a10.4 10.4 0 0 1 5.5 0c2.1-1.4 3-1.1 3-1.1.6 1.5.2 2.6.1 2.9.7.8 1.1 1.8 1.1 3 0 4.2-2.6 5.1-5 5.4.4.3.7 1 .7 2v3c0 .3.2.6.7.5A11 11 0 0 0 20 9z" fill="#fff"/>'),
+    'Cloudflare': mk('#F38020', '<path d="M12 26h16.5a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.7-1.2A4 4 0 0 0 12 26z" fill="#fff"/>'),
+    '百度': mk('#2932E1', '<circle cx="15" cy="14" r="2.2" fill="#fff"/><circle cx="25" cy="14" r="2.2" fill="#fff"/><circle cx="11.5" cy="20" r="2.2" fill="#fff"/><circle cx="28.5" cy="20" r="2.2" fill="#fff"/><path d="M14.5 26c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5-2.5 3-5.5 3-5.5 0-5.5-3z" fill="#fff"/>'),
+    '阿里云': mk('#FF6A00', '<text x="20" y="25.5" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">[-]</text>'),
+    '腾讯云': mk('#0052D9', '<path d="M12 25h16a4 4 0 0 0 .3-8 5.5 5.5 0 0 0-10.6-1 4 4 0 0 0-5.7 9z" fill="#fff"/>'),
+    'Steam': mk('#1B2838', '<circle cx="23" cy="16" r="5" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="14" cy="25" r="3.5" fill="none" stroke="#fff" stroke-width="2.5"/><line x1="16.5" y1="22.5" x2="20" y2="18.5" stroke="#fff" stroke-width="3"/>'),
+    '米家': mk('#FF6700', '<path d="M11 27V14h10.5c3 0 4.5 1.5 4.5 4.5V27h-3.5v-8c0-1.2-.6-1.8-1.8-1.8H14.5V27H11zm5.5 0v-6.5h3.2V27h-3.2zm11 0V14H31v13h-3.5z" fill="#fff"/>'),
+    '钉钉': mk('#0089FF', '<path d="M12 12l17 4.5-3 6-4-1.5 3 4-5.5 4.5 1-5-5.5-1.5z" fill="#fff"/>'),
+    'OpenAI': mk('#10A37F', '<circle cx="20" cy="20" r="8" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="10 4"/>'),
+    'Microsoft': mk('#1E293B', '<rect x="10" y="10" width="9" height="9" fill="#f25022"/><rect x="21" y="10" width="9" height="9" fill="#7fba00"/><rect x="10" y="21" width="9" height="9" fill="#00a4ef"/><rect x="21" y="21" width="9" height="9" fill="#ffb900"/>'),
+    'WireGuard VPN': mk('#88171A', '<path d="M20 9l9 3.5v7c0 5.5-3.8 10.2-9 11.8-5.2-1.6-9-6.3-9-11.8v-7L20 9z" fill="#fff" opacity=".92"/><path d="M16 19l4 4 5-6" stroke="#88171A" stroke-width="2.5" fill="none" stroke-linecap="round"/>'),
+    'BitTorrent/P2P': mk('#7E22CE', '<path d="M27 21a7 7 0 1 1-7-7c3 0 5.5 1.5 7 4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="20" cy="21" r="2.2" fill="#fff"/>'),
+    'RDP 远程桌面': mk('#0F766E', '<rect x="9" y="11" width="22" height="14" rx="2" fill="#fff"/><rect x="16" y="26" width="8" height="2.5" fill="#fff"/>'),
+    'SSH': mk('#059669', '<text x="20" y="25.5" text-anchor="middle" fill="#fff" font-size="14" font-family="monospace" font-weight="bold">&gt;_</text>'),
+  };
+  if (icons[app]) return icons[app];
+  const label = (app || 'A').slice(0, 2);
+  return mk(color || '#0099cc', `<text x="20" y="25" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">${label}</text>`);
+}
+
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('mikromon_theme', t);
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.textContent = t === 'dark' ? '切换白天' : '切换黑夜';
+  const dBtn = document.getElementById('btnThemeDark');
+  const lBtn = document.getElementById('btnThemeLight');
+  if (dBtn && lBtn) {
+    dBtn.className = `px-3 py-1 rounded border luci-border ${t==='dark'?'bg-[#0099cc] text-white':''}`;
+    lBtn.className = `px-3 py-1 rounded border luci-border ${t==='light'?'bg-[#0099cc] text-white':''}`;
+  }
+  if (lastSnap) {
+    refreshHistoryAll();
+    pollSnapshot();
+  }
+}
+function setTheme(t) { applyTheme(t); }
+function toggleThemeQuick() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
 
 const chartOverview = echarts.init(document.getElementById('overviewTrafficChart'));
 const chartAppCat = echarts.init(document.getElementById('appCatChart'));
@@ -563,31 +700,36 @@ function fmtTime(ts) {
 }
 
 function renderTrafficChart(chart, points, invert=false) {
+  const txt2 = getCssVar('--text-2');
+  const gridLine = getCssVar('--grid-line');
   const rxArr = points.map(p => invert ? p.tx_bps : p.rx_bps);
   const txArr = points.map(p => invert ? p.rx_bps : p.tx_bps);
   chart.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', formatter: params => params.map(p => `${p.seriesName}: <b>${fmtBps(p.value)}</b>`).join('<br/>') },
-    legend: { data: ['下行 (下载)', '上行 (上传)'], textStyle: { color: '#94a3b8' }, top: 0 },
+    legend: { data: ['下行 (下载)', '上行 (上传)'], textStyle: { color: txt2 }, top: 0 },
     grid: { left: 60, right: 15, top: 30, bottom: 24 },
-    xAxis: { type: 'category', data: points.map(p => fmtTime(p.ts)), axisLabel: { color: '#64748b', fontSize: 10 } },
-    yAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: '#262b33' } } },
+    xAxis: { type: 'category', data: points.map(p => fmtTime(p.ts)), axisLabel: { color: txt2, fontSize: 10 } },
+    yAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: gridLine } } },
     series: [
-      { name: '下行 (下载)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#38bdf8' }, itemStyle: { color: '#38bdf8' }, data: rxArr },
-      { name: '上行 (上传)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, data: txArr }
+      { name: '下行 (下载)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#0099cc' }, itemStyle: { color: '#0099cc' }, data: rxArr },
+      { name: '上行 (上传)', type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#10b981' }, itemStyle: { color: '#10b981' }, data: txArr }
     ]
   });
 }
 
 function renderGauge(chart, title, val, color) {
+  const txt1 = getCssVar('--text-1');
+  const txt2 = getCssVar('--text-2');
+  const track = getCssVar('--border');
   chart.setOption({
     series: [{
       type: 'gauge', startAngle: 210, endAngle: -30, min: 0, max: 100,
       radius: '92%', progress: { show: true, width: 7, itemStyle: { color } },
-      axisLine: { lineStyle: { width: 7, color: [[1, '#2d333d']] } },
+      axisLine: { lineStyle: { width: 7, color: [[1, track]] } },
       pointer: { show: false }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false },
-      title: { offsetCenter: [0, '68%'], fontSize: 11, color: '#94a3b8' },
-      detail: { offsetCenter: [0, '5%'], fontSize: 17, fontWeight: 'bold', color: '#f1f5f9', formatter: '{value}%' },
+      title: { offsetCenter: [0, '68%'], fontSize: 11, color: txt2 },
+      detail: { offsetCenter: [0, '5%'], fontSize: 17, fontWeight: 'bold', color: txt1, formatter: '{value}%' },
       data: [{ value: Number(val || 0).toFixed(0), name: title }]
     }]
   });
@@ -599,13 +741,15 @@ function switchTab(name) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     const active = b.dataset.tab === name;
     b.classList.toggle('bg-[#0099cc]/20', active);
-    b.classList.toggle('text-[#38bdf8]', active);
+    b.classList.toggle('text-[#0099cc]', active);
     b.classList.toggle('font-medium', active);
   });
   if (name === 'policy') loadPolicy();
   if (name === 'ips') loadHistIPs();
   if (name === 'audit') loadAudit();
   if (name === 'network') loadNetworkDetails();
+  if (name === 'firewall') loadFirewallRules();
+  if (name === 'logs') loadLogs();
   if (name === 'dbstatus') loadDBStats();
   if (name === 'interfaces' && selectedIface) loadIfaceDetailChart(selectedIface);
   setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
@@ -622,10 +766,10 @@ document.querySelectorAll('.range-btn').forEach(btn => {
     currentRange = btn.dataset.range;
     document.querySelectorAll('.range-btn').forEach(b => {
       b.classList.remove('bg-[#0099cc]', 'text-white', 'font-medium');
-      b.classList.add('text-slate-300');
+      b.classList.add('luci-txt2');
     });
     btn.classList.add('bg-[#0099cc]', 'text-white', 'font-medium');
-    btn.classList.remove('text-slate-300');
+    btn.classList.remove('luci-txt2');
     document.querySelectorAll('.range-lbl').forEach(el => el.textContent = btn.textContent);
     refreshHistoryAll();
   });
@@ -647,11 +791,11 @@ async function loadRouters() {
   sel.onchange = () => { currentRouterId = Number(sel.value); pollSnapshot(); refreshHistoryAll(); };
 
   document.getElementById('routerListBox').innerHTML = list.map(r => `
-    <div class="flex justify-between items-center bg-[#252a33] px-3 py-2 rounded text-xs">
-      <span><b>${r.name}</b> — ${r.host}:${r.port} ${r.adg_url ? '<span class="text-emerald-400">+ADG</span>' : ''}</span>
+    <div class="flex justify-between items-center luci-sub px-3 py-2 rounded text-xs">
+      <span><b>${r.name}</b> — ${r.host}:${r.port} ${r.adg_url ? '<span class="text-emerald-500">+ADG</span>' : ''}</span>
       <div class="space-x-2">
-        <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-[#38bdf8] hover:underline">编辑</button>
-        <button onclick="deleteRouter(${r.id})" class="text-rose-400 hover:underline">删除</button>
+        <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-[#0099cc] hover:underline">编辑</button>
+        <button onclick="deleteRouter(${r.id})" class="text-rose-500 hover:underline">删除</button>
       </div>
     </div>
   `).join('');
@@ -666,29 +810,27 @@ async function pollSnapshot() {
     const badge = document.getElementById('statusBadge');
     const kpiNet = document.getElementById('kpiNetState');
     if (snap.online) {
-      badge.className = 'px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400';
+      badge.className = 'px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-500';
       badge.textContent = `● 在线 (${snap.system.identity || 'MikroTik'})`;
       kpiNet.textContent = '已联网';
-      kpiNet.className = 'text-base font-bold text-emerald-400 mt-1';
+      kpiNet.className = 'text-lg font-bold text-emerald-500 mt-1';
     } else {
-      badge.className = 'px-2 py-0.5 rounded text-xs bg-rose-500/20 text-rose-400';
+      badge.className = 'px-2 py-0.5 rounded text-xs bg-rose-500/20 text-rose-500';
       badge.textContent = `● 离线: ${snap.last_error || '未连接'}`;
       kpiNet.textContent = '离线';
-      kpiNet.className = 'text-base font-bold text-rose-400 mt-1';
+      kpiNet.className = 'text-lg font-bold text-rose-500 mt-1';
     }
 
-    // 渲染公网 IP
+    // 顶部唯一展示公网 IPv4 / IPv6
     const wans = snap.wan_ips || [];
     document.getElementById('headerWanPills').innerHTML = wans.map(w => `
-      <span class="px-2 py-0.5 rounded bg-[#252a33] border border-[#373f4b] font-mono">
-        <span class="text-slate-400">${w.interface}:</span>
-        <span class="${w.version === 6 ? 'text-purple-300' : 'text-sky-300'}">${w.address}</span>
+      <span class="px-2 py-0.5 rounded luci-sub font-mono">
+        <span class="luci-txt2">${w.interface}:</span>
+        <span class="${w.version === 6 ? 'text-purple-400' : 'text-[#0099cc]'}">${w.address}</span>
       </span>
     `).join('');
-    document.getElementById('kpiPublicIps').textContent = wans.filter(w => w.version === 4).map(w => w.address).join(' / ') || '-';
-    document.getElementById('sideWanBox').innerHTML = wans.length ? wans.map(w => `
-      <div class="flex justify-between gap-2"><span class="text-slate-400 truncate">${w.interface} (v${w.version})</span><span class="text-sky-300 truncate">${w.address}</span></div>
-    `).join('') : '<div class="text-slate-500">未检测到公网 IP</div>';
+    const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
+    document.getElementById('kpiWanSummary').textContent = wanNames || '外网正常';
 
     if (snap.system) {
       document.getElementById('sysIdentity').textContent = snap.system.identity || '-';
@@ -696,8 +838,8 @@ async function pollSnapshot() {
       document.getElementById('sysArch').textContent = snap.system.architecture || '-';
       document.getElementById('sysVer').textContent = `RouterOS ${snap.system.version || ''}`;
       document.getElementById('sysUptime').textContent = snap.system.uptime || '-';
-      renderGauge(chartGaugeCpu, 'CPU', snap.system.cpu_load, '#38bdf8');
-      renderGauge(chartGaugeMem, '内存', snap.system.mem_usage_pct, '#34d399');
+      renderGauge(chartGaugeCpu, 'CPU', snap.system.cpu_load, '#0099cc');
+      renderGauge(chartGaugeMem, '内存', snap.system.mem_usage_pct, '#10b981');
       document.getElementById('sysMemDetail').textContent = `${fmtBytes(snap.system.total_mem - snap.system.free_mem)} / ${fmtBytes(snap.system.total_mem)}`;
     }
 
@@ -721,47 +863,51 @@ async function pollSnapshot() {
       const inv = document.getElementById('invertLanChk').checked;
       const dl = inv ? activeIf.tx_bps : activeIf.rx_bps;
       const ul = inv ? activeIf.rx_bps : activeIf.tx_bps;
-      document.getElementById('overviewRatePill').innerHTML = `<span class="text-sky-400">下行 ${fmtBps(dl)}</span> · <span class="text-emerald-400">上行 ${fmtBps(ul)}</span>`;
+      document.getElementById('overviewRatePill').innerHTML = `<span class="text-[#0099cc]">下行 ${fmtBps(dl)}</span> · <span class="text-emerald-500">上行 ${fmtBps(ul)}</span>`;
     }
 
-    // 真实活跃 APP 徽章墙
-    document.getElementById('activeAppsWall').innerHTML = apps.length ? apps.slice(0, 16).map(a => `
-      <button onclick="jumpAppFilter('${a.app}')" class="bg-[#252a33] hover:bg-[#2d333d] border border-[#373f4b] rounded-lg p-2.5 flex flex-col items-center text-center transition">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow" style="background:${a.color}25; border:1px solid ${a.color}66">${a.icon || '📱'}</div>
-        <div class="text-xs font-medium mt-1.5 truncate w-full">${a.app}</div>
-        <div class="text-[10px] ${a.rx_bps+a.tx_bps > 0 ? 'text-sky-300' : 'text-slate-500'} font-mono mt-0.5">
-          ${a.rx_bps+a.tx_bps > 0 ? fmtBps(a.rx_bps + a.tx_bps) : '近期活跃'}
+    // 真实矢量图标活跃 APP 墙（含 实时速率 / 周期总流量）
+    document.getElementById('activeAppsWall').innerHTML = apps.length ? apps.slice(0, 18).map(a => {
+      const liveSpeed = a.rx_bps + a.tx_bps;
+      const totBytes = appTotalBytesMap[a.app] || 0;
+      return `
+      <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
+        ${getAppSVG(a.app, a.color)}
+        <div class="text-xs font-semibold mt-1.5 truncate w-full">${a.app}</div>
+        <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
+          <div class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">实时: ${fmtBps(liveSpeed)}</div>
+          <div class="luci-txt2">总计: ${fmtBytes(totBytes)}</div>
         </div>
-      </button>
-    `).join('') : '<div class="col-span-full text-xs text-slate-500 py-4 text-center">正在识别真实应用（若内网走旁路 AdGuard Home，请点击左下角设置对接 ADG 以获得 100% App 识别率）</div>';
+      </button>`;
+    }).join('') : '<div class="col-span-full text-xs luci-txt2 py-4 text-center">正在识别真实应用...</div>';
 
-    document.getElementById('sideIfaceList').innerHTML = ifaces.filter(i => !i.disabled).slice(0, 6).map(i => `
+    document.getElementById('sideIfaceList').innerHTML = ifaces.filter(i => !i.disabled).slice(0, 7).map(i => `
       <div class="flex justify-between items-center">
-        <span class="flex items-center gap-1.5 truncate"><span class="w-1.5 h-1.5 rounded-full ${i.running ? 'bg-emerald-400' : 'bg-rose-400'}"></span>${i.name}</span>
-        <span class="font-mono text-[11px] text-slate-400">↓${fmtBps(i.rx_bps)}</span>
+        <span class="flex items-center gap-1.5 truncate"><span class="w-1.5 h-1.5 rounded-full ${i.running ? 'bg-emerald-500' : 'bg-rose-500'}"></span>${i.name}</span>
+        <span class="font-mono text-[11px] luci-txt2">↓${fmtBps(i.rx_bps)}</span>
       </div>
     `).join('');
 
     const doms = snap.recent_domains || [];
     document.getElementById('sideDomainFeed').innerHTML = doms.length ? doms.slice(0, 20).map(d => `
-      <div class="flex justify-between items-center gap-2 border-b border-[#2d333d]/60 pb-1">
-        <span class="truncate text-slate-300" title="${d.domain}">${d.domain}</span>
-        <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-[#252a33] text-sky-300">${d.app}</span>
+      <div class="flex justify-between items-center gap-2 border-b luci-border pb-1">
+        <span class="truncate" title="${d.domain}">${d.domain}</span>
+        <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded luci-sub text-[#0099cc]">${d.app}</span>
       </div>
-    `).join('') : '<div class="text-slate-500">暂无域名记录</div>';
+    `).join('') : '<div class="luci-txt2">暂无域名记录</div>';
 
     document.getElementById('ifaceTableBody').innerHTML = ifaces.map(i => `
-      <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIfaceDetailChart('${i.name}')">
-        <td class="py-2 font-medium text-sky-300">${i.name}</td>
-        <td class="py-2 text-slate-400">${i.type}</td>
-        <td class="py-2">${i.disabled ? '<span class="text-slate-500">禁用</span>' : (i.running ? '<span class="text-emerald-400">UP</span>' : '<span class="text-rose-400">DOWN</span>')}</td>
-        <td class="py-2 font-mono text-slate-400">${i.mac_address || '-'} / ${i.mtu || '-'}</td>
-        <td class="py-2 text-sky-400">${fmtBps(i.rx_bps)}</td>
-        <td class="py-2 text-emerald-400">${fmtBps(i.tx_bps)}</td>
-        <td class="py-2 text-slate-300">↓${fmtBytes(i.rx_bytes)} / ↑${fmtBytes(i.tx_bytes)}</td>
-        <td class="py-2 text-slate-400">${i.link_downs} / ${i.rx_drops + i.tx_drops}</td>
+      <tr class="luci-tr cursor-pointer" onclick="loadIfaceDetailChart('${i.name}')">
+        <td class="py-2 font-medium text-[#0099cc]">${i.name}</td>
+        <td class="py-2 luci-txt2">${i.type}</td>
+        <td class="py-2">${i.disabled ? '<span class="luci-txt2">禁用</span>' : (i.running ? '<span class="text-emerald-500">UP</span>' : '<span class="text-rose-500">DOWN</span>')}</td>
+        <td class="py-2 font-mono luci-txt2">${i.mac_address || '-'} / ${i.mtu || '-'}</td>
+        <td class="py-2 text-[#0099cc]">${fmtBps(i.rx_bps)}</td>
+        <td class="py-2 text-emerald-500">${fmtBps(i.tx_bps)}</td>
+        <td class="py-2">↓${fmtBytes(i.rx_bytes)} / ↑${fmtBytes(i.tx_bytes)}</td>
+        <td class="py-2 luci-txt2">${i.link_downs} / ${i.rx_drops + i.tx_drops}</td>
         <td class="py-2" onclick="event.stopPropagation()">
-          <button onclick="toggleIface('${i.name}', ${i.disabled})" class="px-2 py-0.5 rounded text-xs ${i.disabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">${i.disabled ? '启用' : '禁用'}</button>
+          <button onclick="toggleIface('${i.name}', ${i.disabled})" class="px-2 py-0.5 rounded text-xs ${i.disabled ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}">${i.disabled ? '启用' : '禁用'}</button>
         </td>
       </tr>
     `).join('');
@@ -776,14 +922,15 @@ function renderLiveIPs() {
   const kw = (document.getElementById('ipSearch').value || '').trim().toLowerCase();
   const rows = lastSnap.live_ips.filter(ip => !kw || ip.ip.toLowerCase().includes(kw) || (ip.host_name||'').toLowerCase().includes(kw) || (ip.mac||'').toLowerCase().includes(kw));
   document.getElementById('allLiveIpBody').innerHTML = rows.map(ip => `
-    <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
-      <td class="py-2 font-mono text-sky-300">${ip.ip} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-300">v6</span>' : ''}</td>
-      <td class="py-2"><div>${ip.host_name || '-'} ${ip.vendor ? `<span class="text-[10px] text-slate-400">(${ip.vendor})</span>`:''}</div><div class="text-[10px] text-slate-500 font-mono">${ip.mac || ''}</div></td>
-      <td class="py-2 text-sky-400">${fmtBps(ip.rx_bps)}</td>
-      <td class="py-2 text-emerald-400">${fmtBps(ip.tx_bps)}</td>
-      <td class="py-2"><span class="px-1.5 py-0.5 rounded bg-[#252a33]">${ip.top_app || '-'}</span></td>
-      <td class="py-2" onclick="event.stopPropagation()">
-        <button onclick="quickBlock('${ip.ip}')" class="text-rose-400 hover:underline">拉黑</button>
+    <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
+      <td class="py-2 font-mono text-[#0099cc]">${ip.ip} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-400">v6</span>' : ''}</td>
+      <td class="py-2"><div>${ip.host_name || '-'} ${ip.vendor ? `<span class="text-[10px] luci-txt2">(${ip.vendor})</span>`:''}</div><div class="text-[10px] luci-txt2 font-mono">${ip.mac || ''}</div></td>
+      <td class="py-2 text-[#0099cc]">${fmtBps(ip.rx_bps)}</td>
+      <td class="py-2 text-emerald-500">${fmtBps(ip.tx_bps)}</td>
+      <td class="py-2"><span class="px-1.5 py-0.5 rounded luci-sub">${ip.top_app || '-'}</span></td>
+      <td class="py-2 space-x-2" onclick="event.stopPropagation()">
+        ${ip.mac ? `<button onclick="wakeMac('${ip.mac}')" class="text-[#0099cc] hover:underline">唤醒</button>` : ''}
+        <button onclick="quickBlock('${ip.ip}')" class="text-rose-500 hover:underline">拉黑</button>
       </td>
     </tr>
   `).join('');
@@ -793,11 +940,15 @@ function syncIfaceSelects(ifaces) {
   const ov = document.getElementById('overviewIface');
   const tc = document.getElementById('torchIface');
   if (ov.options.length === ifaces.length && ifaces.length > 0) return;
-  const oldOv = ov.value;
+  const savedIface = localStorage.getItem('mikromon_iface');
+  const savedInvert = localStorage.getItem('mikromon_invert');
+  const oldOv = ov.value || savedIface;
   ov.innerHTML = ''; tc.innerHTML = '';
   ifaces.forEach(i => { ov.add(new Option(i.name, i.name)); tc.add(new Option(i.name, i.name)); });
-  if (oldOv) ov.value = oldOv;
-  else {
+  if (oldOv && ifaces.some(x => x.name === oldOv)) {
+    ov.value = oldOv;
+    if (savedInvert !== null) document.getElementById('invertLanChk').checked = (savedInvert === 'true');
+  } else {
     const wan = ifaces.find(x => x.running && (x.type === 'pppoe-out' || /wan|pppoe/i.test(x.name)))
              || ifaces.find(x => x.running && !/bridge|lan|lo|wireguard/i.test(x.name))
              || ifaces[0];
@@ -805,13 +956,21 @@ function syncIfaceSelects(ifaces) {
   }
   if (!selectedIface && ov.value) {
     selectedIface = ov.value;
-    onOverviewIfaceChange();
+    loadOverviewChart();
   }
 }
 
 function onOverviewIfaceChange() {
   const name = document.getElementById('overviewIface').value;
-  document.getElementById('invertLanChk').checked = /bridge|lan|home|iot/i.test(name);
+  localStorage.setItem('mikromon_iface', name);
+  const inv = /bridge|lan|home|iot/i.test(name);
+  document.getElementById('invertLanChk').checked = inv;
+  localStorage.setItem('mikromon_invert', String(inv));
+  loadOverviewChart();
+}
+
+function onInvertChange() {
+  localStorage.setItem('mikromon_invert', String(document.getElementById('invertLanChk').checked));
   loadOverviewChart();
 }
 
@@ -828,16 +987,16 @@ function renderConnections() {
   });
   document.getElementById('connCountLabel').textContent = `显示 ${filtered.length} 条连接`;
   document.getElementById('connTableBody').innerHTML = filtered.slice(0, 200).map(c => `
-    <tr class="hover:bg-slate-800/40">
-      <td class="py-1.5"><span class="px-2 py-0.5 rounded font-medium text-white text-[11px]" style="background:${c.color || '#0099cc'}">${c.icon || ''} ${c.app}</span></td>
-      <td class="py-1.5 uppercase text-slate-400">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
-      <td class="py-1.5 font-mono"><div>${c.client_ip}:${c.client_port}</div><div class="text-[10px] text-slate-400">${c.host_name || ''}</div></td>
-      <td class="py-1.5 font-mono"><div>${c.remote_ip}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-300">${c.domain}</div>` : ''}</td>
-      <td class="py-1.5"><div>${c.location || '-'}</div><div class="text-[10px] text-sky-300">${c.isp || ''}</div></td>
-      <td class="py-1.5 text-sky-400">${fmtBps(c.rx_bps)}</td>
-      <td class="py-1.5 text-emerald-400">${fmtBps(c.tx_bps)}</td>
-      <td class="py-1.5 text-slate-300">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
-      <td class="py-1.5 text-slate-400">${c.tcp_state || c.timeout}</td>
+    <tr class="luci-tr">
+      <td class="py-1.5"><span class="px-2 py-0.5 rounded font-medium text-white text-[11px]" style="background:${c.color || '#0099cc'}">${c.app}</span></td>
+      <td class="py-1.5 uppercase luci-txt2">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
+      <td class="py-1.5 font-mono"><div>${c.client_ip}:${c.client_port}</div><div class="text-[10px] luci-txt2">${c.host_name || ''}</div></td>
+      <td class="py-1.5 font-mono"><div>${c.remote_ip}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-500">${c.domain}</div>` : ''}</td>
+      <td class="py-1.5"><div>${c.location || '-'}</div><div class="text-[10px] text-[#0099cc]">${c.isp || ''}</div></td>
+      <td class="py-1.5 text-[#0099cc]">${fmtBps(c.rx_bps)}</td>
+      <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
+      <td class="py-1.5">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
+      <td class="py-1.5 luci-txt2">${c.tcp_state || c.timeout}</td>
     </tr>
   `).join('');
 }
@@ -860,21 +1019,26 @@ async function loadIfaceDetailChart(iface) {
 async function loadAppCharts() {
   const res = await fetch(`/api/history/apps?router_id=${currentRouterId}&range=${currentRange}`);
   const list = await res.json();
+  const nextMap = {};
+  list.forEach(a => { nextMap[a.app] = a.total_bytes; });
+  appTotalBytesMap = nextMap;
+
   const totalBytes = list.reduce((s, a) => s + a.total_bytes, 0);
   document.getElementById('kpiTotalTraffic').textContent = fmtBytes(totalBytes);
 
   document.getElementById('dpiRankBody').innerHTML = list.map(a => `
-    <tr><td class="py-1.5 font-medium">${a.app}</td><td class="py-1.5 text-slate-400">${a.category}</td><td class="py-1.5 text-sky-400">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-400">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
+    <tr><td class="py-1.5 font-medium">${a.app}</td><td class="py-1.5 luci-txt2">${a.category}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
   `).join('');
 
   const catMap = {};
   list.forEach(a => { const c = a.category || '其他'; catMap[c] = (catMap[c] || 0) + a.total_bytes; });
+  const txt1 = getCssVar('--text-1');
   chartAppCat.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'item', formatter: p => `${p.name}: ${fmtBytes(p.value)} (${p.percent}%)` },
     series: [{
       type: 'pie', radius: ['42%', '74%'],
-      label: { color: '#cbd5e1', fontSize: 11, formatter: '{b} {d}%' },
+      label: { color: txt1, fontSize: 11, formatter: '{b} {d}%' },
       data: Object.entries(catMap).map(([name, value]) => ({ name, value }))
     }]
   });
@@ -885,26 +1049,29 @@ async function loadHistIPs() {
   const list = await res.json();
 
   document.getElementById('histIpBody').innerHTML = list.map(ip => `
-    <tr class="hover:bg-slate-800/40 cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
-      <td class="py-2 font-mono text-sky-300">${ip.ip}</td>
+    <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
+      <td class="py-2 font-mono text-[#0099cc]">${ip.ip}</td>
       <td class="py-2">${ip.host_name || '-'}</td>
-      <td class="py-2 text-sky-400">${fmtBytes(ip.rx_bytes)}</td>
-      <td class="py-2 text-emerald-400">${fmtBytes(ip.tx_bytes)}</td>
+      <td class="py-2 text-[#0099cc]">${fmtBytes(ip.rx_bytes)}</td>
+      <td class="py-2 text-emerald-500">${fmtBytes(ip.tx_bytes)}</td>
       <td class="py-2 font-semibold">${fmtBytes(ip.total_bytes)}</td>
     </tr>
   `).join('');
 
+  const txt1 = getCssVar('--text-1');
+  const txt2 = getCssVar('--text-2');
+  const gridLine = getCssVar('--grid-line');
   const top8 = list.slice(0, 8).reverse();
   chartUserTop8.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => ps.map(p => `${p.seriesName}: ${fmtBytes(p.value)}`).join('<br/>') },
-    legend: { data: ['下载', '上传'], textStyle: { color: '#94a3b8' }, top: 0 },
+    legend: { data: ['下载', '上传'], textStyle: { color: txt2 }, top: 0 },
     grid: { left: 105, right: 20, top: 28, bottom: 20 },
-    xAxis: { type: 'value', axisLabel: { color: '#64748b', fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: '#262b33' } } },
-    yAxis: { type: 'category', data: top8.map(u => u.host_name || u.ip), axisLabel: { color: '#cbd5e1', fontSize: 10 } },
+    xAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: gridLine } } },
+    yAxis: { type: 'category', data: top8.map(u => u.host_name || u.ip), axisLabel: { color: txt1, fontSize: 10 } },
     series: [
-      { name: '下载', type: 'bar', stack: 'tot', itemStyle: { color: '#38bdf8' }, data: top8.map(u => u.rx_bytes) },
-      { name: '上传', type: 'bar', stack: 'tot', itemStyle: { color: '#34d399' }, data: top8.map(u => u.tx_bytes) }
+      { name: '下载', type: 'bar', stack: 'tot', itemStyle: { color: '#0099cc' }, data: top8.map(u => u.rx_bytes) },
+      { name: '上传', type: 'bar', stack: 'tot', itemStyle: { color: '#10b981' }, data: top8.map(u => u.tx_bytes) }
     ]
   });
 }
@@ -921,14 +1088,14 @@ async function loadAudit() {
   const res = await fetch(`/api/audit/domains?router_id=${currentRouterId}&q=${encodeURIComponent(q)}`);
   const rows = await res.json();
   document.getElementById('auditBody').innerHTML = rows.map(r => `
-    <tr class="hover:bg-slate-800/40">
-      <td class="py-1.5 text-slate-400">${new Date(r.ts * 1000).toLocaleString()}</td>
-      <td class="py-1.5 font-mono text-sky-300">${r.client_ip}</td>
+    <tr class="luci-tr">
+      <td class="py-1.5 luci-txt2">${new Date(r.ts * 1000).toLocaleString()}</td>
+      <td class="py-1.5 font-mono text-[#0099cc]">${r.client_ip}</td>
       <td class="py-1.5">${r.host_name || '-'}</td>
-      <td class="py-1.5 font-mono text-amber-300">${r.domain}</td>
-      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded bg-[#252a33]">${r.app}</span></td>
-      <td class="py-1.5 text-slate-400">${r.category}</td>
-      <td class="py-1.5 text-slate-500">${r.source}</td>
+      <td class="py-1.5 font-mono text-amber-500">${r.domain}</td>
+      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded luci-sub">${r.app}</span></td>
+      <td class="py-1.5 luci-txt2">${r.category}</td>
+      <td class="py-1.5 luci-txt2">${r.source}</td>
     </tr>
   `).join('');
 }
@@ -937,13 +1104,43 @@ async function loadNetworkDetails() {
   const res = await fetch(`/api/network/details?router_id=${currentRouterId}`);
   const data = await res.json();
   document.getElementById('dhcpBody').innerHTML = (data.leases || []).map(l => `
-    <tr><td class="py-1.5 font-mono text-sky-300">${l.address}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono text-slate-400">${l.mac}</td><td class="py-1.5">${l.dynamic ? '动态':'静态'}</td><td class="py-1.5">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#38bdf8] hover:underline">设为静态</button>`:'-'}</td></tr>
+    <tr><td class="py-1.5 font-mono text-[#0099cc]">${l.address}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono luci-txt2">${l.mac}</td><td class="py-1.5">${l.dynamic ? '动态':'静态'}</td><td class="py-1.5 space-x-2">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#0099cc] hover:underline">设为静态</button>`:''}${l.mac?`<button onclick="wakeMac('${l.mac}')" class="text-emerald-500 hover:underline">唤醒</button>`:''}</td></tr>
   `).join('');
   document.getElementById('arpBody').innerHTML = (data.arp || []).map(a => `
-    <tr><td class="py-1.5 font-mono text-sky-300">${a.address}</td><td class="py-1.5 font-mono text-slate-400">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td></tr>
+    <tr><td class="py-1.5 font-mono text-[#0099cc]">${a.address}</td><td class="py-1.5 font-mono luci-txt2">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td><td class="py-1.5">${a.mac?`<button onclick="wakeMac('${a.mac}', '${a.interface}')" class="text-emerald-500 hover:underline">WoL</button>`:'-'}</td></tr>
   `).join('');
   document.getElementById('routeBody').innerHTML = (data.routes || []).map(r => `
-    <tr><td class="py-1.5 font-mono text-sky-300">${r.dst_address}</td><td class="py-1.5 font-mono">${r.gateway}</td><td class="py-1.5">${r.routing_table||'main'}</td><td class="py-1.5">${r.distance}</td><td class="py-1.5">${r.active?'<span class="text-emerald-400">Active</span>':'Inactive'}</td></tr>
+    <tr><td class="py-1.5 font-mono text-[#0099cc]">${r.dst_address}</td><td class="py-1.5 font-mono">${r.gateway}</td><td class="py-1.5">${r.routing_table||'main'}</td><td class="py-1.5">${r.distance}</td><td class="py-1.5">${r.active?'<span class="text-emerald-500">Active</span>':'Inactive'}</td></tr>
+  `).join('');
+}
+
+async function wakeMac(mac, iface='') {
+  const res = await fetch(`/api/tools/wol?router_id=${currentRouterId}&mac=${encodeURIComponent(mac)}&iface=${encodeURIComponent(iface)}`, { method: 'POST' });
+  const data = await res.json();
+  if (data.error) alert('唤醒失败: ' + data.error);
+  else alert(`已向 ${mac} 发送 Wake-on-LAN 魔术包！`);
+}
+
+async function loadFirewallRules() {
+  const res = await fetch(`/api/firewall/rules?router_id=${currentRouterId}`);
+  const rows = await res.json();
+  document.getElementById('fwBody').innerHTML = (rows || []).map(r => `
+    <tr class="luci-tr ${r.disabled?'opacity-50':''}">
+      <td class="py-1.5 font-mono">${r.chain}</td>
+      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[11px] ${r.action==='drop'||r.action==='reject'?'bg-rose-500/20 text-rose-500':'bg-emerald-500/20 text-emerald-500'}">${r.action}</span></td>
+      <td class="py-1.5">${r.comment || '-'}</td>
+      <td class="py-1.5 font-mono">${r.packets}</td>
+      <td class="py-1.5 font-mono text-[#0099cc]">${fmtBytes(r.bytes)}</td>
+      <td class="py-1.5">${r.disabled ? '禁用' : '启用'}</td>
+    </tr>
+  `).join('');
+}
+
+async function loadLogs() {
+  const res = await fetch(`/api/system/logs?router_id=${currentRouterId}`);
+  const rows = await res.json();
+  document.getElementById('logsBody').innerHTML = (rows || []).map(l => `
+    <tr class="luci-tr"><td class="py-1 luci-txt2 whitespace-nowrap pr-3">${l.time}</td><td class="py-1 text-[#0099cc] whitespace-nowrap pr-3">${l.topics}</td><td class="py-1">${l.message}</td></tr>
   `).join('');
 }
 
@@ -994,7 +1191,7 @@ async function runTorch() {
   if (rows.error) { alert(rows.error); return; }
   rows.sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps));
   document.getElementById('torchBody').innerHTML = rows.map(r => `
-    <tr><td class="py-1 font-mono">${r.src_address}:${r.src_port}</td><td class="py-1 font-mono">${r.dst_address}:${r.dst_port}</td><td class="py-1 uppercase">${r.protocol}</td><td class="py-1 text-emerald-400">${fmtBps(r.tx_bps)}</td><td class="py-1 text-sky-400">${fmtBps(r.rx_bps)}</td></tr>
+    <tr><td class="py-1 font-mono">${r.src_address}:${r.src_port}</td><td class="py-1 font-mono">${r.dst_address}:${r.dst_port}</td><td class="py-1 uppercase">${r.protocol}</td><td class="py-1 text-emerald-500">${fmtBps(r.tx_bps)}</td><td class="py-1 text-[#0099cc]">${fmtBps(r.rx_bps)}</td></tr>
   `).join('');
 }
 
@@ -1009,13 +1206,13 @@ async function loadPolicy() {
   const queues = await qRes.json();
   if (Array.isArray(queues)) {
     document.getElementById('queueBody').innerHTML = queues.map(q => `
-      <tr><td class="py-1.5">${q.name}</td><td class="py-1.5 font-mono">${q.target}</td><td class="py-1.5 text-amber-300">${q.max_limit}</td><td class="py-1.5">${q.rate}</td><td class="py-1.5"><button onclick="delQueue('${encodeURIComponent(q.id)}')" class="text-rose-400 hover:underline">删除</button></td></tr>
+      <tr><td class="py-1.5">${q.name}</td><td class="py-1.5 font-mono">${q.target}</td><td class="py-1.5 text-amber-500">${q.max_limit}</td><td class="py-1.5">${q.rate}</td><td class="py-1.5"><button onclick="delQueue('${encodeURIComponent(q.id)}')" class="text-rose-500 hover:underline">删除</button></td></tr>
     `).join('');
   }
   const blocked = await bRes.json();
   if (Array.isArray(blocked)) {
     document.getElementById('blockBody').innerHTML = blocked.map(b => `
-      <tr><td class="py-1.5 font-mono text-rose-300">${b.address}</td><td class="py-1.5">${b.comment||'-'}</td><td class="py-1.5 text-slate-400">${b.creation_time||''}</td><td class="py-1.5"><button onclick="unblockIP('${encodeURIComponent(b.id)}')" class="text-emerald-400 hover:underline">解封</button></td></tr>
+      <tr><td class="py-1.5 font-mono text-rose-500">${b.address}</td><td class="py-1.5">${b.comment||'-'}</td><td class="py-1.5 luci-txt2">${b.creation_time||''}</td><td class="py-1.5"><button onclick="unblockIP('${encodeURIComponent(b.id)}')" class="text-emerald-500 hover:underline">解封</button></td></tr>
     `).join('');
   }
 }
@@ -1077,15 +1274,15 @@ function getRouterPayload() {
 async function testRouter() {
   const msg = document.getElementById('testResultMsg');
   msg.classList.remove('hidden');
-  msg.className = 'text-xs p-2 rounded bg-slate-800 text-slate-300';
+  msg.className = 'text-xs p-2 rounded luci-sub';
   msg.textContent = '正在连接路由器...';
   const res = await fetch('/api/routers/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(getRouterPayload()) });
   const data = await res.json();
   if (data.ok) {
-    msg.className = 'text-xs p-2 rounded bg-emerald-500/20 text-emerald-300';
+    msg.className = 'text-xs p-2 rounded bg-emerald-500/20 text-emerald-500';
     msg.textContent = `连接成功！设备: ${data.system.board_name} (${data.system.version})`;
   } else {
-    msg.className = 'text-xs p-2 rounded bg-rose-500/20 text-rose-300';
+    msg.className = 'text-xs p-2 rounded bg-rose-500/20 text-rose-500';
     msg.textContent = `连接失败: ${data.error}`;
   }
 }
@@ -1104,6 +1301,7 @@ async function deleteRouter(id) {
 }
 
 (async function init() {
+  applyTheme(localStorage.getItem('mikromon_theme') || 'dark');
   await loadRouters();
   await pollSnapshot();
   refreshHistoryAll();
