@@ -177,8 +177,11 @@
             </div>
             <div class="luci-card rounded-lg p-3">
               <div class="text-xs luci-txt2"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span>)</div>
-              <div id="kpiTotalTraffic" class="text-lg font-bold text-emerald-500 mt-1">0 B</div>
-              <div class="text-[11px] luci-txt2 mt-0.5" data-i18n="kpi_traffic_sub">区间累计总流量</div>
+              <div class="mt-1 space-y-0.5 font-mono leading-tight">
+                <div class="text-sm font-bold text-[#0099cc]">↓ <span id="kpiTrafficDl">0 B</span></div>
+                <div class="text-sm font-bold text-emerald-500">↑ <span id="kpiTrafficUl">0 B</span></div>
+              </div>
+              <div class="text-[11px] luci-txt2 mt-0.5"><span data-i18n="total_lbl">总计</span>: <span id="kpiTrafficTot">0 B</span></div>
             </div>
           </div>
 
@@ -1013,11 +1016,11 @@ async function pollSnapshot() {
     const conns = snap.connections || [];
     const liveIps = snap.live_ips || [];
     const apps = snap.active_apps || [];
-    const v4Cnt = liveIps.filter(x => x.ip_version !== 6).length;
-    const v6Cnt = liveIps.filter(x => x.ip_version === 6).length;
+    const v4Cnt = snap.online_ipv4 ?? liveIps.filter(x => x.ip_version !== 6).length;
+    const v6Cnt = snap.online_ipv6 ?? liveIps.filter(x => x.ip_version === 6).length;
 
     document.getElementById('kpiApps').textContent = apps.length;
-    document.getElementById('kpiUsers').textContent = liveIps.length;
+    document.getElementById('kpiUsers').textContent = snap.online_devices || liveIps.length;
     document.getElementById('kpiUsersSub').textContent = `IPv4: ${v4Cnt} / IPv6: ${v6Cnt}`;
     document.getElementById('kpiConns').textContent = snap.total_conns || conns.length;
 
@@ -1210,8 +1213,11 @@ async function loadAppCharts() {
   list.forEach(a => { nextMap[a.app] = a.total_bytes; });
   appTotalBytesMap = nextMap;
 
-  const totalBytes = list.reduce((s, a) => s + a.total_bytes, 0);
-  document.getElementById('kpiTotalTraffic').textContent = fmtBytes(totalBytes);
+  const dlBytes = list.reduce((s, a) => s + a.rx_bytes, 0);
+  const ulBytes = list.reduce((s, a) => s + a.tx_bytes, 0);
+  document.getElementById('kpiTrafficDl').textContent = fmtBytes(dlBytes);
+  document.getElementById('kpiTrafficUl').textContent = fmtBytes(ulBytes);
+  document.getElementById('kpiTrafficTot').textContent = fmtBytes(dlBytes + ulBytes);
 
   document.getElementById('dpiRankBody').innerHTML = list.map(a => `
     <tr class="luci-tr"><td class="py-1.5 font-medium flex items-center gap-2"><img src="${getIconSrc(a.app, '#0099cc')}" data-app="${a.app}" data-color="#0099cc" onerror="imgFallback(this)" class="w-5 h-5 rounded object-cover" /><span>${tApp(a.app)}</span></td><td class="py-1.5 luci-txt2">${tCat(a.category)}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>

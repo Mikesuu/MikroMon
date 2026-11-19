@@ -84,6 +84,9 @@ type RouterSnapshot struct {
 	LiveIPs       []LiveIP                 `json:"live_ips"`
 	ActiveApps    []ActiveAppSummary       `json:"active_apps"`
 	TotalConns    int                      `json:"total_conns"`
+	OnlineDevices int                      `json:"online_devices"`
+	OnlineIPv4    int                      `json:"online_ipv4"`
+	OnlineIPv6    int                      `json:"online_ipv6"`
 	Connections   []LiveConnection         `json:"connections"`
 	RecentDomains []store.DomainAuditEntry `json:"recent_domains"`
 }
@@ -426,12 +429,15 @@ func (c *Collector) pollWorker(w *routerWorker) {
 	prevSnap := c.snapshots[w.cfg.ID]
 	c.mu.RUnlock()
 
-	var totalConns int
+	var totalConns, onlineDevs, onlineV4, onlineV6 int
 	var liveConns []LiveConnection
 	var liveIPs []LiveIP
 	var activeApps []ActiveAppSummary
 	if prevSnap != nil {
 		totalConns = prevSnap.TotalConns
+		onlineDevs = prevSnap.OnlineDevices
+		onlineV4 = prevSnap.OnlineIPv4
+		onlineV6 = prevSnap.OnlineIPv6
 		liveConns = prevSnap.Connections
 		liveIPs = prevSnap.LiveIPs
 		activeApps = prevSnap.ActiveApps
@@ -442,6 +448,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		if rawConns, err := mikrotik.GetConnections(w.client); err == nil {
 			totalConns = len(rawConns)
 			liveConns, liveIPs, activeApps = c.processConnections(w, nowUnix, rawConns)
+			onlineDevs, onlineV4, onlineV6 = countUniqueDevices(liveIPs)
 		}
 	}
 
@@ -455,6 +462,9 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		LiveIPs:       liveIPs,
 		ActiveApps:    activeApps,
 		TotalConns:    totalConns,
+		OnlineDevices: onlineDevs,
+		OnlineIPv4:    onlineV4,
+		OnlineIPv6:    onlineV6,
 		Connections:   liveConns,
 		RecentDomains: w.recentDomains,
 	}
@@ -693,7 +703,11 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			w.recentAppHits[appInfo.App] = *aa
 		}
 
-		if clientIP != "" {
+		wanSet := make(map[string]bool, len(w.wanIPs))
+		for _, wi := range w.wanIPs {
+			wanSet[wi.Address] = true
+		}
+		if clientIP != "" && clientIP != "0.0.0.0" && !wanSet[clientIP] && isLocalClient(clientIP, w.v6Prefixes) {
 			lip, ok := liveIPMap[clientIP]
 			if !ok {
 				lip = &LiveIP{
@@ -822,4 +836,21 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 	}
 
 	return liveConns, liveIPs, activeApps
+}
+
+func countUniqueDevices(ips []LiveIP) (devs, v4, v6 int) {
+	devSet := make(map[string]bool)
+	for _, ip := range ips {
+		if ip.IPVersion == 6 {
+			v6++
+		} else {
+			v4++
+		}
+		key := ip.MAC
+		if key == "" {
+			key = ip.IP
+		}
+		devSet[key] = true
+	}
+	return len(devSet), v4, v6
 }
