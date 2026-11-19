@@ -203,7 +203,7 @@
           <div class="luci-card rounded-lg p-4">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-sm font-semibold">活跃 APP</h2>
-              <span class="text-[11px] luci-txt2">点击任意 APP 查看对应连接明细（展示实时速率 / 周期总流量）</span>
+              <div class="flex items-center gap-3"><span class="text-[11px] luci-txt2">点击任意 APP 查看连接明细</span><button onclick="toggleShowAllApps()" id="btnExpandApps" class="text-xs text-[#0099cc] hover:underline">展开全部</button></div>
             </div>
             <div id="activeAppsWall" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5"></div>
           </div>
@@ -578,6 +578,7 @@ let currentRange = '1h';
 let lastSnap = null;
 let appTotalBytesMap = {};
 let selectedIface = '';
+let showAllApps = false;
 let selectedIp = '';
 let torchTimer = null;
 
@@ -755,6 +756,11 @@ function switchTab(name) {
   setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
 }
 
+function toggleShowAllApps() {
+  showAllApps = !showAllApps;
+  document.getElementById("btnExpandApps").textContent = showAllApps ? "收起部分" : "展开全部";
+  pollSnapshot();
+}
 function jumpAppFilter(appName) {
   document.getElementById('connFilterApp').value = appName;
   switchTab('connections');
@@ -867,7 +873,7 @@ async function pollSnapshot() {
     }
 
     // 真实矢量图标活跃 APP 墙（含 实时速率 / 周期总流量）
-    document.getElementById('activeAppsWall').innerHTML = apps.length ? apps.slice(0, 18).map(a => {
+    document.getElementById('activeAppsWall').innerHTML = apps.length ? (showAllApps ? apps : apps.slice(0, 18)).map(a => {
       const liveSpeed = a.rx_bps + a.tx_bps;
       const totBytes = appTotalBytesMap[a.app] || 0;
       return `
@@ -1027,7 +1033,7 @@ async function loadAppCharts() {
   document.getElementById('kpiTotalTraffic').textContent = fmtBytes(totalBytes);
 
   document.getElementById('dpiRankBody').innerHTML = list.map(a => `
-    <tr><td class="py-1.5 font-medium">${a.app}</td><td class="py-1.5 luci-txt2">${a.category}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
+    <tr><td class="py-1.5 font-medium flex items-center gap-2"><img src="/api/appicon?app=${encodeURIComponent(a.app)}" class="w-5 h-5 rounded object-cover" loading="lazy" /><span>${a.app}</span></td><td class="py-1.5 luci-txt2">${a.category}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
   `).join('');
 
   const catMap = {};
