@@ -713,6 +713,7 @@ let selectedIface = '';
 let selectedIp = '';
 let showAllApps = false;
 let torchTimer = null;
+let lastAppWallKey = '';
 
 function t(k) { return (I18N[currentLang] && I18N[currentLang][k]) || I18N.zh[k] || k; }
 function tApp(a) { return currentLang === 'en' ? (APP_EN[a] || a) : a; }
@@ -982,20 +983,40 @@ async function pollSnapshot() {
     }
 
     const appRows = showAllApps ? apps : apps.slice(0, 18);
-    document.getElementById('activeAppsWall').innerHTML = appRows.length ? appRows.map(a => {
-      const liveSpeed = a.rx_bps + a.tx_bps;
-      const totBytes = appTotalBytesMap[a.app] || 0;
-      const dispName = tApp(a.app);
-      return `
-      <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
-        <img src="/api/appicon?app=${encodeURIComponent(a.app)}" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" loading="lazy" />
-        <div class="text-xs font-semibold mt-1.5 truncate w-full">${dispName}</div>
-        <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
-          <div class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">${t('live_lbl')}: ${fmtBps(liveSpeed)}</div>
-          <div class="luci-txt2">${t('total_lbl')}: ${fmtBytes(totBytes)}</div>
-        </div>
-      </button>`;
-    }).join('') : `<div class="col-span-full text-xs luci-txt2 py-4 text-center">...</div>`;
+    const wallEl = document.getElementById('activeAppsWall');
+    const wallKey = currentLang + '|' + appRows.map(a => a.app).join(',');
+    if (!appRows.length) {
+      lastAppWallKey = '';
+      wallEl.innerHTML = `<div class="col-span-full text-xs luci-txt2 py-4 text-center">...</div>`;
+    } else if (wallKey !== lastAppWallKey) {
+      lastAppWallKey = wallKey;
+      wallEl.innerHTML = appRows.map((a, idx) => {
+        const liveSpeed = a.rx_bps + a.tx_bps;
+        const totBytes = appTotalBytesMap[a.app] || 0;
+        const dispName = tApp(a.app);
+        return `
+        <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
+          <img src="/api/appicon?app=${encodeURIComponent(a.app)}" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
+          <div class="text-xs font-semibold mt-1.5 truncate w-full">${dispName}</div>
+          <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
+            <div id="appLive_${idx}" class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">${t('live_lbl')}: ${fmtBps(liveSpeed)}</div>
+            <div id="appTot_${idx}" class="luci-txt2">${t('total_lbl')}: ${fmtBytes(totBytes)}</div>
+          </div>
+        </button>`;
+      }).join('');
+    } else {
+      appRows.forEach((a, idx) => {
+        const liveSpeed = a.rx_bps + a.tx_bps;
+        const totBytes = appTotalBytesMap[a.app] || 0;
+        const lEl = document.getElementById(`appLive_${idx}`);
+        const tEl = document.getElementById(`appTot_${idx}`);
+        if (lEl) {
+          lEl.className = liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2';
+          lEl.textContent = `${t('live_lbl')}: ${fmtBps(liveSpeed)}`;
+        }
+        if (tEl) tEl.textContent = `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
+      });
+    }
 
     document.getElementById('sideIfaceList').innerHTML = ifaces.filter(i => !i.disabled).slice(0, 7).map(i => `
       <div class="flex justify-between items-center">
