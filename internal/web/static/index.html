@@ -67,7 +67,7 @@
           <button onclick="toggleMenu('grp-net', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
             <span data-i18n="nav_net_grp">网络监控</span><span class="chev text-xs">▸</span>
           </button>
-          <div id="grp-net" class="hidden pl-4 space-y-0.5 mt-0.5">
+          <div id="grp-net" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
             <button onclick="switchTab('interfaces')" data-tab="interfaces" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_ifaces">接口状态与趋势</button>
             <button onclick="switchTab('connections')" data-tab="connections" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_conns">实时连接与归属地</button>
             <button onclick="switchTab('network')" data-tab="network" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_net_tables">DHCP / ARP / 路由表</button>
@@ -78,7 +78,7 @@
           <button onclick="toggleMenu('grp-audit', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
             <span data-i18n="nav_audit_grp">行为审计</span><span class="chev text-xs">▸</span>
           </button>
-          <div id="grp-audit" class="hidden pl-4 space-y-0.5 mt-0.5">
+          <div id="grp-audit" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
             <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_domain_audit">上网审计 (域名/URL)</button>
             <button onclick="switchTab('dpi')" data-tab="dpi" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_app_rank">应用流量排行</button>
           </div>
@@ -88,7 +88,7 @@
           <button onclick="toggleMenu('grp-ctrl', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
             <span data-i18n="nav_ctrl_grp">管控与工具</span><span class="chev text-xs">▸</span>
           </button>
-          <div id="grp-ctrl" class="hidden pl-4 space-y-0.5 mt-0.5">
+          <div id="grp-ctrl" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
             <button onclick="switchTab('policy')" data-tab="policy" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_policy">限速与 IP 黑名单</button>
             <button onclick="switchTab('firewall')" data-tab="firewall" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_fw">防火墙命中监控</button>
             <button onclick="switchTab('tools')" data-tab="tools" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_tools">Torch 抓包与 Ping</button>
@@ -100,7 +100,7 @@
           <button onclick="toggleMenu('grp-sys', this)" class="w-full flex items-center justify-between px-3 py-2 rounded luci-txt2 hover:bg-slate-500/10">
             <span data-i18n="nav_sys_grp">系统设置</span><span class="chev text-xs">▸</span>
           </button>
-          <div id="grp-sys" class="hidden pl-4 space-y-0.5 mt-0.5">
+          <div id="grp-sys" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
             <button onclick="openSettings()" class="w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_settings">路由器 / 主题 / 语言</button>
             <button onclick="switchTab('dbstatus')" data-tab="dbstatus" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_db">DPI / Geo 数据库</button>
           </div>
@@ -137,15 +137,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <div class="flex luci-sub rounded p-0.5" id="rangeBar">
-          <button data-range="1h" class="range-btn px-2 py-0.5 text-xs rounded bg-[#0099cc] text-white font-medium">1小时</button>
-          <button data-range="6h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">6小时</button>
-          <button data-range="12h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">12小时</button>
-          <button data-range="24h" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">24小时</button>
-          <button data-range="7d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">7天</button>
-          <button data-range="15d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">15天</button>
-          <button data-range="30d" class="range-btn px-2 py-0.5 text-xs rounded luci-txt2">30天</button>
-        </div>
+        <button onclick="toggleShowIPs()" id="btnToggleIP" class="luci-sub px-2.5 py-1 rounded text-xs font-medium hover:opacity-80">👁 查看 IP</button>
         <button onclick="openSettings()" class="md:hidden luci-sub px-2 py-1 rounded text-xs" data-i18n="btn_settings">设置</button>
       </div>
     </header>
@@ -187,13 +179,22 @@
 
           <div class="luci-card rounded-lg p-4">
             <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5 flex-wrap">
                 <h2 class="text-sm font-semibold" data-i18n="sec_traffic">流量统计</h2>
                 <select id="overviewIface" onchange="onOverviewIfaceChange()" class="luci-input rounded text-xs px-2.5 py-1"></select>
-                <label class="flex items-center gap-1 text-xs luci-txt2 cursor-pointer">
-                  <input id="invertLanChk" type="checkbox" onchange="onInvertChange()" />
-                  <span data-i18n="chk_invert_lan">LAN视角反转</span>
-                </label>
+                <select id="rangeSelect" onchange="onRangeSelectChange()" class="luci-input rounded text-xs px-2.5 py-1">
+                  <option value="1m">1分钟</option>
+                  <option value="5m">5分钟</option>
+                  <option value="15m">15分钟</option>
+                  <option value="30m">30分钟</option>
+                  <option value="1h" selected>1小时</option>
+                  <option value="6h">6小时</option>
+                  <option value="12h">12小时</option>
+                  <option value="24h">24小时</option>
+                  <option value="7d">7天</option>
+                  <option value="15d">15天</option>
+                  <option value="30d">30天</option>
+                </select>
               </div>
               <div id="overviewRatePill" class="text-xs font-mono luci-sub px-3 py-1 rounded"></div>
             </div>
@@ -652,7 +653,7 @@ const I18N = {
     btn_edit: '编辑', btn_del: '删除', btn_enable: '启用', btn_disable: '禁用', btn_disabled: '禁用',
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
-    ranges: { '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' }
+    btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' }
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -701,7 +702,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    ranges: { '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }
   }
 };
 
@@ -737,6 +738,26 @@ let appTotalBytesMap = {};
 let selectedIface = '';
 let selectedIp = '';
 let showAllApps = false;
+let showFullIPs = false;
+function isLanIface(name) { return /bridge|lan|home|iot/i.test(name || '') && !/pppoe|wan/i.test(name || ''); }
+function maskIP(ip) {
+  if (!ip || showFullIPs) return ip;
+  if (ip.includes(':')) {
+    const p = ip.split(':');
+    return p.slice(0, 2).join(':') + ':***:***';
+  }
+  const p = ip.split('.');
+  if (p.length === 4) return `${p[0]}.${p[1]}.*.*`;
+  return ip;
+}
+function toggleShowIPs() {
+  showFullIPs = !showFullIPs;
+  const btn = document.getElementById('btnToggleIP');
+  if (btn) btn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
+  loadRouters();
+  pollSnapshot();
+  refreshHistoryAll();
+}
 let torchTimer = null;
 
 const INLINE_ICONS = {
@@ -779,9 +800,11 @@ function applyLang(lang) {
   document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
-  document.querySelectorAll('.range-btn').forEach(btn => {
-    btn.textContent = t('ranges')[btn.dataset.range] || btn.dataset.range;
+  Array.from(document.getElementById('rangeSelect').options).forEach(opt => {
+    opt.textContent = t('ranges')[opt.value] || opt.value;
   });
+  const ipBtn = document.getElementById('btnToggleIP');
+  if (ipBtn) ipBtn.textContent = showFullIPs ? t('btn_hide_ip') : t('btn_show_ip');
   document.querySelectorAll('.range-lbl').forEach(el => {
     el.textContent = t('ranges')[currentRange] || currentRange;
   });
@@ -832,12 +855,23 @@ window.addEventListener('resize', () => {
   [chartOverview, chartAppCat, chartUserTop8, chartGaugeCpu, chartGaugeMem, chartIfaceDetail, chartIpDetail].forEach(c => c.resize());
 });
 
+function closeOtherMenus(keepId) {
+  document.querySelectorAll('[data-submenu]').forEach(m => {
+    if (m.id !== keepId) {
+      m.classList.add('hidden');
+      const b = m.previousElementSibling;
+      const c = b && b.querySelector('.chev');
+      if (c) c.textContent = '▸';
+    }
+  });
+}
 function toggleMenu(id, btn) {
   const el = document.getElementById(id);
-  const open = el.classList.contains('hidden');
-  el.classList.toggle('hidden');
+  const willOpen = el.classList.contains('hidden');
+  closeOtherMenus(willOpen ? id : '');
+  el.classList.toggle('hidden', !willOpen);
   const ch = btn.querySelector('.chev');
-  if (ch) ch.textContent = open ? '▾' : '▸';
+  if (ch) ch.textContent = willOpen ? '▾' : '▸';
 }
 
 function fmtBps(bps) {
@@ -901,6 +935,7 @@ function renderGauge(chart, title, val, color) {
 }
 
 function switchTab(name) {
+  if (name === 'overview' || name === 'ips') closeOtherMenus('');
   document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
   document.getElementById('tab-' + name).classList.remove('hidden');
   document.querySelectorAll('.nav-btn').forEach(b => {
@@ -932,19 +967,11 @@ function jumpAppFilter(appName) {
   renderConnections();
 }
 
-document.querySelectorAll('.range-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    currentRange = btn.dataset.range;
-    document.querySelectorAll('.range-btn').forEach(b => {
-      b.classList.remove('bg-[#0099cc]', 'text-white', 'font-medium');
-      b.classList.add('luci-txt2');
-    });
-    btn.classList.add('bg-[#0099cc]', 'text-white', 'font-medium');
-    btn.classList.remove('luci-txt2');
-    document.querySelectorAll('.range-lbl').forEach(el => el.textContent = t('ranges')[currentRange] || currentRange);
-    refreshHistoryAll();
-  });
-});
+function onRangeSelectChange() {
+  currentRange = document.getElementById('rangeSelect').value;
+  document.querySelectorAll('.range-lbl').forEach(el => el.textContent = t('ranges')[currentRange] || currentRange);
+  refreshHistoryAll();
+}
 
 async function loadRouters() {
   const res = await fetch('/api/routers');
@@ -956,14 +983,14 @@ async function loadRouters() {
     openSettings();
     return;
   }
-  list.forEach(r => sel.add(new Option(`${r.name} (${r.host}:${r.port})`, r.id)));
+  list.forEach(r => sel.add(new Option(`${r.name} (${maskIP(r.host)}:${r.port})`, r.id)));
   if (!currentRouterId) currentRouterId = list[0].id;
   sel.value = currentRouterId;
   sel.onchange = () => { currentRouterId = Number(sel.value); pollSnapshot(); refreshHistoryAll(); };
 
   document.getElementById('routerListBox').innerHTML = list.map(r => `
     <div class="flex justify-between items-center luci-sub px-3 py-2 rounded text-xs">
-      <span><b>${r.name}</b> — ${r.host}:${r.port} ${r.adg_url ? '<span class="text-emerald-500">+ADG</span>' : ''}</span>
+      <span><b>${r.name}</b> — ${maskIP(r.host)}:${r.port} ${r.adg_url ? '<span class="text-emerald-500">+ADG</span>' : ''}</span>
       <div class="space-x-2">
         <button onclick='fillRouterForm(${JSON.stringify(r)})' class="text-[#0099cc] hover:underline">${t('btn_edit')}</button>
         <button onclick="deleteRouter(${r.id})" class="text-rose-500 hover:underline">${t('btn_del')}</button>
@@ -993,12 +1020,14 @@ async function pollSnapshot() {
     }
 
     const wans = snap.wan_ips || [];
-    document.getElementById('headerWanPills').innerHTML = wans.map(w => `
-      <span class="px-2 py-0.5 rounded luci-sub font-mono">
+    document.getElementById('headerWanPills').innerHTML = wans.map(w => {
+      const geoTxt = [w.location, w.isp].filter(Boolean).join(' · ');
+      return `<span class="px-2 py-0.5 rounded luci-sub font-mono" title="${geoTxt}">
         <span class="luci-txt2">${w.interface}:</span>
-        <span class="${w.version === 6 ? 'text-purple-400' : 'text-[#0099cc]'}">${w.address}</span>
-      </span>
-    `).join('');
+        <span class="${w.version === 6 ? 'text-purple-400' : 'text-[#0099cc]'}">${maskIP(w.address)}</span>
+        ${geoTxt ? `<span class="luci-txt2 ml-1 text-[10px]">(${geoTxt})</span>` : ''}
+      </span>`;
+    }).join('');
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
     document.getElementById('kpiWanSummary').textContent = wanNames || 'WAN OK';
 
@@ -1030,7 +1059,7 @@ async function pollSnapshot() {
     const ovName = document.getElementById('overviewIface').value;
     const activeIf = ifaces.find(x => x.name === ovName) || ifaces[0];
     if (activeIf) {
-      const inv = document.getElementById('invertLanChk').checked;
+      const inv = isLanIface(ovName);
       const dl = inv ? activeIf.tx_bps : activeIf.rx_bps;
       const ul = inv ? activeIf.rx_bps : activeIf.tx_bps;
       document.getElementById('overviewRatePill').innerHTML = `<span class="text-[#0099cc]">${t('dl_lbl')} ${fmtBps(dl)}</span> · <span class="text-emerald-500">${t('ul_lbl')} ${fmtBps(ul)}</span>`;
@@ -1114,7 +1143,7 @@ function renderLiveIPs() {
   const rows = lastSnap.live_ips.filter(ip => !kw || ip.ip.toLowerCase().includes(kw) || (ip.host_name||'').toLowerCase().includes(kw) || (ip.mac||'').toLowerCase().includes(kw));
   document.getElementById('allLiveIpBody').innerHTML = rows.map(ip => `
     <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
-      <td class="py-2 font-mono text-[#0099cc]">${ip.ip} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-400">v6</span>' : ''}</td>
+      <td class="py-2 font-mono text-[#0099cc]">${maskIP(ip.ip)} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-400">v6</span>' : ''}</td>
       <td class="py-2"><div>${ip.host_name || '-'} ${ip.vendor ? `<span class="text-[10px] luci-txt2">(${ip.vendor})</span>`:''}</div><div class="text-[10px] luci-txt2 font-mono">${ip.mac || ''}</div></td>
       <td class="py-2 text-[#0099cc]">${fmtBps(ip.rx_bps)}</td>
       <td class="py-2 text-emerald-500">${fmtBps(ip.tx_bps)}</td>
@@ -1138,7 +1167,7 @@ function syncIfaceSelects(ifaces) {
   ifaces.forEach(i => { ov.add(new Option(i.name, i.name)); tc.add(new Option(i.name, i.name)); });
   if (oldOv && ifaces.some(x => x.name === oldOv)) {
     ov.value = oldOv;
-    if (savedInvert !== null) document.getElementById('invertLanChk').checked = (savedInvert === 'true');
+    
   } else {
     const wan = ifaces.find(x => x.running && (x.type === 'pppoe-out' || /wan|pppoe/i.test(x.name)))
              || ifaces.find(x => x.running && !/bridge|lan|lo|wireguard/i.test(x.name))
@@ -1154,9 +1183,7 @@ function syncIfaceSelects(ifaces) {
 function onOverviewIfaceChange() {
   const name = document.getElementById('overviewIface').value;
   localStorage.setItem('mikromon_iface', name);
-  const inv = /bridge|lan|home|iot/i.test(name);
-  document.getElementById('invertLanChk').checked = inv;
-  localStorage.setItem('mikromon_invert', String(inv));
+  
   loadOverviewChart();
 }
 function onInvertChange() {
@@ -1180,8 +1207,8 @@ function renderConnections() {
     <tr class="luci-tr">
       <td class="py-1.5"><span class="px-2 py-0.5 rounded font-medium text-white text-[11px]" style="background:${c.color || '#0099cc'}">${tApp(c.app)}</span></td>
       <td class="py-1.5 uppercase luci-txt2">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
-      <td class="py-1.5 font-mono"><div>${c.client_ip}:${c.client_port}</div><div class="text-[10px] luci-txt2">${c.host_name || ''}</div></td>
-      <td class="py-1.5 font-mono"><div>${c.remote_ip}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-500">${c.domain}</div>` : ''}</td>
+      <td class="py-1.5 font-mono"><div>${maskIP(c.client_ip)}:${c.client_port}</div><div class="text-[10px] luci-txt2">${c.host_name || ''}</div></td>
+      <td class="py-1.5 font-mono"><div>${maskIP(c.remote_ip)}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-500">${c.domain}</div>` : ''}</td>
       <td class="py-1.5"><div>${c.location || '-'}</div><div class="text-[10px] text-[#0099cc]">${c.isp || ''}</div></td>
       <td class="py-1.5 text-[#0099cc]">${fmtBps(c.rx_bps)}</td>
       <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
@@ -1194,7 +1221,7 @@ function renderConnections() {
 async function loadOverviewChart() {
   const iface = document.getElementById('overviewIface').value;
   if (!iface) return;
-  const inv = document.getElementById('invertLanChk').checked;
+  const inv = isLanIface(ovName);
   const res = await fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`);
   renderTrafficChart(chartOverview, await res.json(), inv);
 }
@@ -1243,7 +1270,7 @@ async function loadHistIPs() {
 
   document.getElementById('histIpBody').innerHTML = list.map(ip => `
     <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
-      <td class="py-2 font-mono text-[#0099cc]">${ip.ip}</td>
+      <td class="py-2 font-mono text-[#0099cc]">${maskIP(ip.ip)}</td>
       <td class="py-2">${ip.host_name || '-'}</td>
       <td class="py-2 text-[#0099cc]">${fmtBytes(ip.rx_bytes)}</td>
       <td class="py-2 text-emerald-500">${fmtBytes(ip.tx_bytes)}</td>
@@ -1262,7 +1289,7 @@ async function loadHistIPs() {
     legend: { data: [dlName, ulName], textStyle: { color: txt2 }, top: 0 },
     grid: { left: 105, right: 20, top: 28, bottom: 20 },
     xAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: gridLine } } },
-    yAxis: { type: 'category', data: top8.map(u => u.host_name || u.ip), axisLabel: { color: txt1, fontSize: 10 } },
+    yAxis: { type: 'category', data: top8.map(u => u.host_name || maskIP(u.ip)), axisLabel: { color: txt1, fontSize: 10 } },
     series: [
       { name: dlName, type: 'bar', stack: 'tot', itemStyle: { color: '#0099cc' }, data: top8.map(u => u.rx_bytes) },
       { name: ulName, type: 'bar', stack: 'tot', itemStyle: { color: '#10b981' }, data: top8.map(u => u.tx_bytes) }
@@ -1272,7 +1299,7 @@ async function loadHistIPs() {
 
 async function loadIPDetail(ip) {
   selectedIp = ip;
-  document.getElementById('selectedIpTitle').textContent = ip;
+  document.getElementById('selectedIpTitle').textContent = maskIP(ip);
   const res = await fetch(`/api/history/ip?router_id=${currentRouterId}&ip=${encodeURIComponent(ip)}&range=${currentRange}`);
   renderTrafficChart(chartIpDetail, await res.json(), false);
 }
@@ -1284,7 +1311,7 @@ async function loadAudit() {
   document.getElementById('auditBody').innerHTML = rows.map(r => `
     <tr class="luci-tr">
       <td class="py-1.5 luci-txt2">${new Date(r.ts * 1000).toLocaleString()}</td>
-      <td class="py-1.5 font-mono text-[#0099cc]">${r.client_ip}</td>
+      <td class="py-1.5 font-mono text-[#0099cc]">${maskIP(r.client_ip)}</td>
       <td class="py-1.5">${r.host_name || '-'}</td>
       <td class="py-1.5 font-mono text-amber-500">${r.domain}</td>
       <td class="py-1.5"><span class="px-1.5 py-0.5 rounded luci-sub">${tApp(r.app)}</span></td>
@@ -1298,10 +1325,10 @@ async function loadNetworkDetails() {
   const res = await fetch(`/api/network/details?router_id=${currentRouterId}`);
   const data = await res.json();
   document.getElementById('dhcpBody').innerHTML = (data.leases || []).map(l => `
-    <tr><td class="py-1.5 font-mono text-[#0099cc]">${l.address}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono luci-txt2">${l.mac}</td><td class="py-1.5">${l.dynamic ? t('dyn'):t('stat')}</td><td class="py-1.5 space-x-2">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#0099cc] hover:underline">${t('btn_static')}</button>`:''}${l.mac?`<button onclick="wakeMac('${l.mac}')" class="text-emerald-500 hover:underline">${t('btn_wake')}</button>`:''}</td></tr>
+    <tr><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(l.address)}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono luci-txt2">${l.mac}</td><td class="py-1.5">${l.dynamic ? t('dyn'):t('stat')}</td><td class="py-1.5 space-x-2">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#0099cc] hover:underline">${t('btn_static')}</button>`:''}${l.mac?`<button onclick="wakeMac('${l.mac}')" class="text-emerald-500 hover:underline">${t('btn_wake')}</button>`:''}</td></tr>
   `).join('');
   document.getElementById('arpBody').innerHTML = (data.arp || []).map(a => `
-    <tr><td class="py-1.5 font-mono text-[#0099cc]">${a.address}</td><td class="py-1.5 font-mono luci-txt2">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td><td class="py-1.5">${a.mac?`<button onclick="wakeMac('${a.mac}', '${a.interface}')" class="text-emerald-500 hover:underline">WoL</button>`:'-'}</td></tr>
+    <tr><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(a.address)}</td><td class="py-1.5 font-mono luci-txt2">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td><td class="py-1.5">${a.mac?`<button onclick="wakeMac('${a.mac}', '${a.interface}')" class="text-emerald-500 hover:underline">WoL</button>`:'-'}</td></tr>
   `).join('');
   document.getElementById('routeBody').innerHTML = (data.routes || []).map(r => `
     <tr><td class="py-1.5 font-mono text-[#0099cc]">${r.dst_address}</td><td class="py-1.5 font-mono">${r.gateway}</td><td class="py-1.5">${r.routing_table||'main'}</td><td class="py-1.5">${r.distance}</td><td class="py-1.5">${r.active?'<span class="text-emerald-500">Active</span>':'Inactive'}</td></tr>
@@ -1383,7 +1410,7 @@ async function runTorch() {
   if (rows.error) { alert(rows.error); return; }
   rows.sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps));
   document.getElementById('torchBody').innerHTML = rows.map(r => `
-    <tr><td class="py-1 font-mono">${r.src_address}:${r.src_port}</td><td class="py-1 font-mono">${r.dst_address}:${r.dst_port}</td><td class="py-1 uppercase">${r.protocol}</td><td class="py-1 text-emerald-500">${fmtBps(r.tx_bps)}</td><td class="py-1 text-[#0099cc]">${fmtBps(r.rx_bps)}</td></tr>
+    <tr><td class="py-1 font-mono">${maskIP(r.src_address)}:${r.src_port}</td><td class="py-1 font-mono">${maskIP(r.dst_address)}:${r.dst_port}</td><td class="py-1 uppercase">${r.protocol}</td><td class="py-1 text-emerald-500">${fmtBps(r.tx_bps)}</td><td class="py-1 text-[#0099cc]">${fmtBps(r.rx_bps)}</td></tr>
   `).join('');
 }
 
@@ -1404,7 +1431,7 @@ async function loadPolicy() {
   const blocked = await bRes.json();
   if (Array.isArray(blocked)) {
     document.getElementById('blockBody').innerHTML = blocked.map(b => `
-      <tr><td class="py-1.5 font-mono text-rose-500">${b.address}</td><td class="py-1.5">${b.comment||'-'}</td><td class="py-1.5 luci-txt2">${b.creation_time||''}</td><td class="py-1.5"><button onclick="unblockIP('${encodeURIComponent(b.id)}')" class="text-emerald-500 hover:underline">${t('btn_unblock')}</button></td></tr>
+      <tr><td class="py-1.5 font-mono text-rose-500">${maskIP(b.address)}</td><td class="py-1.5">${b.comment||'-'}</td><td class="py-1.5 luci-txt2">${b.creation_time||''}</td><td class="py-1.5"><button onclick="unblockIP('${encodeURIComponent(b.id)}')" class="text-emerald-500 hover:underline">${t('btn_unblock')}</button></td></tr>
     `).join('');
   }
 }

@@ -63,6 +63,10 @@ func init() {
 		{"114.114.114.0/24", "中国", "114DNS", "114DNS", ""},
 		{"110.242.0.0/16", "中国", "百度云", "Baidu", "AS55967"},
 		{"220.181.0.0/16", "中国", "百度", "Baidu", "AS55967"},
+		{"2408::/12", "中国", "中国联通 IPv6", "China Unicom", "AS4837"},
+		{"240e::/12", "中国", "中国电信 IPv6", "China Telecom", "AS4134"},
+		{"2409::/12", "中国", "中国移动 IPv6", "China Mobile", "AS9808"},
+		{"2001:da8::/32", "中国", "教育网 IPv6", "CERNET", "AS4538"},
 	}
 	for _, d := range defs {
 		if _, n, err := net.ParseCIDR(d.cidr); err == nil {
@@ -113,6 +117,9 @@ func (e *Enricher) Lookup(ipStr string) (location, isp, asnMeta string) {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return "", "", ""
+	}
+	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
+		return "运营商内网", "CGNAT (100.64)", ""
 	}
 	if !IsPublicIP(ipStr) {
 		return "内网", "局域网", ""

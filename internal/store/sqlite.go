@@ -176,6 +176,27 @@ func (s *Store) migrate() error {
 		PRIMARY KEY (bucket_ts, gran, router_id, iface)
 	);
 
+	CREATE TABLE IF NOT EXISTS ip_traffic_1m (
+		bucket_ts INTEGER NOT NULL,
+		router_id INTEGER NOT NULL,
+		ip TEXT NOT NULL,
+		host_name TEXT NOT NULL DEFAULT '',
+		mac TEXT NOT NULL DEFAULT '',
+		rx_bytes INTEGER NOT NULL DEFAULT 0,
+		tx_bytes INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (bucket_ts, router_id, ip)
+	);
+	CREATE INDEX IF NOT EXISTS idx_ip_1m_q ON ip_traffic_1m(router_id, bucket_ts, ip);
+
+	CREATE TABLE IF NOT EXISTS app_traffic_1m (
+		bucket_ts INTEGER NOT NULL,
+		router_id INTEGER NOT NULL,
+		app TEXT NOT NULL,
+		rx_bytes INTEGER NOT NULL DEFAULT 0,
+		tx_bytes INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (bucket_ts, router_id, app)
+	);
+
 	CREATE TABLE IF NOT EXISTS ip_traffic_5m (
 		bucket_ts INTEGER NOT NULL,
 		router_id INTEGER NOT NULL,
@@ -495,6 +516,7 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 	}
 	defer tx.Rollback()
 
+	b1m := (ts / 60) * 60
 	b5m := (ts / 300) * 300
 	b1h := (ts / 3600) * 3600
 
@@ -526,7 +548,24 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 	}
 	defer stmtIP1h.Close()
 
+	stmtIP1m, err := tx.Prepare(`
+		INSERT INTO ip_traffic_1m (bucket_ts, router_id, ip, host_name, mac, rx_bytes, tx_bytes)
+		VALUES (?,?,?,?,?,?,?)
+		ON CONFLICT(bucket_ts, router_id, ip) DO UPDATE SET
+			host_name = CASE WHEN excluded.host_name != '' THEN excluded.host_name ELSE host_name END,
+			mac = CASE WHEN excluded.mac != '' THEN excluded.mac ELSE mac END,
+			rx_bytes = rx_bytes + excluded.rx_bytes,
+			tx_bytes = tx_bytes + excluded.tx_bytes
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmtIP1m.Close()
+
 	for _, d := range ips {
+		if _, err := stmtIP1m.Exec(b1m, routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes); err != nil {
+			return err
+		}
 		if _, err := stmtIP5m.Exec(b5m, routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes); err != nil {
 			return err
 		}
@@ -559,7 +598,22 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 	}
 	defer stmtApp1h.Close()
 
+	stmtApp1m, err := tx.Prepare(`
+		INSERT INTO app_traffic_1m (bucket_ts, router_id, app, rx_bytes, tx_bytes)
+		VALUES (?,?,?,?,?)
+		ON CONFLICT(bucket_ts, router_id, app) DO UPDATE SET
+			rx_bytes = rx_bytes + excluded.rx_bytes,
+			tx_bytes = tx_bytes + excluded.tx_bytes
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmtApp1m.Close()
+
 	for _, a := range apps {
+		if _, err := stmtApp1m.Exec(b1m, routerID, a.App, a.RxBytes, a.TxBytes); err != nil {
+			return err
+		}
 		if _, err := stmtApp5m.Exec(b5m, routerID, a.App, a.RxBytes, a.TxBytes); err != nil {
 			return err
 		}
@@ -573,6 +627,14 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 
 func RangeDuration(rangeKey string) (time.Duration, string) {
 	switch rangeKey {
+	case "1m":
+		return time.Minute, "raw"
+	case "5m":
+		return 5 * time.Minute, "raw"
+	case "15m":
+		return 15 * time.Minute, "raw"
+	case "30m":
+		return 30 * time.Minute, "raw"
 	case "1h":
 		return time.Hour, "raw"
 	case "6h":
@@ -631,8 +693,13 @@ func (s *Store) QueryTopIPs(routerID int64, rangeKey string, limit int) ([]IPSta
 	dur, mode := RangeDuration(rangeKey)
 	since := time.Now().Add(-dur).Unix()
 	table := "ip_traffic_5m"
-	if mode == "1h" {
+	since = (since / 300) * 300
+	if mode == "raw" {
+		table = "ip_traffic_1m"
+		since = (time.Now().Add(-dur).Unix() / 60) * 60
+	} else if mode == "1h" {
 		table = "ip_traffic_1h"
+		since = (time.Now().Add(-dur).Unix() / 3600) * 3600
 	}
 	if limit <= 0 {
 		limit = 200
@@ -667,9 +734,15 @@ func (s *Store) QueryIPHistory(routerID int64, ip, rangeKey string) ([]IfaceSeri
 	since := time.Now().Add(-dur).Unix()
 	table := "ip_traffic_5m"
 	stepSec := int64(300)
-	if mode == "1h" {
+	since = (since / 300) * 300
+	if mode == "raw" {
+		table = "ip_traffic_1m"
+		stepSec = 60
+		since = (time.Now().Add(-dur).Unix() / 60) * 60
+	} else if mode == "1h" {
 		table = "ip_traffic_1h"
 		stepSec = 3600
+		since = (time.Now().Add(-dur).Unix() / 3600) * 3600
 	}
 	q := fmt.Sprintf(`SELECT bucket_ts, rx_bytes, tx_bytes FROM %s WHERE router_id=? AND ip=? AND bucket_ts>=? ORDER BY bucket_ts ASC`, table)
 	rows, err := s.db.Query(q, routerID, ip, since)
@@ -696,8 +769,13 @@ func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppS
 	dur, mode := RangeDuration(rangeKey)
 	since := time.Now().Add(-dur).Unix()
 	table := "app_traffic_5m"
-	if mode == "1h" {
+	since = (since / 300) * 300
+	if mode == "raw" {
+		table = "app_traffic_1m"
+		since = (time.Now().Add(-dur).Unix() / 60) * 60
+	} else if mode == "1h" {
 		table = "app_traffic_1h"
+		since = (time.Now().Add(-dur).Unix() / 3600) * 3600
 	}
 	if limit <= 0 {
 		limit = 30
@@ -730,6 +808,8 @@ func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppS
 func (s *Store) PruneOldData() {
 	now := time.Now().Unix()
 	s.db.Exec(`DELETE FROM iface_raw WHERE ts < ?`, now-86400)
+	s.db.Exec(`DELETE FROM ip_traffic_1m WHERE bucket_ts < ?`, now-86400)
+	s.db.Exec(`DELETE FROM app_traffic_1m WHERE bucket_ts < ?`, now-86400)
 	s.db.Exec(`DELETE FROM iface_rollup WHERE gran='5m' AND bucket_ts < ?`, now-7*86400)
 	s.db.Exec(`DELETE FROM iface_rollup WHERE gran='1h' AND bucket_ts < ?`, now-35*86400)
 	s.db.Exec(`DELETE FROM ip_traffic_5m WHERE bucket_ts < ?`, now-7*86400)

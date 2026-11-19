@@ -420,7 +420,13 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		}
 		w.v6Neighbors = mikrotik.GetIPv6Neighbors(w.client)
 		w.v6Prefixes = mikrotik.GetLocalIPv6Prefixes(w.client)
-		w.wanIPs = mikrotik.GetWANIPs(w.client)
+		wans := mikrotik.GetWANIPs(w.client)
+		for i := range wans {
+			loc, isp, _ := c.enricher.Lookup(strings.Split(wans[i].Address, "/")[0])
+			wans[i].Location = loc
+			wans[i].ISP = isp
+		}
+		w.wanIPs = wans
 		c.syncAdGuard(w)
 		w.lastMetaAt = now
 	}

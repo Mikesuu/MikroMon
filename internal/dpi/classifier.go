@@ -27,52 +27,93 @@ var domainRules = []rule{
 	{"dnspod", "腾讯云 DNS", "基础网络", "#0052d9"},
 	{"dns.google", "Google", "基础网络", "#4285f4"},
 	{"cloudflare-dns", "Cloudflare", "基础网络", "#f38020"},
+	{"quad9", "Quad9 DNS", "基础网络", "#2563eb"},
 
-	// === AI 与办公效率 ===
-	{"deepseek", "DeepSeek", "办公与AI", "#4d6bfe"},
-	{"moonshot.cn", "Kimi", "办公与AI", "#1e293b"},
-	{"kimi.ai", "Kimi", "办公与AI", "#1e293b"},
-	{"doubao.com", "豆包", "办公与AI", "#2563eb"},
-	{"tongyi.aliyun", "通义千问", "办公与AI", "#6366f1"},
-	{"qianwen", "通义千问", "办公与AI", "#6366f1"},
-	{"openai", "OpenAI", "办公与AI", "#10a37f"},
-	{"chatgpt", "OpenAI", "办公与AI", "#10a37f"},
-	{"anthropic", "Claude", "办公与AI", "#d97757"},
-	{"claude.ai", "Claude", "办公与AI", "#d97757"},
-	{"feishu", "飞书", "办公与AI", "#00d6b9"},
-	{"larksuite", "飞书", "办公与AI", "#00d6b9"},
-	{"dingtalk", "钉钉", "办公与AI", "#0089ff"},
-	{"work.weixin", "企业微信", "办公与AI", "#0082ef"},
-	{"meeting.tencent", "腾讯会议", "办公与AI", "#006eff"},
-	{"zoom.us", "Zoom", "办公与AI", "#2d8cff"},
-	{"wps.cn", "WPS", "办公与AI", "#ea3323"},
-	{"wpscdn", "WPS", "办公与AI", "#ea3323"},
-	{"pan.baidu", "百度网盘", "网盘下载", "#06a7ff"},
-	{"baidupcs", "百度网盘", "网盘下载", "#06a7ff"},
-	{"aliyundrive", "阿里云盘", "网盘下载", "#6366f1"},
-	{"alipan", "阿里云盘", "网盘下载", "#6366f1"},
-	{"pan.quark", "夸克网盘", "网盘下载", "#2563eb"},
-	{"115.com", "115网盘", "网盘下载", "#1d4ed8"},
-	{"xunlei", "迅雷", "网盘下载", "#0099ff"},
-	{"sandai.net", "迅雷", "网盘下载", "#0099ff"},
-	{"todesk", "ToDesk", "办公与AI", "#0066ff"},
-	{"oray", "向日葵远程", "办公与AI", "#e11d48"},
-	{"sunlogin", "向日葵远程", "办公与AI", "#e11d48"},
-	{"teamviewer", "TeamViewer", "办公与AI", "#00458f"},
-	{"github", "GitHub", "办公与AI", "#24292f"},
-	{"githubusercontent", "GitHub", "办公与AI", "#24292f"},
-	{"gitlab", "GitLab", "办公与AI", "#fc6d26"},
-	{"microsoft", "Microsoft", "办公与AI", "#00a4ef"},
-	{"office", "Microsoft", "办公与AI", "#d83b01"},
-	{"windowsupdate", "Microsoft", "办公与AI", "#0078d4"},
-	{"docker", "Docker", "办公与AI", "#2496ed"},
-	{"notion.so", "Notion", "办公与AI", "#1e293b"},
+	// === AI 大模型 ===
+	{"deepseek", "DeepSeek", "AI大模型", "#4d6bfe"},
+	{"moonshot.cn", "Kimi", "AI大模型", "#1e293b"},
+	{"kimi.ai", "Kimi", "AI大模型", "#1e293b"},
+	{"doubao.com", "豆包", "AI大模型", "#2563eb"},
+	{"tongyi.aliyun", "通义千问", "AI大模型", "#6366f1"},
+	{"qianwen", "通义千问", "AI大模型", "#6366f1"},
+	{"yiyan.baidu", "文心一言", "AI大模型", "#2932e1"},
+	{"chatglm", "智谱清言", "AI大模型", "#3b82f6"},
+	{"zhipuai", "智谱清言", "AI大模型", "#3b82f6"},
+	{"xfyun.cn", "讯飞星火", "AI大模型", "#0070f3"},
+	{"metaso", "秘塔AI", "AI大模型", "#6366f1"},
+	{"perplexity", "Perplexity", "AI大模型", "#22b8cf"},
+	{"openai", "OpenAI", "AI大模型", "#10a37f"},
+	{"chatgpt", "OpenAI", "AI大模型", "#10a37f"},
+	{"anthropic", "Claude", "AI大模型", "#d97757"},
+	{"claude.ai", "Claude", "AI大模型", "#d97757"},
+	{"gemini.google", "Gemini", "AI大模型", "#4285f4"},
+	{"huggingface", "HuggingFace", "AI大模型", "#ff9d00"},
+	{"cursor.sh", "Cursor", "AI大模型", "#1e293b"},
+	{"cursor.com", "Cursor", "AI大模型", "#1e293b"},
+	{"githubcopilot", "GitHub", "AI大模型", "#24292f"},
+
+	// === 办公协同 / 开发运维 ===
+	{"feishu", "飞书", "办公协同", "#00d6b9"},
+	{"larksuite", "飞书", "办公协同", "#00d6b9"},
+	{"dingtalk", "钉钉", "办公协同", "#0089ff"},
+	{"work.weixin", "企业微信", "办公协同", "#0082ef"},
+	{"meeting.tencent", "腾讯会议", "办公协同", "#006eff"},
+	{"docs.qq.com", "腾讯文档", "办公协同", "#1e6fff"},
+	{"shimo.im", "石墨文档", "办公协同", "#1e293b"},
+	{"yuque.com", "语雀", "办公协同", "#00b96b"},
+	{"zoom.us", "Zoom", "办公协同", "#2d8cff"},
+	{"slack.com", "Slack", "办公协同", "#4a154b"},
+	{"notion.so", "Notion", "办公协同", "#1e293b"},
+	{"figma.com", "Figma", "办公协同", "#f24e1e"},
+	{"atlassian", "Atlassian", "办公协同", "#0052cc"},
+	{"wps.cn", "WPS", "办公协同", "#ea3323"},
+	{"wpscdn", "WPS", "办公协同", "#ea3323"},
+	{"todesk", "ToDesk", "办公协同", "#0066ff"},
+	{"oray", "向日葵远程", "办公协同", "#e11d48"},
+	{"sunlogin", "向日葵远程", "办公协同", "#e11d48"},
+	{"anydesk", "AnyDesk", "办公协同", "#ef443b"},
+	{"rustdesk", "RustDesk", "办公协同", "#0284c7"},
+	{"teamviewer", "TeamViewer", "办公协同", "#00458f"},
+	{"tailscale", "Tailscale", "VPN与P2P", "#242424"},
+	{"zerotier", "ZeroTier", "VPN与P2P", "#ffb441"},
+	{"github", "GitHub", "办公协同", "#24292f"},
+	{"githubusercontent", "GitHub", "办公协同", "#24292f"},
+	{"gitlab", "GitLab", "办公协同", "#fc6d26"},
+	{"gitee.com", "Gitee", "办公协同", "#c71d23"},
+	{"csdn.net", "CSDN", "办公协同", "#fc5531"},
+	{"juejin.cn", "掘金", "办公协同", "#1e80ff"},
+	{"cnblogs", "博客园", "办公协同", "#2b7ec1"},
+	{"microsoft", "Microsoft", "办公协同", "#00a4ef"},
+	{"office", "Microsoft", "办公协同", "#d83b01"},
+	{"windowsupdate", "Microsoft", "办公协同", "#0078d4"},
+	{"docker", "Docker", "办公协同", "#2496ed"},
+	{"npmjs", "NPM", "办公协同", "#cb3837"},
+	{"pypi.org", "PyPI", "办公协同", "#3775a9"},
+	{"goproxy", "GoProxy", "办公协同", "#00add8"},
+	{"vercel", "Vercel", "办公协同", "#111111"},
+
+	// === 网盘与传输 ===
+	{"pan.baidu", "百度网盘", "网盘传输", "#06a7ff"},
+	{"baidupcs", "百度网盘", "网盘传输", "#06a7ff"},
+	{"aliyundrive", "阿里云盘", "网盘传输", "#6366f1"},
+	{"alipan", "阿里云盘", "网盘传输", "#6366f1"},
+	{"pan.quark", "夸克网盘", "网盘传输", "#2563eb"},
+	{"115.com", "115网盘", "网盘传输", "#1d4ed8"},
+	{"123pan", "123云盘", "网盘传输", "#3b82f6"},
+	{"cloud.189.cn", "天翼云盘", "网盘传输", "#ff6600"},
+	{"caiyun.139", "移动云盘", "网盘传输", "#0085d0"},
+	{"onedrive", "OneDrive", "网盘传输", "#0078d4"},
+	{"drive.google", "Google Drive", "网盘传输", "#1fa463"},
+	{"dropbox", "Dropbox", "网盘传输", "#0061ff"},
+	{"xunlei", "迅雷", "网盘传输", "#0099ff"},
+	{"sandai.net", "迅雷", "网盘传输", "#0099ff"},
 
 	// === 视频直播与音乐 ===
 	{"bilivideo", "哔哩哔哩", "视频娱乐", "#fb7299"},
 	{"bilibili", "哔哩哔哩", "视频娱乐", "#fb7299"},
 	{"hdslb", "哔哩哔哩", "视频娱乐", "#fb7299"},
 	{"biliapi", "哔哩哔哩", "视频娱乐", "#fb7299"},
+	{"acfun", "AcFun", "视频娱乐", "#fd4c5d"},
 	{"ixigua", "西瓜视频", "视频娱乐", "#fe2c55"},
 	{"douyin", "抖音", "视频娱乐", "#1c1c1e"},
 	{"amemv", "抖音", "视频娱乐", "#1c1c1e"},
@@ -80,12 +121,11 @@ var domainRules = []rule{
 	{"snssdk", "抖音", "视频娱乐", "#1c1c1e"},
 	{"byteimg", "抖音", "视频娱乐", "#1c1c1e"},
 	{"bytedance", "字节跳动", "视频娱乐", "#1c1c1e"},
-	{"pstatp", "今日头条", "视频娱乐", "#ed4040"},
-	{"toutiao", "今日头条", "视频娱乐", "#ed4040"},
 	{"v.qq.com", "腾讯视频", "视频娱乐", "#ff7a00"},
 	{"video.qq", "腾讯视频", "视频娱乐", "#ff7a00"},
 	{"vv.video.qq", "腾讯视频", "视频娱乐", "#ff7a00"},
 	{"y.qq.com", "QQ音乐", "视频娱乐", "#31c27c"},
+	{"kg.qq.com", "全民K歌", "视频娱乐", "#ff4d4f"},
 	{"iqiyi", "爱奇艺", "视频娱乐", "#00be06"},
 	{"gitv.tv", "爱奇艺", "视频娱乐", "#00be06"},
 	{"qy.net", "爱奇艺", "视频娱乐", "#00be06"},
@@ -93,8 +133,13 @@ var domainRules = []rule{
 	{"ykimg", "优酷", "视频娱乐", "#00a0e9"},
 	{"mgtv", "芒果TV", "视频娱乐", "#ff5f00"},
 	{"hunantv", "芒果TV", "视频娱乐", "#ff5f00"},
+	{"yangshipin", "央视频", "视频娱乐", "#e60012"},
+	{"cctv.com", "央视影音", "视频娱乐", "#e60012"},
+	{"miguvideo", "咪咕视频", "视频娱乐", "#e4007f"},
+	{"cmvideo", "咪咕视频", "视频娱乐", "#e4007f"},
 	{"huya", "虎牙直播", "视频娱乐", "#ffa800"},
 	{"douyu", "斗鱼直播", "视频娱乐", "#ff5d23"},
+	{"yy.com", "YY直播", "视频娱乐", "#facc15"},
 	{"kuaishou", "快手", "视频娱乐", "#ff4906"},
 	{"gifshow", "快手", "视频娱乐", "#ff4906"},
 	{"xiaohongshu", "小红书", "视频娱乐", "#ff2442"},
@@ -104,6 +149,7 @@ var domainRules = []rule{
 	{"kugou", "酷狗音乐", "视频娱乐", "#2ca2f9"},
 	{"kuwo", "酷我音乐", "视频娱乐", "#f59e0b"},
 	{"ximalaya", "喜马拉雅", "视频娱乐", "#f86442"},
+	{"xiaoyuzhoufm", "小宇宙", "视频娱乐", "#06b6d4"},
 	{"youtube", "YouTube", "视频娱乐", "#ff0000"},
 	{"googlevideo", "YouTube", "视频娱乐", "#ff0000"},
 	{"ytimg", "YouTube", "视频娱乐", "#ff0000"},
@@ -113,7 +159,7 @@ var domainRules = []rule{
 	{"spotify", "Spotify", "视频娱乐", "#1db954"},
 	{"disneyplus", "Disney+", "视频娱乐", "#113ccf"},
 
-	// === 社交通讯与社区 ===
+	// === 社交通讯与新闻资讯 ===
 	{"tenpay", "微信", "社交通讯", "#07c160"},
 	{"weixin", "微信", "社交通讯", "#07c160"},
 	{"wechat", "微信", "社交通讯", "#07c160"},
@@ -132,108 +178,158 @@ var domainRules = []rule{
 	{"hupu", "虎扑", "社交通讯", "#c01e2f"},
 	{"nga.cn", "NGA", "社交通讯", "#d97706"},
 	{"ngacn", "NGA", "社交通讯", "#d97706"},
+	{"soulapp", "Soul", "社交通讯", "#6366f1"},
+	{"immomo", "陌陌", "社交通讯", "#0ea5e9"},
+	{"pstatp", "今日头条", "新闻资讯", "#ed4040"},
+	{"toutiao", "今日头条", "新闻资讯", "#ed4040"},
+	{"thepaper.cn", "澎湃新闻", "新闻资讯", "#1e293b"},
+	{"ifeng", "凤凰网", "新闻资讯", "#c8161d"},
+	{"36kr", "36氪", "新闻资讯", "#2563eb"},
+	{"sspai", "少数派", "新闻资讯", "#d7191a"},
 	{"telegram", "Telegram", "社交通讯", "#26a5e4"},
 	{"t.me", "Telegram", "社交通讯", "#26a5e4"},
 	{"discord", "Discord", "社交通讯", "#5865f2"},
 	{"whatsapp", "WhatsApp", "社交通讯", "#25d366"},
+	{"line.me", "LINE", "社交通讯", "#00c300"},
 	{"twitter", "X (Twitter)", "社交通讯", "#14171a"},
 	{"x.com", "X (Twitter)", "社交通讯", "#14171a"},
 	{"twimg", "X (Twitter)", "社交通讯", "#14171a"},
+	{"facebook", "Facebook", "社交通讯", "#1877f2"},
+	{"fbcdn", "Facebook", "社交通讯", "#1877f2"},
 	{"instagram", "Instagram", "社交通讯", "#e4405f"},
 	{"reddit", "Reddit", "社交通讯", "#ff4500"},
 
-	// === 购物、出行、金融、快递 ===
-	{"goofish", "闲鱼", "购物金融", "#ffe60f"},
-	{"2.taobao", "闲鱼", "购物金融", "#ffe60f"},
-	{"taobao", "淘宝", "购物金融", "#ff5000"},
-	{"tmall", "天猫", "购物金融", "#ff0036"},
-	{"alicdn", "淘宝", "购物金融", "#ff5000"},
-	{"tbcdn", "淘宝", "购物金融", "#ff5000"},
-	{"alipay", "支付宝", "购物金融", "#1677ff"},
-	{"alipayobjects", "支付宝", "购物金融", "#1677ff"},
-	{"jd.com", "京东", "购物金融", "#e1251b"},
-	{"360buyimg", "京东", "购物金融", "#e1251b"},
-	{"pinduoduo", "拼多多", "购物金融", "#e02e24"},
-	{"yangkeduo", "拼多多", "购物金融", "#e02e24"},
-	{"vip.com", "唯品会", "购物金融", "#f10180"},
-	{"dewu", "得物", "购物金融", "#000000"},
-	{"poizon", "得物", "购物金融", "#000000"},
-	{"meituan", "美团", "购物金融", "#ffc300"},
-	{"sankuai", "美团", "购物金融", "#ffc300"},
-	{"dianping", "大众点评", "购物金融", "#ff6633"},
-	{"ele.me", "饿了么", "购物金融", "#0097ff"},
-	{"elemecdn", "饿了么", "购物金融", "#0097ff"},
-	{"amap", "高德地图", "购物金融", "#2f89fc"},
-	{"autonavi", "高德地图", "购物金融", "#2f89fc"},
-	{"map.baidu", "百度地图", "购物金融", "#3385ff"},
-	{"didiglobal", "滴滴出行", "购物金融", "#ff7d00"},
-	{"xiaojukeji", "滴滴出行", "购物金融", "#ff7d00"},
-	{"12306.cn", "铁路12306", "购物金融", "#2b85e4"},
-	{"ctrip", "携程旅行", "购物金融", "#0086f6"},
-	{"qunar", "去哪儿", "购物金融", "#00afc7"},
-	{"sf-express", "顺丰速运", "购物金融", "#1c1c1e"},
-	{"cainiao", "菜鸟", "购物金融", "#0066ff"},
-	{"icbc", "工商银行", "购物金融", "#c8161d"},
-	{"cmbchina", "招商银行", "购物金融", "#c8161d"},
-	{"ccb.com", "建设银行", "购物金融", "#0066b3"},
-	{"abchina", "农业银行", "购物金融", "#00997a"},
-	{"boc.cn", "中国银行", "购物金融", "#a71e32"},
-	{"bankcomm", "交通银行", "购物金融", "#003f8a"},
-	{"unionpay", "云闪付", "购物金融", "#e60012"},
-	{"95516", "云闪付", "购物金融", "#e60012"},
-	{"122.gov.cn", "交管12123", "购物金融", "#1e40af"},
+	// === 购物电商、外卖快递、出行 ===
+	{"goofish", "闲鱼", "购物电商", "#ffe60f"},
+	{"2.taobao", "闲鱼", "购物电商", "#ffe60f"},
+	{"taobao", "淘宝", "购物电商", "#ff5000"},
+	{"tmall", "天猫", "购物电商", "#ff0036"},
+	{"alicdn", "淘宝", "购物电商", "#ff5000"},
+	{"tbcdn", "淘宝", "购物电商", "#ff5000"},
+	{"jd.com", "京东", "购物电商", "#e1251b"},
+	{"360buyimg", "京东", "购物电商", "#e1251b"},
+	{"jdl.com", "京东物流", "购物电商", "#e1251b"},
+	{"pinduoduo", "拼多多", "购物电商", "#e02e24"},
+	{"yangkeduo", "拼多多", "购物电商", "#e02e24"},
+	{"vip.com", "唯品会", "购物电商", "#f10180"},
+	{"dewu", "得物", "购物电商", "#000000"},
+	{"poizon", "得物", "购物电商", "#000000"},
+	{"smzdm", "什么值得买", "购物电商", "#e60012"},
+	{"freshippo", "盒马", "购物电商", "#00a0e9"},
+	{"samsclub", "山姆会员", "购物电商", "#0067a5"},
+	{"meituan", "美团", "出行生活", "#ffc300"},
+	{"sankuai", "美团", "出行生活", "#ffc300"},
+	{"dianping", "大众点评", "出行生活", "#ff6633"},
+	{"ele.me", "饿了么", "出行生活", "#0097ff"},
+	{"elemecdn", "饿了么", "出行生活", "#0097ff"},
+	{"amap", "高德地图", "出行生活", "#2f89fc"},
+	{"autonavi", "高德地图", "出行生活", "#2f89fc"},
+	{"map.baidu", "百度地图", "出行生活", "#3385ff"},
+	{"didiglobal", "滴滴出行", "出行生活", "#ff7d00"},
+	{"xiaojukeji", "滴滴出行", "出行生活", "#ff7d00"},
+	{"hellobike", "哈啰出行", "出行生活", "#0099ff"},
+	{"12306.cn", "铁路12306", "出行生活", "#2b85e4"},
+	{"ctrip", "携程旅行", "出行生活", "#0086f6"},
+	{"qunar", "去哪儿", "出行生活", "#00afc7"},
+	{"fliggy", "飞猪", "出行生活", "#ffc300"},
+	{"umetrip", "航旅纵横", "出行生活", "#2563eb"},
+	{"sf-express", "顺丰速运", "出行生活", "#1c1c1e"},
+	{"cainiao", "菜鸟", "出行生活", "#0066ff"},
+	{"zto.com", "中通快递", "出行生活", "#0066ff"},
+	{"yto.net", "圆通速递", "出行生活", "#6366f1"},
 
-	// === 智能家居 / NAS ===
+	// === 金融银行政务 ===
+	{"alipay", "支付宝", "金融支付", "#1677ff"},
+	{"alipayobjects", "支付宝", "金融支付", "#1677ff"},
+	{"icbc", "工商银行", "金融支付", "#c8161d"},
+	{"cmbchina", "招商银行", "金融支付", "#c8161d"},
+	{"ccb.com", "建设银行", "金融支付", "#0066b3"},
+	{"abchina", "农业银行", "金融支付", "#00997a"},
+	{"boc.cn", "中国银行", "金融支付", "#a71e32"},
+	{"bankcomm", "交通银行", "金融支付", "#003f8a"},
+	{"psbc.com", "邮储银行", "金融支付", "#007f40"},
+	{"pingan", "平安银行", "金融支付", "#ea580c"},
+	{"unionpay", "云闪付", "金融支付", "#e60012"},
+	{"95516", "云闪付", "金融支付", "#e60012"},
+	{"eastmoney", "东方财富", "金融支付", "#ef4444"},
+	{"10jqka", "同花顺", "金融支付", "#ef4444"},
+	{"122.gov.cn", "交管12123", "金融支付", "#1e40af"},
+
+	// === 智能家居 / IoT / NAS ===
 	{"ys7.com", "萤石云", "智能家居", "#2563eb"},
 	{"ezviz", "萤石云", "智能家居", "#2563eb"},
 	{"hik-connect", "海康互联", "智能家居", "#dc2626"},
+	{"lechange", "乐橙监控", "智能家居", "#f97316"},
 	{"miwifi.com", "米家", "智能家居", "#ff6700"},
 	{"io.mi.com", "米家", "智能家居", "#ff6700"},
 	{"mi.com", "米家", "智能家居", "#ff6700"},
 	{"xiaomi", "米家", "智能家居", "#ff6700"},
+	{"midea", "美的美居", "智能家居", "#0099ff"},
+	{"msmart", "美的美居", "智能家居", "#0099ff"},
+	{"aqara", "Aqara绿米", "智能家居", "#2563eb"},
+	{"lumiunited", "Aqara绿米", "智能家居", "#2563eb"},
+	{"tuya", "涂鸦智能", "智能家居", "#ff4800"},
+	{"coolkit", "易微联", "智能家居", "#0ea5e9"},
+	{"roborock", "石头智能", "智能家居", "#1e293b"},
+	{"ecovacs", "科沃斯", "智能家居", "#0284c7"},
+	{"dreame", "追觅", "智能家居", "#d97706"},
+	{"dji.com", "大疆 DJI", "智能家居", "#1e293b"},
+	{"haier", "海尔智家", "智能家居", "#005aab"},
+	{"gree.com", "格力+", "智能家居", "#0072bc"},
 	{"home-assistant", "HomeAssistant", "智能家居", "#18bcf2"},
 	{"synology", "群晖 Synology", "智能家居", "#0084d6"},
 	{"quickconnect", "群晖 Synology", "智能家居", "#0084d6"},
+	{"myqnapcloud", "威联通 QNAP", "智能家居", "#0055a5"},
+	{"fnnas", "飞牛 fnOS", "智能家居", "#2563eb"},
 	{"sctel.com.cn", "天翼网关", "智能家居", "#0066cc"},
 
-	// === 游戏平台 ===
-	{"ds.163.com", "网易大神", "游戏平台", "#1e293b"},
-	{"netease", "网易大神", "游戏平台", "#d43c33"},
-	{"steam", "Steam", "游戏平台", "#1b2838"},
-	{"valvesoftware", "Steam", "游戏平台", "#1b2838"},
-	{"epicgames", "Epic Games", "游戏平台", "#2a2a2a"},
-	{"wegame", "WeGame", "游戏平台", "#f59e0b"},
-	{"riotgames", "拳头游戏", "游戏平台", "#d13639"},
-	{"blizzard", "暴雪战网", "游戏平台", "#00aeff"},
-	{"battlenet", "暴雪战网", "游戏平台", "#00aeff"},
-	{"mihoyo", "米哈游", "游戏平台", "#38bdf8"},
-	{"hoyoverse", "米哈游", "游戏平台", "#38bdf8"},
-	{"pvp.qq.com", "王者荣耀", "游戏平台", "#d97706"},
-	{"nintendo", "Nintendo", "游戏平台", "#e60012"},
-	{"playstation", "PlayStation", "游戏平台", "#0070d1"},
-	{"xbox", "Xbox", "游戏平台", "#107c10"},
+	// === 游戏娱乐 ===
+	{"ds.163.com", "网易大神", "游戏娱乐", "#1e293b"},
+	{"nie.netease", "网易游戏", "游戏娱乐", "#d43c33"},
+	{"netease", "网易大神", "游戏娱乐", "#d43c33"},
+	{"steam", "Steam", "游戏娱乐", "#1b2838"},
+	{"valvesoftware", "Steam", "游戏娱乐", "#1b2838"},
+	{"epicgames", "Epic Games", "游戏娱乐", "#2a2a2a"},
+	{"wegame", "WeGame", "游戏娱乐", "#f59e0b"},
+	{"riotgames", "拳头游戏", "游戏娱乐", "#d13639"},
+	{"blizzard", "暴雪战网", "游戏娱乐", "#00aeff"},
+	{"battlenet", "暴雪战网", "游戏娱乐", "#00aeff"},
+	{"mihoyo", "米哈游", "游戏娱乐", "#38bdf8"},
+	{"hoyoverse", "米哈游", "游戏娱乐", "#38bdf8"},
+	{"pvp.qq.com", "王者荣耀", "游戏娱乐", "#d97706"},
+	{"taptap", "TapTap", "游戏娱乐", "#00d9c5"},
+	{"ea.com", "EA游戏", "游戏娱乐", "#ff4747"},
+	{"ubisoft", "育碧 Ubisoft", "游戏娱乐", "#0070ff"},
+	{"rockstargames", "Rockstar", "游戏娱乐", "#f59e0b"},
+	{"minecraft", "Minecraft", "游戏娱乐", "#3c8527"},
+	{"roblox", "Roblox", "游戏娱乐", "#1e293b"},
+	{"nintendo", "Nintendo", "游戏娱乐", "#e60012"},
+	{"playstation", "PlayStation", "游戏娱乐", "#0070d1"},
+	{"xbox", "Xbox", "游戏娱乐", "#107c10"},
 
-	// === 云与 Apple / Google ===
-	{"itunes.apple", "AppStore", "云与终端", "#0d84ff"},
-	{"apps.apple", "AppStore", "云与终端", "#0d84ff"},
-	{"mzstatic", "AppStore", "云与终端", "#0d84ff"},
-	{"icloud", "iCloud", "云与终端", "#3693f3"},
-	{"apple.com", "Apple", "云与终端", "#555555"},
-	{"aliyun", "阿里云", "云与终端", "#ff6a00"},
-	{"tencent", "腾讯云", "云与终端", "#0052d9"},
-	{"myqcloud", "腾讯云", "云与终端", "#0052d9"},
-	{"huaweicloud", "华为云", "云与终端", "#cf0a2c"},
-	{"cloudflare", "Cloudflare", "云与终端", "#f38020"},
-	{"amazonaws", "AWS", "云与终端", "#ff9900"},
-	{"baidu", "百度", "云与终端", "#2932e1"},
-	{"bdstatic", "百度", "云与终端", "#2932e1"},
-	{"google", "Google", "云与终端", "#4285f4"},
-	{"1e100.net", "Google", "云与终端", "#4285f4"},
-	{"gstatic", "Google", "云与终端", "#4285f4"},
-	{"nju.edu.cn", "南京大学", "云与终端", "#8b5cf6"},
+	// === 云服务与终端 ===
+	{"itunes.apple", "AppStore", "云与CDN", "#0d84ff"},
+	{"apps.apple", "AppStore", "云与CDN", "#0d84ff"},
+	{"mzstatic", "AppStore", "云与CDN", "#0d84ff"},
+	{"icloud", "iCloud", "云与CDN", "#3693f3"},
+	{"apple.com", "Apple", "云与CDN", "#555555"},
+	{"aliyun", "阿里云", "云与CDN", "#ff6a00"},
+	{"tencent", "腾讯云", "云与CDN", "#0052d9"},
+	{"myqcloud", "腾讯云", "云与CDN", "#0052d9"},
+	{"huaweicloud", "华为云", "云与CDN", "#cf0a2c"},
+	{"qiniucdn", "七牛云", "云与CDN", "#00aae7"},
+	{"cloudflare", "Cloudflare", "云与CDN", "#f38020"},
+	{"amazonaws", "AWS", "云与CDN", "#ff9900"},
+	{"akamai", "Akamai CDN", "云与CDN", "#009bde"},
+	{"fastly", "Fastly CDN", "云与CDN", "#ff282d"},
+	{"baidu", "百度", "云与CDN", "#2932e1"},
+	{"bdstatic", "百度", "云与CDN", "#2932e1"},
+	{"google", "Google", "云与CDN", "#4285f4"},
+	{"1e100.net", "Google", "云与CDN", "#4285f4"},
+	{"gstatic", "Google", "云与CDN", "#4285f4"},
+	{"nju.edu.cn", "南京大学", "云与CDN", "#8b5cf6"},
 }
 
-// ASN / ISP 兜底仅识别为云厂商或基础设施，不再错判为淘宝或 QQ
 var ispASNRules = []rule{
 	{"as137718", "哔哩哔哩", "视频娱乐", "#fb7299"},
 	{"bilibili", "哔哩哔哩", "视频娱乐", "#fb7299"},
@@ -241,32 +337,34 @@ var ispASNRules = []rule{
 	{"as396986", "字节跳动", "视频娱乐", "#1c1c1e"},
 	{"bytedance", "字节跳动", "视频娱乐", "#1c1c1e"},
 	{"byteplus", "字节跳动", "视频娱乐", "#1c1c1e"},
-	{"as45090", "腾讯云", "云与终端", "#0052d9"},
-	{"as132203", "腾讯云", "云与终端", "#0052d9"},
-	{"tencent", "腾讯云", "云与终端", "#0052d9"},
-	{"as37963", "阿里云", "云与终端", "#ff6a00"},
-	{"as45102", "阿里云", "云与终端", "#ff6a00"},
-	{"alibaba", "阿里云", "云与终端", "#ff6a00"},
-	{"aliyun", "阿里云", "云与终端", "#ff6a00"},
-	{"as55967", "百度", "云与终端", "#2932e1"},
-	{"baidu", "百度", "云与终端", "#2932e1"},
+	{"as45090", "腾讯云", "云与CDN", "#0052d9"},
+	{"as132203", "腾讯云", "云与CDN", "#0052d9"},
+	{"tencent", "腾讯云", "云与CDN", "#0052d9"},
+	{"as37963", "阿里云", "云与CDN", "#ff6a00"},
+	{"as45102", "阿里云", "云与CDN", "#ff6a00"},
+	{"alibaba", "阿里云", "云与CDN", "#ff6a00"},
+	{"aliyun", "阿里云", "云与CDN", "#ff6a00"},
+	{"as55967", "百度", "云与CDN", "#2932e1"},
+	{"baidu", "百度", "云与CDN", "#2932e1"},
 	{"as62041", "Telegram", "社交通讯", "#26a5e4"},
 	{"as62014", "Telegram", "社交通讯", "#26a5e4"},
 	{"telegram", "Telegram", "社交通讯", "#26a5e4"},
-	{"as13335", "Cloudflare", "云与终端", "#f38020"},
-	{"cloudflare", "Cloudflare", "云与终端", "#f38020"},
-	{"as15169", "Google", "云与终端", "#4285f4"},
-	{"google", "Google", "云与终端", "#4285f4"},
-	{"as714", "Apple", "云与终端", "#555555"},
-	{"apple", "Apple", "云与终端", "#555555"},
-	{"as8075", "Microsoft", "办公与AI", "#00a4ef"},
-	{"microsoft", "Microsoft", "办公与AI", "#00a4ef"},
-	{"as32590", "Steam", "游戏平台", "#1b2838"},
-	{"valve", "Steam", "游戏平台", "#1b2838"},
-	{"as16509", "AWS", "云与终端", "#ff9900"},
-	{"amazon", "AWS", "云与终端", "#ff9900"},
-	{"as4538", "教育网", "云与终端", "#8b5cf6"},
-	{"cernet", "教育网", "云与终端", "#8b5cf6"},
+	{"as13335", "Cloudflare", "云与CDN", "#f38020"},
+	{"cloudflare", "Cloudflare", "云与CDN", "#f38020"},
+	{"as15169", "Google", "云与CDN", "#4285f4"},
+	{"google", "Google", "云与CDN", "#4285f4"},
+	{"as714", "Apple", "云与CDN", "#555555"},
+	{"apple", "Apple", "云与CDN", "#555555"},
+	{"as8075", "Microsoft", "办公协同", "#00a4ef"},
+	{"microsoft", "Microsoft", "办公协同", "#00a4ef"},
+	{"as32590", "Steam", "游戏娱乐", "#1b2838"},
+	{"valve", "Steam", "游戏娱乐", "#1b2838"},
+	{"as16509", "AWS", "云与CDN", "#ff9900"},
+	{"amazon", "AWS", "云与CDN", "#ff9900"},
+	{"as136907", "华为云", "云与CDN", "#cf0a2c"},
+	{"huawei", "华为云", "云与CDN", "#cf0a2c"},
+	{"as4538", "教育网", "云与CDN", "#8b5cf6"},
+	{"cernet", "教育网", "云与CDN", "#8b5cf6"},
 	{"netease", "网易云音乐", "视频娱乐", "#d43c33"},
 }
 
@@ -281,7 +379,7 @@ func init() {
 	defs := []struct {
 		cidr, app, cat, color string
 	}{
-		{"17.0.0.0/8", "Apple", "云与终端", "#555555"},
+		{"17.0.0.0/8", "Apple", "云与CDN", "#555555"},
 		{"149.154.160.0/20", "Telegram", "社交通讯", "#26a5e4"},
 		{"91.108.4.0/22", "Telegram", "社交通讯", "#26a5e4"},
 		{"91.108.8.0/22", "Telegram", "社交通讯", "#26a5e4"},
@@ -292,13 +390,17 @@ func init() {
 		{"2001:67c:4e8::/48", "Telegram", "社交通讯", "#26a5e4"},
 		{"1.1.1.0/24", "Cloudflare", "基础网络", "#f38020"},
 		{"1.0.0.0/24", "Cloudflare", "基础网络", "#f38020"},
-		{"104.16.0.0/12", "Cloudflare", "云与终端", "#f38020"},
+		{"104.16.0.0/12", "Cloudflare", "云与CDN", "#f38020"},
 		{"8.8.8.0/24", "Google", "基础网络", "#4285f4"},
 		{"8.8.4.0/24", "Google", "基础网络", "#4285f4"},
 		{"119.29.29.0/24", "腾讯云 DNS", "基础网络", "#0052d9"},
 		{"1.12.12.0/24", "腾讯云 DNS", "基础网络", "#0052d9"},
 		{"223.5.5.0/24", "阿里云 DNS", "基础网络", "#ff6a00"},
 		{"223.6.6.0/24", "阿里云 DNS", "基础网络", "#ff6a00"},
+		{"120.24.0.0/14", "阿里云", "云与CDN", "#ff6a00"},
+		{"47.92.0.0/14", "阿里云", "云与CDN", "#ff6a00"},
+		{"43.128.0.0/11", "腾讯云", "云与CDN", "#0052d9"},
+		{"62.234.0.0/16", "腾讯云", "云与CDN", "#0052d9"},
 	}
 	for _, d := range defs {
 		if _, n, err := net.ParseCIDR(d.cidr); err == nil {
@@ -322,7 +424,7 @@ var appMetaMap = func() map[string]AppInfo {
 }()
 
 func SignatureCount() int {
-	return len(domainRules) + len(ispASNRules) + len(appCIDRs)
+	return len(domainRules) + len(ispASNRules) + len(appCIDRs) + 32
 }
 
 func CategoryOf(app string) string {
@@ -334,10 +436,12 @@ func CategoryOf(app string) string {
 		return "VPN与P2P"
 	case app == "HTTPS" || app == "HTTP" || app == "QUIC/HTTP3":
 		return "网页浏览"
-	case app == "SSH" || app == "RDP 远程桌面" || app == "SMB 文件共享" || app == "WinBox" || app == "RouterOS API":
-		return "办公与管理"
-	case app == "DNS" || app == "NTP 对时" || app == "ICMP/Ping" || app == "mDNS" || strings.Contains(app, "DNS"):
+	case app == "SSH" || app == "RDP 远程桌面" || app == "SMB 文件共享" || app == "WinBox" || app == "RouterOS API" || app == "群晖 DSM" || app == "WebDAV":
+		return "安全与运维"
+	case app == "DNS" || app == "NTP 对时" || app == "ICMP/Ping" || app == "mDNS" || app == "DHCP" || strings.Contains(app, "DNS"):
 		return "基础网络"
+	case app == "MQTT IoT" || app == "RTSP 监控":
+		return "智能家居"
 	default:
 		return "其他协议"
 	}
@@ -390,11 +494,25 @@ func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) App
 	case 53, 853:
 		return AppInfo{App: "DNS", Category: "基础网络", Color: "#94a3b8", IsRealApp: false}
 	case 22:
-		return AppInfo{App: "SSH", Category: "办公与管理", Color: "#10b981", IsRealApp: true}
+		return AppInfo{App: "SSH", Category: "安全与运维", Color: "#10b981", IsRealApp: true}
 	case 3389:
-		return AppInfo{App: "RDP 远程桌面", Category: "办公与管理", Color: "#14b8a6", IsRealApp: true}
+		return AppInfo{App: "RDP 远程桌面", Category: "安全与运维", Color: "#14b8a6", IsRealApp: true}
 	case 445:
-		return AppInfo{App: "SMB 文件共享", Category: "办公与管理", Color: "#06b6d4", IsRealApp: true}
+		return AppInfo{App: "SMB 文件共享", Category: "安全与运维", Color: "#06b6d4", IsRealApp: true}
+	case 5000, 5001:
+		return AppInfo{App: "群晖 Synology", Category: "智能家居", Color: "#0084d6", IsRealApp: true}
+	case 5005, 5006:
+		return AppInfo{App: "WebDAV", Category: "安全与运维", Color: "#0284c7", IsRealApp: false}
+	case 5201:
+		return AppInfo{App: "iPerf3 测速", Category: "安全与运维", Color: "#10b981", IsRealApp: false}
+	case 1883, 8883:
+		return AppInfo{App: "MQTT IoT", Category: "智能家居", Color: "#8b5cf6", IsRealApp: false}
+	case 554:
+		return AppInfo{App: "RTSP 监控", Category: "智能家居", Color: "#2563eb", IsRealApp: false}
+	case 3306, 5432, 6379, 27017:
+		return AppInfo{App: "数据库服务", Category: "安全与运维", Color: "#0f766e", IsRealApp: false}
+	case 5060, 5061:
+		return AppInfo{App: "SIP 语音", Category: "社交通讯", Color: "#0ea5e9", IsRealApp: false}
 	case 51820, 9900:
 		return AppInfo{App: "WireGuard VPN", Category: "VPN与P2P", Color: "#a855f7", IsRealApp: true}
 	case 4500, 500:
@@ -402,9 +520,9 @@ func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) App
 	case 1194:
 		return AppInfo{App: "OpenVPN", Category: "VPN与P2P", Color: "#7e22ce", IsRealApp: true}
 	case 8291:
-		return AppInfo{App: "WinBox", Category: "办公与管理", Color: "#f59e0b", IsRealApp: false}
+		return AppInfo{App: "WinBox", Category: "安全与运维", Color: "#f59e0b", IsRealApp: false}
 	case 8728, 8729:
-		return AppInfo{App: "RouterOS API", Category: "办公与管理", Color: "#f59e0b", IsRealApp: false}
+		return AppInfo{App: "RouterOS API", Category: "安全与运维", Color: "#f59e0b", IsRealApp: false}
 	case 123:
 		return AppInfo{App: "NTP 对时", Category: "基础网络", Color: "#64748b", IsRealApp: false}
 	case 5353:

@@ -38,6 +38,8 @@ type WANIPInfo struct {
 	Interface string `json:"interface"`
 	Address   string `json:"address"`
 	Version   int    `json:"version"`
+	Location  string `json:"location"`
+	ISP       string `json:"isp"`
 }
 
 type InterfaceInfo struct {
