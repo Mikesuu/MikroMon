@@ -83,6 +83,7 @@ type RouterSnapshot struct {
 	Interfaces    []LiveInterface          `json:"interfaces"`
 	LiveIPs       []LiveIP                 `json:"live_ips"`
 	ActiveApps    []ActiveAppSummary       `json:"active_apps"`
+	TotalConns    int                      `json:"total_conns"`
 	Connections   []LiveConnection         `json:"connections"`
 	RecentDomains []store.DomainAuditEntry `json:"recent_domains"`
 }
@@ -425,10 +426,12 @@ func (c *Collector) pollWorker(w *routerWorker) {
 	prevSnap := c.snapshots[w.cfg.ID]
 	c.mu.RUnlock()
 
+	var totalConns int
 	var liveConns []LiveConnection
 	var liveIPs []LiveIP
 	var activeApps []ActiveAppSummary
 	if prevSnap != nil {
+		totalConns = prevSnap.TotalConns
 		liveConns = prevSnap.Connections
 		liveIPs = prevSnap.LiveIPs
 		activeApps = prevSnap.ActiveApps
@@ -437,6 +440,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 	if now.Sub(w.lastConnAt) >= 4*time.Second {
 		w.lastConnAt = now
 		if rawConns, err := mikrotik.GetConnections(w.client); err == nil {
+			totalConns = len(rawConns)
 			liveConns, liveIPs, activeApps = c.processConnections(w, nowUnix, rawConns)
 		}
 	}
@@ -450,6 +454,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		Interfaces:    liveIfaces,
 		LiveIPs:       liveIPs,
 		ActiveApps:    activeApps,
+		TotalConns:    totalConns,
 		Connections:   liveConns,
 		RecentDomains: w.recentDomains,
 	}

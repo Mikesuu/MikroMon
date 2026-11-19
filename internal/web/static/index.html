@@ -997,7 +997,7 @@ async function pollSnapshot() {
     document.getElementById('kpiApps').textContent = apps.length;
     document.getElementById('kpiUsers').textContent = liveIps.length;
     document.getElementById('kpiUsersSub').textContent = `IPv4: ${v4Cnt} / IPv6: ${v6Cnt}`;
-    document.getElementById('kpiConns').textContent = conns.length;
+    document.getElementById('kpiConns').textContent = snap.total_conns || conns.length;
 
     const ifaces = snap.interfaces || [];
     syncIfaceSelects(ifaces);

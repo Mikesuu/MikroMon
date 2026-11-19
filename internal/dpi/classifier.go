@@ -385,6 +385,8 @@ func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) App
 		return AppInfo{App: "HTTPS", Category: "网页浏览", Color: "#38bdf8", IsRealApp: false}
 	case 80, 8080:
 		return AppInfo{App: "HTTP", Category: "网页浏览", Color: "#0284c7", IsRealApp: false}
+	case 67, 68:
+		return AppInfo{App: "DHCP", Category: "基础网络", Color: "#94a3b8", IsRealApp: false}
 	case 53, 853:
 		return AppInfo{App: "DNS", Category: "基础网络", Color: "#94a3b8", IsRealApp: false}
 	case 22:
