@@ -14,6 +14,7 @@
       --text-1: #f1f5f9; --text-2: #94a3b8; --grid-line: #282f3b;
       --hover-row: rgba(51, 65, 85, 0.35);
       --accent: #0099cc; --accent-soft: rgba(0, 153, 204, 0.18);
+      --card-radius: 0.5rem; --card-blur: none;
     }
     html[data-theme="light"] {
       --bg-body: #f1f5f9; --bg-sidebar: #ffffff; --bg-header: #ffffff;
@@ -21,6 +22,7 @@
       --text-1: #0f172a; --text-2: #64748b; --grid-line: #e2e8f0;
       --hover-row: rgba(226, 232, 240, 0.55);
       --accent: #0284c7; --accent-soft: rgba(2, 132, 199, 0.14);
+      --card-radius: 0.5rem; --card-blur: none;
     }
     html[data-theme="cyber"] {
       --bg-body: #070b14; --bg-sidebar: #0b1120; --bg-header: #0d1426;
@@ -28,6 +30,7 @@
       --text-1: #e2e8f0; --text-2: #7dd3fc; --grid-line: #1b2847;
       --hover-row: rgba(34, 211, 238, 0.12);
       --accent: #22d3ee; --accent-soft: rgba(34, 211, 238, 0.18);
+      --card-radius: 0.5rem; --card-blur: none;
     }
     html[data-theme="nord"] {
       --bg-body: #242933; --bg-sidebar: #2e3440; --bg-header: #2e3440;
@@ -35,6 +38,7 @@
       --text-1: #eceff4; --text-2: #d8dee9; --grid-line: #434c5e;
       --hover-row: rgba(136, 192, 208, 0.14);
       --accent: #88c0d0; --accent-soft: rgba(136, 192, 208, 0.2);
+      --card-radius: 0.5rem; --card-blur: none;
     }
     html[data-theme="emerald"] {
       --bg-body: #09120e; --bg-sidebar: #0e1a15; --bg-header: #0f1f18;
@@ -42,6 +46,7 @@
       --text-1: #ecfdf5; --text-2: #86efac; --grid-line: #1c3a2e;
       --hover-row: rgba(16, 185, 129, 0.14);
       --accent: #10b981; --accent-soft: rgba(16, 185, 129, 0.2);
+      --card-radius: 0.5rem; --card-blur: none;
     }
     html[data-theme="warm"] {
       --bg-body: #f6f1e7; --bg-sidebar: #fffdf8; --bg-header: #fffdf8;
@@ -49,13 +54,75 @@
       --text-1: #292524; --text-2: #78716c; --grid-line: #e7dfd0;
       --hover-row: rgba(217, 119, 6, 0.1);
       --accent: #d97706; --accent-soft: rgba(217, 119, 6, 0.15);
+      --card-radius: 0.5rem; --card-blur: none;
     }
-    body { background-color: var(--bg-body); color: var(--text-1); transition: background-color .2s, color .2s; }
-    .luci-card { background-color: var(--bg-card); border: 1px solid var(--border); }
-    .luci-sidebar { background-color: var(--bg-sidebar); border-right: 1px solid var(--border); }
-    .luci-header { background-color: var(--bg-header); border-bottom: 1px solid var(--border); }
-    .luci-sub { background-color: var(--bg-sub); border: 1px solid var(--border); }
-    .luci-input { background-color: var(--bg-sub); border: 1px solid var(--border); color: var(--text-1); }
+    /* 卡通1: Candy Pop 马卡龙 */
+    html[data-theme="candy"] {
+      --bg-body: radial-gradient(circle at 12% 15%, #fce7f3 0%, transparent 45%), radial-gradient(circle at 88% 80%, #dbeafe 0%, transparent 45%), #fdf4ff;
+      --bg-sidebar: rgba(255, 255, 255, 0.9); --bg-header: rgba(255, 245, 250, 0.88);
+      --bg-card: rgba(255, 255, 255, 0.86); --bg-sub: #fdf2f8; --border: #f9a8d4;
+      --text-1: #3b0764; --text-2: #9d174d; --grid-line: #fce7f3;
+      --hover-row: rgba(236, 72, 153, 0.1);
+      --accent: #ec4899; --accent-soft: rgba(236, 72, 153, 0.16);
+      --card-radius: 1rem; --card-blur: blur(8px);
+    }
+    /* 卡通2: Arcade Pixel 像素街机 */
+    html[data-theme="pixel"] {
+      --bg-body: radial-gradient(rgba(168, 85, 247, 0.16) 1px, transparent 1px), #161026;
+      --bg-sidebar: #1f1638; --bg-header: #1d1435;
+      --bg-card: #241942; --bg-sub: #2e2054; --border: #6d28d9;
+      --text-1: #faf5ff; --text-2: #c4b5fd; --grid-line: #3b2868;
+      --hover-row: rgba(168, 85, 247, 0.2);
+      --accent: #c084fc; --accent-soft: rgba(192, 132, 252, 0.22);
+      --card-radius: 0.25rem; --card-blur: none;
+    }
+    html[data-theme="pixel"] body { background-size: 18px 18px; }
+    /* 中国风1: Ink Wash 水墨丹青 */
+    html[data-theme="ink"] {
+      --bg-body: radial-gradient(ellipse at 8% 8%, rgba(87, 83, 78, 0.12) 0%, transparent 45%), radial-gradient(ellipse at 92% 90%, rgba(120, 113, 108, 0.1) 0%, transparent 50%), #f4efe6;
+      --bg-sidebar: rgba(252, 249, 242, 0.94); --bg-header: rgba(250, 246, 238, 0.92);
+      --bg-card: rgba(255, 253, 248, 0.9); --bg-sub: #ede6d8; --border: #cfc6b4;
+      --text-1: #1c1917; --text-2: #57534e; --grid-line: #e2dacb;
+      --hover-row: rgba(185, 28, 28, 0.07);
+      --accent: #b91c1c; --accent-soft: rgba(185, 28, 28, 0.14);
+      --card-radius: 0.4rem; --card-blur: blur(4px);
+    }
+    /* 中国风2: Palace Red 故宫朱墙 */
+    html[data-theme="palace"] {
+      --bg-body: radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.14) 0%, transparent 40%), linear-gradient(165deg, #1d0c0e 0%, #120708 100%);
+      --bg-sidebar: #220e10; --bg-header: #240f12;
+      --bg-card: #291215; --bg-sub: #36181c; --border: #6b2b30;
+      --text-1: #fef3c7; --text-2: #fcd34d; --grid-line: #451e22;
+      --hover-row: rgba(245, 158, 11, 0.14);
+      --accent: #f59e0b; --accent-soft: rgba(245, 158, 11, 0.2);
+      --card-radius: 0.45rem; --card-blur: none;
+    }
+    /* 风景1: Aurora 极光雪山 */
+    html[data-theme="aurora"] {
+      --bg-body: radial-gradient(ellipse at 20% 0%, rgba(45, 212, 191, 0.22) 0%, transparent 50%), radial-gradient(ellipse at 85% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 45%), linear-gradient(180deg, #06141e 0%, #0b1f2c 55%, #07111a 100%);
+      --bg-sidebar: rgba(10, 27, 38, 0.88); --bg-header: rgba(10, 27, 38, 0.85);
+      --bg-card: rgba(14, 34, 48, 0.82); --bg-sub: rgba(20, 46, 64, 0.85); --border: rgba(45, 212, 191, 0.28);
+      --text-1: #ecfeff; --text-2: #99f6e4; --grid-line: rgba(45, 212, 191, 0.15);
+      --hover-row: rgba(45, 212, 191, 0.14);
+      --accent: #2dd4bf; --accent-soft: rgba(45, 212, 191, 0.18);
+      --card-radius: 0.75rem; --card-blur: blur(10px);
+    }
+    /* 风景2: Sunset 落日沧海 */
+    html[data-theme="sunset"] {
+      --bg-body: linear-gradient(155deg, #fff1e6 0%, #ffe4d6 35%, #e0f2fe 100%);
+      --bg-sidebar: rgba(255, 252, 248, 0.88); --bg-header: rgba(255, 248, 242, 0.86);
+      --bg-card: rgba(255, 255, 255, 0.82); --bg-sub: rgba(255, 244, 235, 0.9); --border: #fed7aa;
+      --text-1: #0c4a6e; --text-2: #9a3412; --grid-line: #ffedd5;
+      --hover-row: rgba(234, 88, 12, 0.1);
+      --accent: #ea580c; --accent-soft: rgba(234, 88, 12, 0.15);
+      --card-radius: 0.75rem; --card-blur: blur(8px);
+    }
+    body { background: var(--bg-body); background-attachment: fixed; color: var(--text-1); transition: background-color .2s, color .2s; }
+    .luci-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--card-radius); backdrop-filter: var(--card-blur); }
+    .luci-sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); backdrop-filter: var(--card-blur); }
+    .luci-header { background: var(--bg-header); border-bottom: 1px solid var(--border); backdrop-filter: var(--card-blur); }
+    .luci-sub { background: var(--bg-sub); border: 1px solid var(--border); }
+    .luci-input { background: var(--bg-sub); border: 1px solid var(--border); color: var(--text-1); }
     .luci-txt2 { color: var(--text-2); }
     .luci-border { border-color: var(--border); }
     tr.luci-tr:hover { background-color: var(--hover-row); }
@@ -674,6 +741,7 @@
             <div class="flex gap-2">
               <button onclick="loadDBStats();loadCustomDPI();" class="luci-sub px-3 py-1.5 rounded text-xs" data-i18n="btn_refresh">刷新</button>
               <button onclick="clearGeoCache()" class="bg-rose-600 text-white px-3 py-1.5 rounded text-xs" data-i18n="btn_clear_geo">清空 Geo/ASN 缓存重抓</button>
+              <button onclick="refreshAppIcons()" class="bg-[#0099cc] text-white px-3 py-1.5 rounded text-xs" data-i18n="btn_refresh_icons">重抓应用图标</button>
             </div>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -722,14 +790,20 @@
 
             <div class="space-y-2.5 text-xs">
         <div class="luci-sub rounded-lg p-2.5 space-y-2">
-          <div class="font-medium" data-i18n="set_theme">外观主题 (6 套内置)</div>
+          <div class="font-medium" data-i18n="set_theme">外观主题 (12 套内置：经典 / 卡通 / 中国风 / 风景)</div>
           <div id="themePickerGrid" class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc] ring-1 ring-white/30"></span><span>Dark</span></button>
+            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc]"></span><span>Dark</span></button>
             <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span>Light</span></button>
-            <button onclick="setTheme('cyber')" data-th="cyber" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#22d3ee] ring-1 ring-slate-700"></span><span>Cyber</span></button>
-            <button onclick="setTheme('nord')" data-th="nord" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0] ring-1 ring-slate-500"></span><span>Nord</span></button>
-            <button onclick="setTheme('emerald')" data-th="emerald" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981] ring-1 ring-emerald-900"></span><span>Matrix</span></button>
-            <button onclick="setTheme('warm')" data-th="warm" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#d97706] ring-1 ring-amber-200"></span><span>Warm</span></button>
+            <button onclick="setTheme('cyber')" data-th="cyber" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#22d3ee]"></span><span>Cyber</span></button>
+            <button onclick="setTheme('nord')" data-th="nord" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0]"></span><span>Nord</span></button>
+            <button onclick="setTheme('emerald')" data-th="emerald" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span><span>Matrix</span></button>
+            <button onclick="setTheme('warm')" data-th="warm" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span><span>Warm</span></button>
+            <button onclick="setTheme('candy')" data-th="candy" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span><span>Candy</span></button>
+            <button onclick="setTheme('pixel')" data-th="pixel" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#a855f7]"></span><span>Pixel</span></button>
+            <button onclick="setTheme('ink')" data-th="ink" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span><span>水墨</span></button>
+            <button onclick="setTheme('palace')" data-th="palace" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span><span>故宫</span></button>
+            <button onclick="setTheme('aurora')" data-th="aurora" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]"></span><span>极光</span></button>
+            <button onclick="setTheme('sunset')" data-th="sunset" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ea580c]"></span><span>落日</span></button>
           </div>
         </div>
         <div class="luci-sub rounded-lg p-2.5 flex items-center justify-between">
@@ -864,7 +938,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -899,7 +973,7 @@ const I18N = {
     th_src_ep: 'Source', th_dst_ep: 'Destination', ping_title: 'Router Ping Tool', logs_title: 'RouterOS System Logs (Last 500)', th_msg: 'Message',
     db_title: 'DPI Signatures & Geo/ASN Cache', db_sig: 'DPI Signatures', db_geo: 'Cached Geo IPs', db_audit: 'Audit Rows', db_samples: '24h Raw Samples',
     btn_clear_geo: 'Clear Geo Cache', upd_title: 'OTA Update', btn_check_upd: 'Check', btn_apply_upd: 'Update Now', upd_auto: 'Auto-download & restart on new release',
-    set_title: 'Router, Theme, Language & Data Sources', set_theme: 'Theme', theme_dark: 'Dark', theme_light: 'Light', set_lang: 'Language',
+    set_title: 'Router, Theme, Language & Data Sources', set_theme: 'Theme (12 Built-in)', theme_dark: 'Dark', theme_light: 'Light', set_lang: 'Language',
     set_rname: 'Router Name', set_rhost: 'Router IP / Host', set_rport: 'API Port (8728 / 8729)', set_ruser: 'Username', set_rpass: 'Password',
     set_tls: 'Enable API-SSL (8729)', set_skip_verify: 'Skip TLS Cert Verify',
     set_adg_hint: 'Optional: AdGuard Home Integration (Improves Domain & App DPI)', set_adg_url: 'AdGuard Home URL (e.g. http://10.10.10.10)',
@@ -913,7 +987,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -1393,6 +1467,9 @@ const INLINE_ICONS = {
   "iCloud": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#38BDF8"/><path fill="#fff" d="M15.5 32h18a6 6 0 0 0 .8-11.9 8.2 8.2 0 0 0-15.8-2.1A6.5 6.5 0 0 0 15.5 32z"/></svg>`,
   "Microsoft": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#f8fafc"/><rect x="10" y="10" width="13" height="13" fill="#F25022"/><rect x="25" y="10" width="13" height="13" fill="#7FBA00"/><rect x="10" y="25" width="13" height="13" fill="#00A4EF"/><rect x="25" y="25" width="13" height="13" fill="#FFB900"/></svg>`,
   "Speedtest": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0f172a"/><path d="M12 32a14 14 0 1 1 24 0" fill="none" stroke="#06b6d4" stroke-width="3.5" stroke-linecap="round"/><path d="M24 26l7-9" stroke="#22d3ee" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="26" r="3" fill="#fff"/></svg>`,
+  "摄像头 P2P": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#1d4ed8"/><rect x="10" y="16" width="20" height="16" rx="3" fill="#fff"/><path fill="#fff" d="M31 20l8-4v16l-8-4z"/></svg>`,
+  "MikroTik MNDP": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#334155"/><circle cx="24" cy="24" r="6" fill="#38bdf8"/><circle cx="24" cy="24" r="13" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="4 3"/></svg>`,
+  "WebRTC/STUN": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0284c7"/><path fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" d="M14 28a10 10 0 0 1 20 0M18 32a6 6 0 0 1 12 0"/><circle cx="24" cy="34" r="2.5" fill="#fff"/></svg>`,
   "Quad9 DNS": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#1d4ed8"/><path fill="#fff" d="M24 8l13 5v10c0 8.5-5.5 15.8-13 18.5C16.5 38.8 11 31.5 11 23V13l13-5z" opacity=".2"/><text x="24" y="31" text-anchor="middle" fill="#fff" font-size="22" font-weight="bold">9</text></svg>`,
   "SSH": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#065f46"/><text x="24" y="30" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="18" font-weight="bold">&gt;_</text></svg>`
 };
@@ -1456,7 +1533,7 @@ function setLang(l) { applyLang(l); }
 function toggleLangQuick() { applyLang(currentLang === 'zh' ? 'en' : 'zh'); }
 
 function getCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-const THEMES = ['dark', 'light', 'cyber', 'nord', 'emerald', 'warm'];
+const THEMES = ['dark', 'light', 'cyber', 'nord', 'emerald', 'warm', 'candy', 'pixel', 'ink', 'palace', 'aurora', 'sunset'];
 const THEME_META = {
   dark: { label: 'Dark', icon: '🌙' },
   light: { label: 'Light', icon: '☀️' },
@@ -1464,6 +1541,12 @@ const THEME_META = {
   nord: { label: 'Nord', icon: '❄️' },
   emerald: { label: 'Matrix', icon: '🟢' },
   warm: { label: 'Warm', icon: '📜' },
+  candy: { label: 'Candy', icon: '🍭' },
+  pixel: { label: 'Pixel', icon: '👾' },
+  ink: { label: 'Ink Wash', icon: '🖌️' },
+  palace: { label: 'Palace', icon: '🏮' },
+  aurora: { label: 'Aurora', icon: '🌌' },
+  sunset: { label: 'Sunset', icon: '🌅' },
 };
 function applyTheme(theme) {
   if (!THEMES.includes(theme)) theme = 'dark';
@@ -2295,6 +2378,13 @@ async function loadDBStats() {
   document.getElementById('dbSampleCnt').textContent = d.history_samples;
 }
 
+async function refreshAppIcons() {
+  await fetch('/api/appicon/clear', { method: 'POST' });
+  lastIconVer++;
+  lastAppWallKey = '';
+  setTimeout(() => { lastIconVer++; pollSnapshot(); }, 2500);
+  alert('Refreshing icons in background...');
+}
 async function clearGeoCache() {
   await fetch('/api/system/clear-geo', { method: 'POST' });
   loadDBStats();

@@ -58,6 +58,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/tools/wol", s.handleWoL)
 	mux.HandleFunc("/api/appicon", s.handleAppIcon)
 	mux.HandleFunc("/api/appicon/ver", s.handleAppIconVer)
+	mux.HandleFunc("/api/appicon/clear", s.handleClearIcons)
 	mux.HandleFunc("/api/update/status", s.handleUpdateStatus)
 	mux.HandleFunc("/api/update/check", s.handleUpdateCheck)
 	mux.HandleFunc("/api/update/config", s.handleUpdateConfig)
