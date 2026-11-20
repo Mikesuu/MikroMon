@@ -82,6 +82,7 @@
           <div id="grp-audit" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
             <button onclick="switchTab('audit')" data-tab="audit" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_domain_audit">上网审计 (域名/URL)</button>
             <button onclick="switchTab('dpi')" data-tab="dpi" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_app_rank">应用流量排行</button>
+            <button onclick="switchTab('security')" data-tab="security" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10 flex items-center justify-between"><span data-i18n="nav_sec_radar">安全态势雷达</span><span id="navSecBadge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-500 text-[10px]">0</span></button>
           </div>
         </div>
 
@@ -172,6 +173,7 @@
               <div class="text-[11px] luci-txt2" data-i18n="kpi_net">联网状态</div>
               <div id="kpiNetState" class="text-base font-bold text-emerald-500 leading-tight">-</div>
               <div id="kpiWanSummary" class="text-[10px] luci-txt2 truncate">-</div>
+              <div id="kpiWanLatency" class="text-[10px] font-mono luci-txt2 truncate">CN - · Global -</div>
             </div>
             <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
               <div class="text-[11px] luci-txt2" data-i18n="kpi_apps">活跃 APP</div>
@@ -230,6 +232,7 @@
                   <option value="30d">30天</option>
                 </select>
                 <span id="ovLanBadge" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-400 font-medium" data-i18n="lan_view_badge">LAN 视角</span>
+                <span id="ovPortSpeed" class="hidden text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub" title="Interface Link Speed">-</span>
               </div>
               <div id="ovStatsSummary" class="hidden sm:flex items-center gap-3 text-[11px] font-mono luci-txt2">
                 <span><span data-i18n="peak_lbl">峰值</span>: <b id="ovPeakDl" class="text-[#0099cc]">-</b> / <b id="ovPeakUl" class="text-emerald-500">-</b></span>
@@ -296,36 +299,36 @@
         </div>
       </section>
 
-      <!-- 2. 终端列表 -->
+            <!-- 2. 终端列表 (单组数据切换) -->
       <section id="tab-ips" class="tab-panel hidden space-y-4">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="luci-card rounded-lg p-4">
-            <div class="flex justify-between items-center mb-3">
-              <h2 class="text-sm font-semibold" data-i18n="dev_live_title">在线终端实时速率 (IPv4 + IPv6)</h2>
-              <div class="flex items-center gap-2"><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><input id="ipSearch" oninput="renderLiveIPs()" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-48" /></div>
-            </div>
-            <div class="overflow-x-auto max-h-[460px]">
-              <table class="w-full text-xs text-left">
-                <thead class="luci-txt2 border-b luci-border sticky top-0" style="background:var(--bg-card)">
-                  <tr><th class="py-2" data-i18n="th_ip">终端 IP</th><th class="py-2" data-i18n="th_dev_vendor">设备 / 厂商</th><th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_top_app">主要应用</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
-                </thead>
-                <tbody id="allLiveIpBody" class="divide-y luci-border"></tbody>
-              </table>
-            </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchIpsSub('live')" id="subIpsLiveBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="dev_live_title">在线终端实时速率 (IPv4 + IPv6)</button>
+            <button onclick="switchIpsSub('hist')" id="subIpsHistBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80"><span data-i18n="dev_hist_title">历史流量排行</span> (<span class="range-lbl">1小时</span>)</button>
           </div>
-
-          <div class="luci-card rounded-lg p-4">
-            <h2 class="text-sm font-semibold mb-3"><span data-i18n="dev_hist_title">历史流量排行</span> (<span class="range-lbl">1小时</span>)</h2>
-            <div class="overflow-x-auto max-h-[460px]">
-              <table class="w-full text-xs text-left">
-                <thead class="luci-txt2 border-b luci-border sticky top-0" style="background:var(--bg-card)">
-                  <tr><th class="py-2">IP</th><th class="py-2" data-i18n="th_device">设备名</th><th class="py-2" data-i18n="th_dl_bytes">下载量</th><th class="py-2" data-i18n="th_ul_bytes">上传量</th><th class="py-2" data-i18n="th_total">总计</th></tr>
-                </thead>
-                <tbody id="histIpBody" class="divide-y luci-border"></tbody>
-              </table>
-            </div>
+          <div class="flex items-center gap-2">
+            <input id="ipSearch" oninput="renderLiveIPs()" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-56" />
           </div>
         </div>
+
+        <div id="panelIpsLive" class="luci-card rounded-lg p-4 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border">
+              <tr><th class="py-2" data-i18n="th_ip">终端 IP</th><th class="py-2" data-i18n="th_dev_vendor">设备 / 厂商</th><th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_top_app">主要应用</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+            </thead>
+            <tbody id="allLiveIpBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+
+        <div id="panelIpsHist" class="hidden luci-card rounded-lg p-4 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border">
+              <tr><th class="py-2">IP</th><th class="py-2" data-i18n="th_device">设备名</th><th class="py-2" data-i18n="th_dl_bytes">下载量</th><th class="py-2" data-i18n="th_ul_bytes">上传量</th><th class="py-2" data-i18n="th_total">总计</th></tr>
+            </thead>
+            <tbody id="histIpBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+
         <div class="luci-card rounded-lg p-4">
           <h2 class="text-sm font-semibold mb-2"><span data-i18n="dev_curve_title">单终端历史曲线</span>: <span id="selectedIpTitle" class="text-[#0099cc]">-</span></h2>
           <div id="ipDetailChart" class="h-64 w-full"></div>
@@ -339,7 +342,7 @@
           <table class="w-full text-xs text-left">
             <thead class="luci-txt2 border-b luci-border">
               <tr>
-                <th class="py-2" data-i18n="th_iface">接口名</th><th class="py-2" data-i18n="th_type">类型</th><th class="py-2" data-i18n="th_status">状态</th><th class="py-2">MAC / MTU</th>
+                <th class="py-2" data-i18n="th_iface">接口名</th><th class="py-2" data-i18n="th_type">类型</th><th class="py-2" data-i18n="th_status">状态</th><th class="py-2" data-i18n="th_link_speed">协商速率</th><th class="py-2">MAC / MTU</th>
                 <th class="py-2" data-i18n="th_rx_rate">实时 RX</th><th class="py-2" data-i18n="th_tx_rate">实时 TX</th><th class="py-2" data-i18n="th_cum">累计收发</th><th class="py-2" data-i18n="th_drops">掉线/丢包</th><th class="py-2" data-i18n="th_actions">操作</th>
               </tr>
             </thead>
@@ -360,7 +363,7 @@
             <input id="connFilterApp" oninput="onConnFilterInput()" data-i18n-ph="ph_flt_app" placeholder="过滤应用 / 分类 / 域名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
             <input id="connFilterIsp" oninput="onConnFilterInput()" data-i18n-ph="ph_flt_isp" placeholder="过滤归属地 / 服务商..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
           </div>
-          <div class="flex items-center gap-2"><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><span id="connCountLabel" class="text-xs luci-txt2">0</span></div>
+          <div class="flex items-center gap-2"><button onclick="exportConnectionsCSV()" class="luci-sub px-2.5 py-1 rounded text-xs hover:opacity-80" data-i18n="btn_export_csv">导出 CSV</button><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><span id="connCountLabel" class="text-xs luci-txt2">0</span></div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
@@ -368,7 +371,7 @@
               <tr>
                 <th class="py-2" data-i18n="th_app">识别应用</th><th class="py-2" data-i18n="th_proto">协议</th><th class="py-2" data-i18n="th_src">内网终端</th>
                 <th class="py-2" data-i18n="th_dst">目标地址 / DNS 域名</th><th class="py-2" data-i18n="th_isp">归属地 / 服务商 (ISP)</th>
-                <th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_cum">累计流量</th><th class="py-2" data-i18n="th_status">状态</th>
+                <th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_cum">累计流量</th><th class="py-2" data-i18n="th_status">状态</th><th class="py-2" data-i18n="th_actions">操作</th>
               </tr>
             </thead>
             <tbody id="connTableBody" class="divide-y luci-border"></tbody>
@@ -377,34 +380,39 @@
         </div>
       </section>
 
-      <!-- 5. DHCP / ARP / 路由表 -->
+            <!-- 5. DHCP / ARP / 路由表 (单组数据切换) -->
       <section id="tab-network" class="tab-panel hidden space-y-4">
-        <div class="flex justify-between items-center">
-          <h2 class="text-sm font-semibold" data-i18n="net_tables_title">DHCP 租约 / ARP / 路由表（支持 Wake-on-LAN 网络唤醒）</h2>
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchNetSub('dhcp')" id="subNetDhcpBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="dhcp_title">DHCP 租约列表</button>
+            <button onclick="switchNetSub('arp')" id="subNetArpBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="arp_title">ARP 邻接表</button>
+            <button onclick="switchNetSub('routes')" id="subNetRoutesBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="route_title">活动路由表 (/ip/route)</button>
+          </div>
           <button onclick="loadNetworkDetails()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
-            <h3 class="text-xs font-semibold mb-2" data-i18n="dhcp_title">DHCP 租约列表</h3>
-            <table class="w-full text-xs text-left">
-              <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">IP</th><th class="py-1.5" data-i18n="th_device">主机名</th><th class="py-1.5">MAC</th><th class="py-1.5" data-i18n="th_type">类型</th><th class="py-1.5" data-i18n="th_actions">操作</th></tr></thead>
-              <tbody id="dhcpBody" class="divide-y luci-border"></tbody>
-            </table>
-          </div>
-          <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-96">
-            <h3 class="text-xs font-semibold mb-2" data-i18n="arp_title">ARP 邻接表</h3>
-            <table class="w-full text-xs text-left">
-              <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5">IP</th><th class="py-1.5">MAC</th><th class="py-1.5" data-i18n="th_iface">接口</th><th class="py-1.5" data-i18n="th_status">状态</th><th class="py-1.5">WoL</th></tr></thead>
-              <tbody id="arpBody" class="divide-y luci-border"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="luci-card rounded-lg p-4 overflow-x-auto max-h-80">
-          <h3 class="text-xs font-semibold mb-2" data-i18n="route_title">活动路由表 (/ip/route)</h3>
+
+        <div id="panelNetDhcp" class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
-            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5" data-i18n="th_dst_net">目标网段</th><th class="py-1.5" data-i18n="th_gw">网关 / 接口</th><th class="py-1.5" data-i18n="th_rtbl">路由表</th><th class="py-1.5" data-i18n="th_dist">距离</th><th class="py-1.5" data-i18n="th_status">状态</th></tr></thead>
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">IP</th><th class="py-2" data-i18n="th_device">主机名</th><th class="py-2">MAC</th><th class="py-2" data-i18n="th_type">类型</th><th class="py-2" data-i18n="th_actions">操作</th></tr></thead>
+            <tbody id="dhcpBody" class="divide-y luci-border"></tbody>
+          </table>
+          <div id="dhcpPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
+        </div>
+
+        <div id="panelNetArp" class="hidden luci-card rounded-lg p-4 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">IP</th><th class="py-2">MAC</th><th class="py-2" data-i18n="th_iface">接口</th><th class="py-2" data-i18n="th_status">状态</th><th class="py-2">WoL</th></tr></thead>
+            <tbody id="arpBody" class="divide-y luci-border"></tbody>
+          </table>
+          <div id="arpPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
+        </div>
+
+        <div id="panelNetRoutes" class="hidden luci-card rounded-lg p-4 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2" data-i18n="th_dst_net">目标网段</th><th class="py-2" data-i18n="th_gw">网关 / 接口</th><th class="py-2" data-i18n="th_rtbl">路由表</th><th class="py-2" data-i18n="th_dist">距离</th><th class="py-2" data-i18n="th_status">状态</th></tr></thead>
             <tbody id="routeBody" class="divide-y luci-border"></tbody>
           </table>
+          <div id="routePager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
         </div>
       </section>
 
@@ -418,6 +426,7 @@
           <div class="flex gap-2">
             <input id="auditSearch" onkeydown="if(event.key==='Enter'){auditPage=1;loadAudit();}" data-i18n-ph="ph_audit" placeholder="搜索 IP / 域名 / 应用..." class="luci-input rounded px-3 py-1 text-xs w-56" />
             <button onclick="auditPage=1;loadAudit()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_query">刷新查询</button>
+            <button onclick="exportAuditCSV()" class="luci-sub px-3 py-1 rounded text-xs hover:opacity-80" data-i18n="btn_export_csv">导出 CSV</button>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
@@ -442,14 +451,18 @@
         </div>
       </section>
 
-      <!-- 8. 限速与黑名单 -->
-      <section id="tab-policy" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="luci-card rounded-lg p-4 space-y-3">
-          <div class="flex justify-between items-center">
-            <h2 class="text-sm font-semibold" data-i18n="q_title">终端限速策略 (Simple Queue)</h2>
-            <button onclick="loadPolicy()" class="text-xs text-[#0099cc] hover:underline" data-i18n="btn_refresh">刷新</button>
+            <!-- 8. 限速与黑名单 (单组数据切换) -->
+      <section id="tab-policy" class="tab-panel hidden space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchPolicySub('queue')" id="subPolQueueBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="q_title">终端限速策略 (Simple Queue)</button>
+            <button onclick="switchPolicySub('block')" id="subPolBlockBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="blk_title">IP 黑名单 (mikromon_blocked)</button>
           </div>
-          <div class="grid grid-cols-3 gap-2">
+          <button onclick="loadPolicy()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
+        </div>
+
+        <div id="panelPolQueue" class="luci-card rounded-lg p-4 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input id="qTarget" data-i18n-ph="ph_q_target" placeholder="目标 IP (如 10.10.10.44)" class="luci-input rounded px-2.5 py-1.5 text-xs" />
             <input id="qLimit" data-i18n-ph="ph_q_limit" placeholder="上传/下载 (如 10M/50M)" class="luci-input rounded px-2.5 py-1.5 text-xs" />
             <button onclick="addQueue()" class="bg-[#0099cc] text-white font-medium rounded px-3 py-1.5 text-xs" data-i18n="btn_add_limit">添加限速</button>
@@ -460,11 +473,10 @@
           </table>
         </div>
 
-        <div class="luci-card rounded-lg p-4 space-y-3">
-          <h2 class="text-sm font-semibold" data-i18n="blk_title">IP 黑名单 (mikromon_blocked)</h2>
-          <div class="flex gap-2">
-            <input id="blockIpInput" data-i18n-ph="ph_blk_ip" placeholder="输入需阻断的 IP" class="luci-input rounded px-2.5 py-1.5 text-xs flex-1" />
-            <input id="blockCommentInput" data-i18n-ph="ph_note" placeholder="备注" class="luci-input rounded px-2.5 py-1.5 text-xs w-28" />
+        <div id="panelPolBlock" class="hidden luci-card rounded-lg p-4 space-y-3">
+          <div class="flex flex-wrap gap-2">
+            <input id="blockIpInput" data-i18n-ph="ph_blk_ip" placeholder="输入需阻断的 IP" class="luci-input rounded px-2.5 py-1.5 text-xs flex-1 min-w-[180px]" />
+            <input id="blockCommentInput" data-i18n-ph="ph_note" placeholder="备注" class="luci-input rounded px-2.5 py-1.5 text-xs w-40" />
             <button onclick="addBlockIP()" class="bg-rose-600 text-white font-medium rounded px-3 py-1.5 text-xs" data-i18n="btn_block">拉黑</button>
           </div>
           <table class="w-full text-xs text-left">
@@ -488,29 +500,35 @@
         </div>
       </section>
 
-      <!-- 10. Torch & Ping -->
-      <section id="tab-tools" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-2 luci-card rounded-lg p-4 space-y-3">
+            <!-- 10. Torch & 网络诊断工具 (单组数据切换) -->
+      <section id="tab-tools" class="tab-panel hidden space-y-4">
+        <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
+          <button onclick="switchToolsSub('torch')" id="subToolTorchBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="torch_title">实时 Torch 抓包</button>
+          <button onclick="switchToolsSub('diag')" id="subToolDiagBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="diag_title">Ping / 路由追踪 / DNS 诊断</button>
+        </div>
+
+        <div id="panelToolTorch" class="luci-card rounded-lg p-4 space-y-3">
           <div class="flex flex-wrap gap-2 items-center">
-            <h2 class="text-sm font-semibold mr-2" data-i18n="torch_title">实时 Torch 抓包</h2>
             <select id="torchIface" class="luci-input rounded px-2.5 py-1 text-xs"></select>
             <button onclick="runTorch()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_snap">抓取快照</button>
             <button id="torchAutoBtn" onclick="toggleAutoTorch()" class="luci-sub px-3 py-1 rounded text-xs" data-i18n="btn_auto_on">开启自动刷新</button>
           </div>
-          <div class="overflow-x-auto max-h-96">
+          <div class="overflow-x-auto max-h-[520px]">
             <table class="w-full text-xs text-left">
               <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5" data-i18n="th_src_ep">源</th><th class="py-1.5" data-i18n="th_dst_ep">目标</th><th class="py-1.5" data-i18n="th_proto">协议</th><th class="py-1.5">TX</th><th class="py-1.5">RX</th></tr></thead>
               <tbody id="torchBody" class="divide-y luci-border"></tbody>
             </table>
           </div>
         </div>
-        <div class="luci-card rounded-lg p-4 space-y-3">
-          <h2 class="text-sm font-semibold" data-i18n="ping_title">路由器 Ping 诊断</h2>
-          <div class="flex gap-2">
-            <input id="pingTarget" value="223.5.5.5" class="luci-input rounded px-2.5 py-1 text-xs flex-1" />
-            <button onclick="runPing()" class="bg-emerald-600 text-white px-3 py-1 rounded text-xs">Ping</button>
+
+        <div id="panelToolDiag" class="hidden luci-card rounded-lg p-4 space-y-3">
+          <div class="flex flex-wrap gap-2 items-center">
+            <input id="pingTarget" value="223.5.5.5" placeholder="IP or Domain..." class="luci-input rounded px-2.5 py-1.5 text-xs flex-1 min-w-[220px]" />
+            <button onclick="runPing()" class="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-medium">Ping</button>
+            <button onclick="runTraceroute()" class="bg-[#0099cc] text-white px-3 py-1.5 rounded text-xs font-medium">Traceroute</button>
+            <button onclick="runDNSLookup()" class="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium">DNS Lookup</button>
           </div>
-          <pre id="pingResult" class="luci-sub p-2.5 rounded text-[11px] overflow-x-auto max-h-80">-</pre>
+          <pre id="pingResult" class="luci-sub p-3 rounded text-[11px] overflow-x-auto max-h-[460px]">-</pre>
         </div>
       </section>
 
@@ -529,7 +547,37 @@
         </div>
       </section>
 
-      <!-- 12. 数据库状态 -->
+            <!-- 11.5 安全态势雷达 -->
+      <section id="tab-security" class="tab-panel hidden space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="luci-card rounded-lg p-4">
+            <div class="text-xs luci-txt2" data-i18n="sec_high_cnt">高危端口连接</div>
+            <div id="secHighCnt" class="text-2xl font-bold text-rose-500 mt-1">0</div>
+          </div>
+          <div class="luci-card rounded-lg p-4">
+            <div class="text-xs luci-txt2" data-i18n="sec_flood_cnt">连接风暴 / 扫描嫌疑</div>
+            <div id="secFloodCnt" class="text-2xl font-bold text-amber-500 mt-1">0</div>
+          </div>
+          <div class="luci-card rounded-lg p-4">
+            <div class="text-xs luci-txt2" data-i18n="sec_nodns_cnt">无 DNS 大流量直连</div>
+            <div id="secNodnsCnt" class="text-2xl font-bold text-[#0099cc] mt-1">0</div>
+          </div>
+        </div>
+        <div class="luci-card rounded-lg p-4 overflow-x-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-sm font-semibold" data-i18n="sec_radar_title">实时安全态势与异常行为审计</h2>
+            <span class="text-xs luci-txt2" data-i18n="sec_radar_sub">基于实时连接特征、高危端口、连接频次与无 DNS 行为检测</span>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border">
+              <tr><th class="py-2" data-i18n="th_level">级别</th><th class="py-2" data-i18n="th_rule">异常类型</th><th class="py-2" data-i18n="th_src">内网终端</th><th class="py-2" data-i18n="th_dst_ep">目标端点</th><th class="py-2" data-i18n="th_bytes">流量</th><th class="py-2" data-i18n="th_msg">详情</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+            </thead>
+            <tbody id="secAlertBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+      </section>
+
+<!-- 12. 数据库状态 -->
       <section id="tab-dbstatus" class="tab-panel hidden space-y-4">
         <div class="luci-card rounded-lg p-5 space-y-4 max-w-2xl">
           <h2 class="text-sm font-semibold" data-i18n="db_title">DPI 应用特征库 & Geo/ASN 数据库状态</h2>
@@ -696,7 +744,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -745,7 +793,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -784,7 +832,7 @@ const CAT_EN = {
   '视频娱乐':'Video & Music', '社交通讯':'Social & Chat', '购物电商':'E-Commerce', '金融支付':'Finance & Pay',
   '出行生活':'Travel & Life', '新闻资讯':'News & Reading', 'AI大模型':'AI Models', '办公协同':'Work & Dev',
   '网盘传输':'Cloud Drive', '智能家居':'Smart Home & NAS', '游戏娱乐':'Gaming', '云与CDN':'Cloud & CDN',
-  'VPN与P2P':'VPN & P2P', '网页浏览':'Web', '安全与运维':'Security & Ops', '基础网络':'Core Network', '其他协议':'Other'
+  'VPN与P2P':'VPN & P2P', '网络测速':'Speedtest', '网页浏览':'Web', '安全与运维':'Security & Ops', '基础网络':'Core Network', '其他协议':'Other'
 };
 function tGeo(txt) {
   if (!txt || currentLang !== 'en') return txt;
@@ -819,8 +867,16 @@ let selectedIp = '';
 let showAllApps = false;
 let showFullIPs = false;
 function isLanIface(name) { return /bridge|lan|home|iot/i.test(name || '') && !/pppoe|wan/i.test(name || ''); }
+function isLanIPAddr(ip) {
+  if (!ip) return false;
+  if (/^10\./.test(ip) || /^192\.168\./.test(ip) || /^127\./.test(ip)) return true;
+  const m = ip.match(/^172\.(\d+)\./);
+  if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return true;
+  if (/^(fe80|fc00|fd[0-9a-f]{2}):/i.test(ip)) return true;
+  return false;
+}
 function maskIP(ip) {
-  if (!ip || showFullIPs) return ip;
+  if (!ip || showFullIPs || isLanIPAddr(ip)) return ip;
   if (ip.includes(':')) {
     const p = ip.split(':');
     return p.slice(0, 2).join(':') + ':***:***';
@@ -902,6 +958,132 @@ function setAuditPageSize(sz) { auditPageSize = sz; auditPage = 1; loadAudit(); 
 function setLogsPage(p) { logsPage = Math.max(1, p); renderLogsPage(); }
 function setLogsPageSize(sz) { logsPageSize = sz; logsPage = 1; renderLogsPage(); }
 
+
+let netCache = { leases: [], arp: [], routes: [] };
+let dhcpPage = 1, arpPage = 1, routePage = 1, netPageSize = 50;
+
+function switchIpsSub(mode) {
+  document.getElementById('panelIpsLive').classList.toggle('hidden', mode !== 'live');
+  document.getElementById('panelIpsHist').classList.toggle('hidden', mode !== 'hist');
+  document.getElementById('subIpsLiveBtn').className = mode === 'live' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  document.getElementById('subIpsHistBtn').className = mode === 'hist' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+}
+function switchNetSub(mode) {
+  ['dhcp', 'arp', 'routes'].forEach(k => {
+    const pan = document.getElementById('panelNet' + (k === 'dhcp' ? 'Dhcp' : k === 'arp' ? 'Arp' : 'Routes'));
+    const btn = document.getElementById('subNet' + (k === 'dhcp' ? 'DhcpBtn' : k === 'arp' ? 'ArpBtn' : 'RoutesBtn'));
+    if (pan) pan.classList.toggle('hidden', k !== mode);
+    if (btn) btn.className = k === mode ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  });
+}
+function switchPolicySub(mode) {
+  document.getElementById('panelPolQueue').classList.toggle('hidden', mode !== 'queue');
+  document.getElementById('panelPolBlock').classList.toggle('hidden', mode !== 'block');
+  document.getElementById('subPolQueueBtn').className = mode === 'queue' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  document.getElementById('subPolBlockBtn').className = mode === 'block' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+}
+function switchToolsSub(mode) {
+  document.getElementById('panelToolTorch').classList.toggle('hidden', mode !== 'torch');
+  document.getElementById('panelToolDiag').classList.toggle('hidden', mode !== 'diag');
+  document.getElementById('subToolTorchBtn').className = mode === 'torch' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  document.getElementById('subToolDiagBtn').className = mode === 'diag' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+}
+
+function setDhcpPage(p) { dhcpPage = Math.max(1, p); renderNetworkTables(); }
+function setArpPage(p) { arpPage = Math.max(1, p); renderNetworkTables(); }
+function setRoutePage(p) { routePage = Math.max(1, p); renderNetworkTables(); }
+function setNetPageSize(sz) { netPageSize = sz; dhcpPage = arpPage = routePage = 1; renderNetworkTables(); }
+
+function updateOverviewPortSpeed(activeIf) {
+  const el = document.getElementById('ovPortSpeed');
+  if (!el || !activeIf) return;
+  el.classList.remove('hidden');
+  if (activeIf.type === 'ether') {
+    if (!activeIf.running || activeIf.link_rate === 'no-link') {
+      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 font-medium';
+      el.textContent = 'Speed: No Link';
+    } else if (activeIf.link_rate) {
+      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-medium';
+      el.textContent = `Speed: ${activeIf.link_rate}${activeIf.full_duplex ? ' Full' : ''}`;
+    } else {
+      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub text-[#0099cc]';
+      el.textContent = 'Speed: UP';
+    }
+  } else {
+    el.className = `text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub ${activeIf.running ? 'text-emerald-500' : 'text-rose-500'}`;
+    el.textContent = `Speed: ${activeIf.running ? 'UP' : 'DOWN'}${activeIf.mtu ? ' · MTU ' + activeIf.mtu : ''}`;
+  }
+}
+
+function renderSecurityRadar(snap) {
+  const alerts = snap.security_alerts || [];
+  const badge = document.getElementById('navSecBadge');
+  if (badge) {
+    badge.textContent = alerts.length;
+    badge.classList.toggle('hidden', alerts.length === 0);
+  }
+  const hi = alerts.filter(a => a.level === 'high').length;
+  const fl = alerts.filter(a => a.rule === 'conn_flood').length;
+  const nd = alerts.filter(a => a.rule === 'direct_ip_heavy').length;
+  const eH = document.getElementById('secHighCnt'), eF = document.getElementById('secFloodCnt'), eN = document.getElementById('secNodnsCnt');
+  if (eH) eH.textContent = hi;
+  if (eF) eF.textContent = fl;
+  if (eN) eN.textContent = nd;
+  const body = document.getElementById('secAlertBody');
+  if (!body) return;
+  body.innerHTML = alerts.length ? alerts.map(a => {
+    const lvlCls = a.level === 'high' ? 'bg-rose-500/20 text-rose-500' : (a.level === 'medium' ? 'bg-amber-500/20 text-amber-500' : 'bg-[#0099cc]/20 text-[#0099cc]');
+    const blockTarget = a.remote_ip || a.client_ip;
+    return `
+    <tr class="luci-tr">
+      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${lvlCls}">${a.level}</span></td>
+      <td class="py-1.5 font-mono">${a.rule}</td>
+      <td class="py-1.5 font-mono"><div>${maskIP(a.client_ip)}</div><div class="text-[10px] luci-txt2">${a.host_name || ''}</div></td>
+      <td class="py-1.5 font-mono">${a.remote_ip ? `${maskIP(a.remote_ip)}:${a.remote_port} (${a.protocol})` : '-'}</td>
+      <td class="py-1.5 font-mono">${a.bytes ? fmtBytes(a.bytes) : '-'}</td>
+      <td class="py-1.5">${a.detail}</td>
+      <td class="py-1.5">${blockTarget ? `<button onclick="quickBlock('${blockTarget}')" class="text-rose-500 hover:underline">${t('btn_block_quick')}</button>` : '-'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="py-6 text-center luci-txt2">-</td></tr>';
+}
+
+function downloadCSV(filename, headers, rows) {
+  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+function exportConnectionsCSV() {
+  const conns = (lastSnap && lastSnap.connections) || [];
+  downloadCSV('mikromon-connections.csv', ['App', 'Proto', 'Client', 'Host', 'Remote', 'Domain', 'Geo', 'ISP', 'DL(bps)', 'UL(bps)', 'State'],
+    conns.map(c => [tApp(c.app), c.protocol, `${c.client_ip}:${c.client_port}`, c.host_name, `${c.remote_ip}:${c.remote_port}`, c.domain, fmtGeo(c.location, c.location_en), c.isp, c.rx_bps, c.tx_bps, c.tcp_state || c.timeout]));
+}
+function exportAuditCSV() {
+  const q = document.getElementById('auditSearch').value.trim();
+  fetch(`/api/audit/domains?router_id=${currentRouterId}&q=${encodeURIComponent(q)}&page=1&page_size=200`)
+    .then(r => r.json())
+    .then(d => {
+      const rows = Array.isArray(d) ? d : (d.items || []);
+      downloadCSV('mikromon-domain-audit.csv', ['Time', 'ClientIP', 'Hostname', 'Domain', 'App', 'Category', 'Source'],
+        rows.map(r => [new Date(r.ts * 1000).toISOString(), r.client_ip, r.host_name, r.domain, tApp(r.app), tCat(r.category), r.source]));
+    });
+}
+async function runTraceroute() {
+  const target = document.getElementById('pingTarget').value.trim();
+  document.getElementById('pingResult').textContent = 'Tracerouting...';
+  const res = await fetch(`/api/tools/traceroute?router_id=${currentRouterId}&target=${encodeURIComponent(target)}`);
+  document.getElementById('pingResult').textContent = JSON.stringify(await res.json(), null, 2);
+}
+async function runDNSLookup() {
+  const domain = document.getElementById('pingTarget').value.trim();
+  document.getElementById('pingResult').textContent = 'Resolving...';
+  const res = await fetch(`/api/tools/dnslookup?domain=${encodeURIComponent(domain)}`);
+  document.getElementById('pingResult').textContent = JSON.stringify(await res.json(), null, 2);
+}
+
 let torchTimer = null;
 
 const INLINE_ICONS = {
@@ -912,6 +1094,7 @@ const INLINE_ICONS = {
   "AppStore": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="as" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#19B5FE"/><stop offset="100%" stop-color="#0D6EFD"/></linearGradient></defs><rect width="48" height="48" rx="11" fill="url(#as)"/><path d="M24 12L14 32m10-20l10 20M11 26.5h26" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>`,
   "iCloud": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#38BDF8"/><path fill="#fff" d="M15.5 32h18a6 6 0 0 0 .8-11.9 8.2 8.2 0 0 0-15.8-2.1A6.5 6.5 0 0 0 15.5 32z"/></svg>`,
   "Microsoft": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#f8fafc"/><rect x="10" y="10" width="13" height="13" fill="#F25022"/><rect x="25" y="10" width="13" height="13" fill="#7FBA00"/><rect x="10" y="25" width="13" height="13" fill="#00A4EF"/><rect x="25" y="25" width="13" height="13" fill="#FFB900"/></svg>`,
+  "Speedtest": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0f172a"/><path d="M12 32a14 14 0 1 1 24 0" fill="none" stroke="#06b6d4" stroke-width="3.5" stroke-linecap="round"/><path d="M24 26l7-9" stroke="#22d3ee" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="26" r="3" fill="#fff"/></svg>`,
   "Quad9 DNS": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#1d4ed8"/><path fill="#fff" d="M24 8l13 5v10c0 8.5-5.5 15.8-13 18.5C16.5 38.8 11 31.5 11 23V13l13-5z" opacity=".2"/><text x="24" y="31" text-anchor="middle" fill="#fff" font-size="22" font-weight="bold">9</text></svg>`,
   "SSH": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#065f46"/><text x="24" y="30" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="18" font-weight="bold">&gt;_</text></svg>`
 };
@@ -1238,7 +1421,15 @@ async function pollSnapshot() {
       const dl = inv ? activeIf.tx_bps : activeIf.rx_bps;
       const ul = inv ? activeIf.rx_bps : activeIf.tx_bps;
       document.getElementById('overviewRatePill').innerHTML = `<span class="text-[#0099cc]">${t('dl_lbl')} ${fmtBps(dl)}</span> · <span class="text-emerald-500">${t('ul_lbl')} ${fmtBps(ul)}</span>`;
+      updateOverviewPortSpeed(activeIf);
     }
+    const latEl = document.getElementById('kpiWanLatency');
+    if (latEl) {
+      const cn = snap.wan_latency_cn > 0 ? `${snap.wan_latency_cn}ms` : 'N/A';
+      const gl = snap.wan_latency_global > 0 ? `${snap.wan_latency_global}ms` : 'N/A';
+      latEl.textContent = `CN: ${cn} · Global: ${gl}`;
+    }
+    renderSecurityRadar(snap);
 
     renderActiveAppsSection(snap);
     renderRightExtras(snap);
@@ -1263,6 +1454,7 @@ async function pollSnapshot() {
         <td class="py-2 font-medium text-[#0099cc]">${i.name}</td>
         <td class="py-2 luci-txt2">${i.type}</td>
         <td class="py-2">${i.disabled ? `<span class="luci-txt2">${t('btn_disabled')}</span>` : (i.running ? '<span class="text-emerald-500">UP</span>' : '<span class="text-rose-500">DOWN</span>')}</td>
+        <td class="py-2 font-mono">${i.type === 'ether' ? (i.link_rate && i.link_rate !== 'no-link' ? `<span class="text-emerald-500">${i.link_rate}${i.full_duplex ? ' Full' : ''}</span>` : '<span class="text-rose-500">No Link</span>') : `<span class="luci-txt2">Virtual</span>`}</td>
         <td class="py-2 font-mono luci-txt2">${i.mac_address || '-'} / ${i.mtu || '-'}</td>
         <td class="py-2 text-[#0099cc]">${fmtBps(i.rx_bps)}</td>
         <td class="py-2 text-emerald-500">${fmtBps(i.tx_bps)}</td>
@@ -1462,6 +1654,10 @@ function syncIfaceSelects(ifaces) {
 function onOverviewIfaceChange() {
   const name = document.getElementById('overviewIface').value;
   localStorage.setItem('mikromon_iface', name);
+  if (lastSnap && lastSnap.interfaces) {
+    const inf = lastSnap.interfaces.find(x => x.name === name);
+    if (inf) updateOverviewPortSpeed(inf);
+  }
   
   loadOverviewChart();
 }
@@ -1498,6 +1694,7 @@ function renderConnections() {
       <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
       <td class="py-1.5">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
       <td class="py-1.5 luci-txt2">${c.tcp_state || c.timeout}</td>
+      <td class="py-1.5">${!isLanIPAddr(c.remote_ip) ? `<button onclick="quickBlock('${c.remote_ip}')" class="text-rose-500 hover:underline">${t('btn_block_quick')}</button>` : '-'}</td>
     </tr>
   `).join('');
   const pager = document.getElementById('connPager');
@@ -1642,15 +1839,36 @@ async function loadAudit() {
 async function loadNetworkDetails() {
   const res = await fetch(`/api/network/details?router_id=${currentRouterId}`);
   const data = await res.json();
-  document.getElementById('dhcpBody').innerHTML = (data.leases || []).map(l => `
-    <tr><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(l.address)}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono luci-txt2">${l.mac}</td><td class="py-1.5">${l.dynamic ? t('dyn'):t('stat')}</td><td class="py-1.5 space-x-2">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#0099cc] hover:underline">${t('btn_static')}</button>`:''}${l.mac?`<button onclick="wakeMac('${l.mac}')" class="text-emerald-500 hover:underline">${t('btn_wake')}</button>`:''}</td></tr>
+  netCache = {
+    leases: data.leases || [],
+    arp: data.arp || [],
+    routes: data.routes || [],
+  };
+  renderNetworkTables();
+}
+function renderNetworkTables() {
+  const slicePage = (arr, page) => {
+    const tp = Math.max(1, Math.ceil(arr.length / netPageSize));
+    const p = Math.min(Math.max(1, page), tp);
+    return { p, rows: arr.slice((p - 1) * netPageSize, p * netPageSize) };
+  };
+  const d = slicePage(netCache.leases, dhcpPage); dhcpPage = d.p;
+  document.getElementById('dhcpBody').innerHTML = d.rows.map(l => `
+    <tr class="luci-tr"><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(l.address)}</td><td class="py-1.5">${l.host_name||'-'}</td><td class="py-1.5 font-mono luci-txt2">${l.mac}</td><td class="py-1.5">${l.dynamic ? t('dyn'):t('stat')}</td><td class="py-1.5 space-x-2">${l.dynamic ? `<button onclick="makeStatic('${encodeURIComponent(l.id)}')" class="text-[#0099cc] hover:underline">${t('btn_static')}</button>`:''}${l.mac?`<button onclick="wakeMac('${l.mac}')" class="text-emerald-500 hover:underline">${t('btn_wake')}</button>`:''}</td></tr>
   `).join('');
-  document.getElementById('arpBody').innerHTML = (data.arp || []).map(a => `
-    <tr><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(a.address)}</td><td class="py-1.5 font-mono luci-txt2">${a.mac}</td><td class="py-1.5">${a.interface}</td><td class="py-1.5">${a.status}</td><td class="py-1.5">${a.mac?`<button onclick="wakeMac('${a.mac}', '${a.interface}')" class="text-emerald-500 hover:underline">WoL</button>`:'-'}</td></tr>
+  document.getElementById('dhcpPager').innerHTML = buildPagerHTML(dhcpPage, netCache.leases.length, netPageSize, 'setDhcpPage', 'setNetPageSize');
+
+  const a = slicePage(netCache.arp, arpPage); arpPage = a.p;
+  document.getElementById('arpBody').innerHTML = a.rows.map(x => `
+    <tr class="luci-tr"><td class="py-1.5 font-mono text-[#0099cc]">${maskIP(x.address)}</td><td class="py-1.5 font-mono luci-txt2">${x.mac}</td><td class="py-1.5">${x.interface}</td><td class="py-1.5">${x.status}</td><td class="py-1.5">${x.mac?`<button onclick="wakeMac('${x.mac}', '${x.interface}')" class="text-emerald-500 hover:underline">WoL</button>`:'-'}</td></tr>
   `).join('');
-  document.getElementById('routeBody').innerHTML = (data.routes || []).map(r => `
-    <tr><td class="py-1.5 font-mono text-[#0099cc]">${r.dst_address}</td><td class="py-1.5 font-mono">${r.gateway}</td><td class="py-1.5">${r.routing_table||'main'}</td><td class="py-1.5">${r.distance}</td><td class="py-1.5">${r.active?'<span class="text-emerald-500">Active</span>':'Inactive'}</td></tr>
+  document.getElementById('arpPager').innerHTML = buildPagerHTML(arpPage, netCache.arp.length, netPageSize, 'setArpPage', 'setNetPageSize');
+
+  const r = slicePage(netCache.routes, routePage); routePage = r.p;
+  document.getElementById('routeBody').innerHTML = r.rows.map(rt => `
+    <tr class="luci-tr"><td class="py-1.5 font-mono text-[#0099cc]">${rt.dst_address}</td><td class="py-1.5 font-mono">${rt.gateway}</td><td class="py-1.5">${rt.routing_table||'main'}</td><td class="py-1.5">${rt.distance}</td><td class="py-1.5">${rt.active?'<span class="text-emerald-500">Active</span>':'Inactive'}</td></tr>
   `).join('');
+  document.getElementById('routePager').innerHTML = buildPagerHTML(routePage, netCache.routes.length, netPageSize, 'setRoutePage', 'setNetPageSize');
 }
 
 async function wakeMac(mac, iface='') {

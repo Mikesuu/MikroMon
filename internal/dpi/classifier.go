@@ -21,6 +21,19 @@ type rule struct {
 }
 
 var domainRules = []rule{
+	// === 网络测速 (Speedtest) ===
+	{"speedtest", "Speedtest", "网络测速", "#00bcd4"},
+	{"ooklaserver", "Speedtest", "网络测速", "#00bcd4"},
+	{"ookla", "Speedtest", "网络测速", "#00bcd4"},
+	{"speed.cloudflare", "Speedtest", "网络测速", "#00bcd4"},
+	{"fast.com", "Speedtest", "网络测速", "#00bcd4"},
+	{"librespeed", "Speedtest", "网络测速", "#00bcd4"},
+	{"nperf.com", "Speedtest", "网络测速", "#00bcd4"},
+	{"measurementlab", "Speedtest", "网络测速", "#00bcd4"},
+	{"test.ustc.edu.cn", "Speedtest", "网络测速", "#00bcd4"},
+	{"speed.189", "Speedtest", "网络测速", "#00bcd4"},
+	{"speed.10086", "Speedtest", "网络测速", "#00bcd4"},
+
 	// === 公共 DNS / DoH ===
 	{"alidns", "阿里云 DNS", "基础网络", "#ff6a00"},
 	{"doh.pub", "腾讯云 DNS", "基础网络", "#0052d9"},

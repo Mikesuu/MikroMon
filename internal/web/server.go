@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -68,6 +69,8 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/blocked", s.handleBlocked)
 	mux.HandleFunc("/api/tools/torch", s.handleTorch)
 	mux.HandleFunc("/api/tools/ping", s.handlePing)
+	mux.HandleFunc("/api/tools/traceroute", s.handleTraceroute)
+	mux.HandleFunc("/api/tools/dnslookup", s.handleDNSLookup)
 
 	sub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(sub)))
@@ -580,6 +583,40 @@ func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, rows)
+}
+
+func (s *Server) handleTraceroute(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		writeJSON(w, 400, map[string]string{"error": "target required"})
+		return
+	}
+	var rows []map[string]string
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		var e error
+		rows, e = mikrotik.RunTraceroute(c, target)
+		return e
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, rows)
+}
+
+func (s *Server) handleDNSLookup(w http.ResponseWriter, r *http.Request) {
+	domain := r.URL.Query().Get("domain")
+	if domain == "" {
+		writeJSON(w, 400, map[string]string{"error": "domain required"})
+		return
+	}
+	ips, err := net.LookupHost(domain)
+	if err != nil {
+		writeJSON(w, 200, map[string]any{"domain": domain, "error": err.Error(), "ips": []string{}})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"domain": domain, "ips": ips})
 }
 
 func (s *Server) handleAppIconVer(w http.ResponseWriter, r *http.Request) {

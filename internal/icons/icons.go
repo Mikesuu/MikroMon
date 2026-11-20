@@ -74,7 +74,7 @@ var appCatalog = map[string]appLookup{
 
 var forceSVG = map[string]bool{
 	"Cloudflare": true, "BitTorrent/P2P": true, "Apple": true,
-	"AppStore": true, "iCloud": true, "Microsoft": true, "SSH": true, "Quad9 DNS": true,
+	"AppStore": true, "iCloud": true, "Microsoft": true, "SSH": true, "Quad9 DNS": true, "Speedtest": true,
 }
 
 type Manager struct {

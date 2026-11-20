@@ -45,20 +45,22 @@ type WANIPInfo struct {
 }
 
 type InterfaceInfo struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	MacAddr   string `json:"mac_address"`
-	MTU       string `json:"mtu"`
-	Running   bool   `json:"running"`
-	Disabled  bool   `json:"disabled"`
-	RxBytes   int64  `json:"rx_bytes"`
-	TxBytes   int64  `json:"tx_bytes"`
-	RxPackets int64  `json:"rx_packets"`
-	TxPackets int64  `json:"tx_packets"`
-	RxDrops   int64  `json:"rx_drops"`
-	TxDrops   int64  `json:"tx_drops"`
-	LinkDowns int64  `json:"link_downs"`
-	Comment   string `json:"comment"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	MacAddr    string `json:"mac_address"`
+	MTU        string `json:"mtu"`
+	Running    bool   `json:"running"`
+	Disabled   bool   `json:"disabled"`
+	LinkRate   string `json:"link_rate"`
+	FullDuplex bool   `json:"full_duplex"`
+	RxBytes    int64  `json:"rx_bytes"`
+	TxBytes    int64  `json:"tx_bytes"`
+	RxPackets  int64  `json:"rx_packets"`
+	TxPackets  int64  `json:"tx_packets"`
+	RxDrops    int64  `json:"rx_drops"`
+	TxDrops    int64  `json:"tx_drops"`
+	LinkDowns  int64  `json:"link_downs"`
+	Comment    string `json:"comment"`
 }
 
 type DHCPLease struct {
@@ -301,6 +303,54 @@ func GetInterfaces(c *routeros.Client) ([]InterfaceInfo, error) {
 		})
 	}
 	return out, nil
+}
+
+type EthernetStatus struct {
+	Rate       string
+	FullDuplex bool
+}
+
+func GetEthernetRates(c *routeros.Client, names []string) map[string]EthernetStatus {
+	out := make(map[string]EthernetStatus)
+	for _, name := range names {
+		r, err := c.Run("/interface/ethernet/monitor", "=numbers="+name, "=once=")
+		if err == nil && len(r.Re) > 0 {
+			m := r.Re[0].Map
+			rate := m["rate"]
+			if rate == "" && m["status"] == "no-link" {
+				rate = "no-link"
+			}
+			out[name] = EthernetStatus{
+				Rate:       rate,
+				FullDuplex: m["full-duplex"] == "true",
+			}
+		}
+	}
+	if r, err := c.Run("/interface/ethernet/print"); err == nil {
+		for _, re := range r.Re {
+			m := re.Map
+			name := m["name"]
+			if cur, ok := out[name]; !ok || cur.Rate == "" {
+				out[name] = EthernetStatus{
+					Rate:       m["speed"],
+					FullDuplex: m["full-duplex"] == "true",
+				}
+			}
+		}
+	}
+	return out
+}
+
+func RunTraceroute(c *routeros.Client, target string) ([]map[string]string, error) {
+	r, err := c.Run("/tool/traceroute", "=address="+target, "=count=1", "=max-hops=15")
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]map[string]string, 0, len(r.Re))
+	for _, re := range r.Re {
+		rows = append(rows, re.Map)
+	}
+	return rows, nil
 }
 
 func GetDHCPLeases(c *routeros.Client) (map[string]DHCPLease, map[string]DHCPLease, []DHCPLease, error) {

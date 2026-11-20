@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"sort"
@@ -74,22 +75,37 @@ type ActiveAppSummary struct {
 	LastSeen int64 `json:"last_seen"`
 }
 
+type SecurityAlert struct {
+	Level      string `json:"level"`
+	Rule       string `json:"rule"`
+	ClientIP   string `json:"client_ip"`
+	HostName   string `json:"host_name"`
+	RemoteIP   string `json:"remote_ip"`
+	RemotePort int    `json:"remote_port"`
+	Protocol   string `json:"protocol"`
+	Bytes      int64  `json:"bytes"`
+	Detail     string `json:"detail"`
+}
+
 type RouterSnapshot struct {
-	RouterID      int64                    `json:"router_id"`
-	Online        bool                     `json:"online"`
-	LastError     string                   `json:"last_error,omitempty"`
-	UpdatedAt     int64                    `json:"updated_at"`
-	System        mikrotik.SystemResource  `json:"system"`
-	WANIPs        []mikrotik.WANIPInfo     `json:"wan_ips"`
-	Interfaces    []LiveInterface          `json:"interfaces"`
-	LiveIPs       []LiveIP                 `json:"live_ips"`
-	ActiveApps    []ActiveAppSummary       `json:"active_apps"`
-	TotalConns    int                      `json:"total_conns"`
-	OnlineDevices int                      `json:"online_devices"`
-	OnlineIPv4    int                      `json:"online_ipv4"`
-	OnlineIPv6    int                      `json:"online_ipv6"`
-	Connections   []LiveConnection         `json:"connections"`
-	RecentDomains []store.DomainAuditEntry `json:"recent_domains"`
+	RouterID         int64                    `json:"router_id"`
+	Online           bool                     `json:"online"`
+	LastError        string                   `json:"last_error,omitempty"`
+	UpdatedAt        int64                    `json:"updated_at"`
+	System           mikrotik.SystemResource  `json:"system"`
+	WANIPs           []mikrotik.WANIPInfo     `json:"wan_ips"`
+	Interfaces       []LiveInterface          `json:"interfaces"`
+	LiveIPs          []LiveIP                 `json:"live_ips"`
+	ActiveApps       []ActiveAppSummary       `json:"active_apps"`
+	TotalConns       int                      `json:"total_conns"`
+	OnlineDevices    int                      `json:"online_devices"`
+	OnlineIPv4       int                      `json:"online_ipv4"`
+	OnlineIPv6       int                      `json:"online_ipv6"`
+	Connections      []LiveConnection         `json:"connections"`
+	RecentDomains    []store.DomainAuditEntry `json:"recent_domains"`
+	SecurityAlerts   []SecurityAlert          `json:"security_alerts"`
+	WanLatencyCN     int64                    `json:"wan_latency_cn"`
+	WanLatencyGlobal int64                    `json:"wan_latency_global"`
 }
 
 type prevIfaceCounter struct {
@@ -113,6 +129,7 @@ type routerWorker struct {
 	leasesByMAC   map[string]mikrotik.DHCPLease
 	v6Neighbors   map[string]string
 	v6Prefixes    []*net.IPNet
+	etherRates    map[string]mikrotik.EthernetStatus
 	wanIPs        []mikrotik.WANIPInfo
 	dnsCache      map[string]string
 	adgIPDomain   map[string]string
@@ -124,11 +141,14 @@ type routerWorker struct {
 }
 
 type Collector struct {
-	store     *store.Store
-	enricher  *geo.Enricher
-	mu        sync.RWMutex
-	snapshots map[int64]*RouterSnapshot
-	workers   map[int64]*routerWorker
+	store            *store.Store
+	latMu            sync.RWMutex
+	wanLatencyCN     int64
+	wanLatencyGlobal int64
+	enricher         *geo.Enricher
+	mu               sync.RWMutex
+	snapshots        map[int64]*RouterSnapshot
+	workers          map[int64]*routerWorker
 }
 
 func New(st *store.Store) *Collector {
@@ -180,6 +200,7 @@ func (c *Collector) WithClient(routerID int64, fn func(*routeros.Client) error) 
 func (c *Collector) Run(ctx context.Context) {
 	stopGeo := make(chan struct{})
 	go c.enricher.RunWorker(stopGeo)
+	go c.runLatencyProbe(ctx)
 
 	ticker := time.NewTicker(2 * time.Second)
 	pruneTicker := time.NewTicker(1 * time.Hour)
@@ -197,6 +218,42 @@ func (c *Collector) Run(ctx context.Context) {
 			c.store.PruneOldData()
 		case <-ticker.C:
 			c.pollAll()
+		}
+	}
+}
+
+func tcpPingMs(addr string) int64 {
+	t0 := time.Now()
+	conn, err := net.DialTimeout("tcp", addr, 1500*time.Millisecond)
+	if err != nil {
+		return -1
+	}
+	_ = conn.Close()
+	ms := time.Since(t0).Milliseconds()
+	if ms < 1 {
+		ms = 1
+	}
+	return ms
+}
+
+func (c *Collector) runLatencyProbe(ctx context.Context) {
+	probe := func() {
+		cn := tcpPingMs("223.5.5.5:53")
+		gl := tcpPingMs("1.1.1.1:443")
+		c.latMu.Lock()
+		c.wanLatencyCN = cn
+		c.wanLatencyGlobal = gl
+		c.latMu.Unlock()
+	}
+	probe()
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			probe()
 		}
 	}
 }
@@ -370,7 +427,21 @@ func (c *Collector) pollWorker(w *routerWorker) {
 	liveIfaces := make([]LiveInterface, 0, len(ifaces))
 	dbSamples := make([]store.IfaceSample, 0, len(ifaces))
 
+	var etherNames []string
 	for _, inf := range ifaces {
+		if inf.Type == "ether" {
+			etherNames = append(etherNames, inf.Name)
+		}
+	}
+	if len(etherNames) > 0 && (w.etherRates == nil || now.Sub(w.lastMetaAt) >= 10*time.Second) {
+		w.etherRates = mikrotik.GetEthernetRates(w.client, etherNames)
+	}
+
+	for _, inf := range ifaces {
+		if es, ok := w.etherRates[inf.Name]; ok {
+			inf.LinkRate = es.Rate
+			inf.FullDuplex = es.FullDuplex
+		}
 		var rxBps, txBps int64
 		if prev, ok := w.prevIfaces[inf.Name]; ok {
 			dt := now.Sub(prev.ts).Seconds()
@@ -441,6 +512,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 
 	var totalConns, onlineDevs, onlineV4, onlineV6 int
 	var liveConns []LiveConnection
+	var secAlerts []SecurityAlert
 	var liveIPs []LiveIP
 	var activeApps []ActiveAppSummary
 	if prevSnap != nil {
@@ -449,6 +521,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		onlineV4 = prevSnap.OnlineIPv4
 		onlineV6 = prevSnap.OnlineIPv6
 		liveConns = prevSnap.Connections
+		secAlerts = prevSnap.SecurityAlerts
 		liveIPs = prevSnap.LiveIPs
 		activeApps = prevSnap.ActiveApps
 	}
@@ -457,26 +530,32 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		w.lastConnAt = now
 		if rawConns, err := mikrotik.GetConnections(w.client); err == nil {
 			totalConns = len(rawConns)
-			liveConns, liveIPs, activeApps = c.processConnections(w, nowUnix, rawConns)
+			liveConns, liveIPs, activeApps, secAlerts = c.processConnections(w, nowUnix, rawConns)
 			onlineDevs, onlineV4, onlineV6 = countUniqueDevices(liveIPs)
 		}
 	}
 
+	c.latMu.RLock()
+	latCN, latGL := c.wanLatencyCN, c.wanLatencyGlobal
+	c.latMu.RUnlock()
 	snap := &RouterSnapshot{
-		RouterID:      w.cfg.ID,
-		Online:        true,
-		UpdatedAt:     nowUnix,
-		System:        sys,
-		WANIPs:        w.wanIPs,
-		Interfaces:    liveIfaces,
-		LiveIPs:       liveIPs,
-		ActiveApps:    activeApps,
-		TotalConns:    totalConns,
-		OnlineDevices: onlineDevs,
-		OnlineIPv4:    onlineV4,
-		OnlineIPv6:    onlineV6,
-		Connections:   liveConns,
-		RecentDomains: w.recentDomains,
+		RouterID:         w.cfg.ID,
+		Online:           true,
+		UpdatedAt:        nowUnix,
+		System:           sys,
+		WANIPs:           w.wanIPs,
+		Interfaces:       liveIfaces,
+		LiveIPs:          liveIPs,
+		ActiveApps:       activeApps,
+		TotalConns:       totalConns,
+		OnlineDevices:    onlineDevs,
+		OnlineIPv4:       onlineV4,
+		OnlineIPv6:       onlineV6,
+		Connections:      liveConns,
+		RecentDomains:    w.recentDomains,
+		SecurityAlerts:   secAlerts,
+		WanLatencyCN:     latCN,
+		WanLatencyGlobal: latGL,
 	}
 
 	c.mu.Lock()
@@ -526,7 +605,9 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 	recent := make([]store.DomainAuditEntry, 0, 50)
 	seen := make(map[string]bool)
 
-	for _, e := range entries {
+	dedupAudit := make(map[string]bool)
+	for idx := len(entries) - 1; idx >= 0; idx-- {
+		e := entries[idx]
 		for _, ip := range e.Answers {
 			w.adgIPDomain[ip] = e.Domain
 		}
@@ -566,7 +647,11 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 			}
 		}
 		if e.TS > w.lastAdgTS && !strings.HasSuffix(e.Domain, ".arpa") {
-			audits = append(audits, item)
+			akey := fmt.Sprintf("%d|%s|%s", e.TS, e.ClientIP, e.Domain)
+			if !dedupAudit[akey] {
+				dedupAudit[akey] = true
+				audits = append(audits, item)
+			}
 			if e.TS > maxTS {
 				maxTS = e.TS
 			}
@@ -597,7 +682,7 @@ func (c *Collector) setOffline(routerID int64, errMsg string) {
 	c.snapshots[routerID] = snap
 }
 
-func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []mikrotik.RawConnection) ([]LiveConnection, []LiveIP, []ActiveAppSummary) {
+func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []mikrotik.RawConnection) ([]LiveConnection, []LiveIP, []ActiveAppSummary, []SecurityAlert) {
 	newPrev := make(map[string]prevConnCounter, len(conns))
 	ipDeltaMap := make(map[string]*store.IPTrafficDelta)
 	appDeltaMap := make(map[string]*store.AppTrafficDelta)
@@ -846,7 +931,68 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		liveConns = liveConns[:1000]
 	}
 
-	return liveConns, liveIPs, activeApps
+	// === 安全态势与异常连接检测 (Panabit / iKuai 风格) ===
+	var secAlerts []SecurityAlert
+	seenAlert := make(map[string]bool)
+	clientPorts := make(map[string]map[int]bool)
+	clientConns := make(map[string]int)
+	clientHost := make(map[string]string)
+	highRiskPorts := map[int]string{
+		23: "Telnet Cleartext", 445: "External SMB", 3389: "External RDP",
+		1080: "SOCKS Proxy", 3128: "HTTP Proxy",
+		3333: "Mining Pool", 4444: "Mining / C2", 5555: "Mining / ADB", 14444: "Mining Pool",
+	}
+	for _, lc := range liveConns {
+		clientConns[lc.ClientIP]++
+		if lc.HostName != "" {
+			clientHost[lc.ClientIP] = lc.HostName
+		}
+		if clientPorts[lc.ClientIP] == nil {
+			clientPorts[lc.ClientIP] = make(map[int]bool)
+		}
+		if lc.RemotePort > 0 {
+			clientPorts[lc.ClientIP][lc.RemotePort] = true
+		}
+		if !isPrivateIP(lc.RemoteIP) {
+			if reason, risky := highRiskPorts[lc.RemotePort]; risky {
+				k := fmt.Sprintf("port|%s|%s|%d", lc.ClientIP, lc.RemoteIP, lc.RemotePort)
+				if !seenAlert[k] && len(secAlerts) < 80 {
+					seenAlert[k] = true
+					secAlerts = append(secAlerts, SecurityAlert{
+						Level: "high", Rule: "high_risk_port",
+						ClientIP: lc.ClientIP, HostName: lc.HostName,
+						RemoteIP: lc.RemoteIP, RemotePort: lc.RemotePort,
+						Protocol: lc.Protocol, Bytes: lc.RxBytes + lc.TxBytes,
+						Detail: reason,
+					})
+				}
+			} else if lc.Domain == "" && (lc.RxBytes+lc.TxBytes) >= 20*1024*1024 {
+				k := fmt.Sprintf("nodns|%s|%s", lc.ClientIP, lc.RemoteIP)
+				if !seenAlert[k] && len(secAlerts) < 80 {
+					seenAlert[k] = true
+					secAlerts = append(secAlerts, SecurityAlert{
+						Level: "info", Rule: "direct_ip_heavy",
+						ClientIP: lc.ClientIP, HostName: lc.HostName,
+						RemoteIP: lc.RemoteIP, RemotePort: lc.RemotePort,
+						Protocol: lc.Protocol, Bytes: lc.RxBytes + lc.TxBytes,
+						Detail: "Direct IP (>20MB, No DNS)",
+					})
+				}
+			}
+		}
+	}
+	for ip, cnt := range clientConns {
+		pCnt := len(clientPorts[ip])
+		if cnt >= 80 || pCnt >= 25 {
+			secAlerts = append(secAlerts, SecurityAlert{
+				Level: "medium", Rule: "conn_flood",
+				ClientIP: ip, HostName: clientHost[ip],
+				Detail: fmt.Sprintf("%d sessions / %d ports", cnt, pCnt),
+			})
+		}
+	}
+
+	return liveConns, liveIPs, activeApps, secAlerts
 }
 
 func countUniqueDevices(ips []LiveIP) (devs, v4, v6 int) {
