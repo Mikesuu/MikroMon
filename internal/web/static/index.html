@@ -6,6 +6,7 @@
   <title>MikroMon — RouterOS / OpenWrt Traffic & Behavior Monitor</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.6.0/css/flag-icons.min.css" />
   <style>
     :root, html[data-theme="dark"] {
       --bg-body: #14171c; --bg-sidebar: #1a1e24; --bg-header: #1b1f26;
@@ -62,6 +63,7 @@
     .bg-\[\#0099cc\] { background-color: var(--accent) !important; }
     .bg-\[\#0099cc\]\/20, .bg-\[\#0099cc\]\/15 { background-color: var(--accent-soft) !important; }
     .focus\:border-\[\#0099cc\]:focus { border-color: var(--accent) !important; }
+    .fi { width: 1.28em; height: 0.96em; vertical-align: -0.12em; display: inline-block; flex-shrink: 0; }
   </style>
 </head>
 <body class="min-h-screen font-sans flex">
@@ -979,57 +981,73 @@ function fmtGeo(locZH, locEN) {
 function geoFlag(txt) {
   if (!txt) return '';
   const s = txt.trim().toLowerCase();
-  const map = [
+  const special = [
     ['carrier nat', '🏢'], ['运营商内网', '🏢'], ['cgnat', '🏢'],
     ['lan', '🏠'], ['内网', '🏠'], ['局域网', '🏠'],
     ['anycast', '🌐'], ['global', '🌐'], ['海外', '🌐'],
-    ['hong kong', '🇭🇰'], ['香港', '🇭🇰'],
-    ['macao', '🇲🇴'], ['macau', '🇲🇴'], ['澳门', '🇲🇴'],
-    ['taiwan', '🇹🇼'], ['台湾', '🇹🇼'],
-    ['china', '🇨🇳'], ['中国', '🇨🇳'],
-    ['united states', '🇺🇸'], ['usa', '🇺🇸'], ['美国', '🇺🇸'],
-    ['united kingdom', '🇬🇧'], ['uk', '🇬🇧'], ['英国', '🇬🇧'],
-    ['united arab emirates', '🇦🇪'], ['阿联酋', '🇦🇪'],
-    ['singapore', '🇸🇬'], ['新加坡', '🇸🇬'],
-    ['japan', '🇯🇵'], ['日本', '🇯🇵'],
-    ['south korea', '🇰🇷'], ['korea', '🇰🇷'], ['韩国', '🇰🇷'],
-    ['germany', '🇩🇪'], ['德国', '🇩🇪'],
-    ['france', '🇫🇷'], ['法国', '🇫🇷'],
-    ['netherlands', '🇳🇱'], ['荷兰', '🇳🇱'],
-    ['canada', '🇨🇦'], ['加拿大', '🇨🇦'],
-    ['australia', '🇦🇺'], ['澳大利亚', '🇦🇺'],
-    ['new zealand', '🇳🇿'], ['新西兰', '🇳🇿'],
-    ['russia', '🇷🇺'], ['俄罗斯', '🇷🇺'],
-    ['israel', '🇮🇱'], ['以色列', '🇮🇱'],
-    ['india', '🇮🇳'], ['印度', '🇮🇳'],
-    ['brazil', '🇧🇷'], ['巴西', '🇧🇷'],
-    ['ireland', '🇮🇪'], ['爱尔兰', '🇮🇪'],
-    ['sweden', '🇸🇪'], ['瑞典', '🇸🇪'],
-    ['switzerland', '🇨🇭'], ['瑞士', '🇨🇭'],
-    ['finland', '🇫🇮'], ['芬兰', '🇫🇮'],
-    ['norway', '🇳🇴'], ['挪威', '🇳🇴'],
-    ['italy', '🇮🇹'], ['意大利', '🇮🇹'],
-    ['spain', '🇪🇸'], ['西班牙', '🇪🇸'],
-    ['poland', '🇵🇱'], ['波兰', '🇵🇱'],
-    ['malaysia', '🇲🇾'], ['马来西亚', '🇲🇾'],
-    ['thailand', '🇹🇭'], ['泰国', '🇹🇭'],
-    ['vietnam', '🇻🇳'], ['越南', '🇻🇳'],
-    ['indonesia', '🇮🇩'], ['印度尼西亚', '🇮🇩'], ['印尼', '🇮🇩'],
-    ['philippines', '🇵🇭'], ['菲律宾', '🇵🇭'],
-    ['turkey', '🇹🇷'], ['土耳其', '🇹🇷'],
-    ['south africa', '🇿🇦'], ['南非', '🇿🇦'],
-    ['ukraine', '🇺🇦'], ['乌克兰', '🇺🇦'],
-    ['czech', '🇨🇿'], ['捷克', '🇨🇿'],
-    ['austria', '🇦🇹'], ['奥地利', '🇦🇹'],
-    ['belgium', '🇧🇪'], ['比利时', '🇧🇪'],
-    ['denmark', '🇩🇰'], ['丹麦', '🇩🇰'],
-    ['portugal', '🇵🇹'], ['葡萄牙', '🇵🇹'],
-    ['mexico', '🇲🇽'], ['墨西哥', '🇲🇽'],
-    ['argentina', '🇦🇷'], ['阿根廷', '🇦🇷'],
-    ['saudi arabia', '🇸🇦'], ['沙特', '🇸🇦'],
   ];
-  for (const [k, f] of map) {
-    if (s === k || s.startsWith(k + ' ') || s.startsWith(k + ',')) return f;
+  for (const [k, ic] of special) {
+    if (s === k || s.startsWith(k + ' ') || s.startsWith(k + ',')) return ic;
+  }
+  const isoMap = [
+    ['hong kong', 'hk'], ['香港', 'hk'],
+    ['macao', 'mo'], ['macau', 'mo'], ['澳门', 'mo'],
+    ['taiwan', 'tw'], ['台湾', 'tw'],
+    ['china', 'cn'], ['中国', 'cn'],
+    ['united states', 'us'], ['usa', 'us'], ['美国', 'us'],
+    ['united kingdom', 'gb'], ['uk', 'gb'], ['英国', 'gb'],
+    ['united arab emirates', 'ae'], ['阿联酋', 'ae'],
+    ['singapore', 'sg'], ['新加坡', 'sg'],
+    ['japan', 'jp'], ['日本', 'jp'],
+    ['south korea', 'kr'], ['korea', 'kr'], ['韩国', 'kr'],
+    ['germany', 'de'], ['德国', 'de'],
+    ['france', 'fr'], ['法国', 'fr'],
+    ['netherlands', 'nl'], ['荷兰', 'nl'],
+    ['canada', 'ca'], ['加拿大', 'ca'],
+    ['australia', 'au'], ['澳大利亚', 'au'],
+    ['new zealand', 'nz'], ['新西兰', 'nz'],
+    ['russia', 'ru'], ['俄罗斯', 'ru'],
+    ['israel', 'il'], ['以色列', 'il'],
+    ['india', 'in'], ['印度', 'in'],
+    ['brazil', 'br'], ['巴西', 'br'],
+    ['ireland', 'ie'], ['爱尔兰', 'ie'],
+    ['sweden', 'se'], ['瑞典', 'se'],
+    ['switzerland', 'ch'], ['瑞士', 'ch'],
+    ['finland', 'fi'], ['芬兰', 'fi'],
+    ['norway', 'no'], ['挪威', 'no'],
+    ['italy', 'it'], ['意大利', 'it'],
+    ['spain', 'es'], ['西班牙', 'es'],
+    ['poland', 'pl'], ['波兰', 'pl'],
+    ['malaysia', 'my'], ['马来西亚', 'my'],
+    ['thailand', 'th'], ['泰国', 'th'],
+    ['vietnam', 'vn'], ['越南', 'vn'],
+    ['indonesia', 'id'], ['印度尼西亚', 'id'], ['印尼', 'id'],
+    ['philippines', 'ph'], ['菲律宾', 'ph'],
+    ['turkey', 'tr'], ['土耳其', 'tr'],
+    ['south africa', 'za'], ['南非', 'za'],
+    ['ukraine', 'ua'], ['乌克兰', 'ua'],
+    ['czech', 'cz'], ['捷克', 'cz'],
+    ['austria', 'at'], ['奥地利', 'at'],
+    ['belgium', 'be'], ['比利时', 'be'],
+    ['denmark', 'dk'], ['丹麦', 'dk'],
+    ['portugal', 'pt'], ['葡萄牙', 'pt'],
+    ['mexico', 'mx'], ['墨西哥', 'mx'],
+    ['argentina', 'ar'], ['阿根廷', 'ar'],
+    ['saudi arabia', 'sa'], ['沙特', 'sa'],
+    ['romania', 'ro'], ['罗马尼亚', 'ro'],
+    ['bulgaria', 'bg'], ['保加利亚', 'bg'],
+    ['greece', 'gr'], ['希腊', 'gr'],
+    ['hungary', 'hu'], ['匈牙利', 'hu'],
+    ['luxembourg', 'lu'], ['卢森堡', 'lu'],
+    ['iceland', 'is'], ['冰岛', 'is'],
+    ['chile', 'cl'], ['智利', 'cl'],
+    ['colombia', 'co'], ['哥伦比亚', 'co'],
+    ['kazakhstan', 'kz'], ['哈萨克斯坦', 'kz'],
+  ];
+  for (const [k, code] of isoMap) {
+    if (s === k || s.startsWith(k + ' ') || s.startsWith(k + ',')) {
+      return `<span class="fi fi-${code} rounded-[2px] shadow-xs"></span>`;
+    }
   }
   return '🌍';
 }
@@ -1726,7 +1744,7 @@ async function pollSnapshot() {
         const cls = v < 40 ? 'text-emerald-500' : (v < 120 ? 'text-amber-500' : 'text-rose-500');
         return `<span class="${cls}">${Number(v).toFixed(1)}ms</span>`;
       };
-      latEl.innerHTML = `<div>🇨🇳 CN: ${fmtLat(snap.wan_latency_cn)}</div><div>🌐 Global: ${fmtLat(snap.wan_latency_global)}</div>`;
+      latEl.innerHTML = `<div><span class="fi fi-cn rounded-[2px] mr-1"></span>CN: ${fmtLat(snap.wan_latency_cn)}</div><div>🌐 Global: ${fmtLat(snap.wan_latency_global)}</div>`;
     }
     renderSecurityRadar(snap);
 
