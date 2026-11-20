@@ -51,6 +51,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/auth/password", s.handleAuthPassword)
 	mux.HandleFunc("/api/history/ips-total", s.handleClientTotalTraffic)
 	mux.HandleFunc("/api/history/ips-total/reset", s.handleResetClientTotal)
+	mux.HandleFunc("/api/search/history", s.handleHistorySearch)
 
 	mux.HandleFunc("/api/routers", s.handleRouters)
 	mux.HandleFunc("/api/routers/test", s.handleTestRouter)
@@ -879,4 +880,33 @@ func (s *Server) handleResetClientTotal(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleHistorySearch(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	q := r.URL.Query().Get("q")
+	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+	if days <= 0 {
+		days = 14
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 50
+	}
+	items, total, err := s.store.QueryHistorySearch(id, q, days, pageSize, (page-1)*pageSize)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"items":     items,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+		"days":      days,
+	})
 }

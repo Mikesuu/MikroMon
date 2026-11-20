@@ -137,6 +137,7 @@ type routerWorker struct {
 	lastAdgTS     int64
 	lastMetaAt    time.Time
 	lastConnAt    time.Time
+	lastHistWrite map[string]int64
 	recentDomains []store.DomainAuditEntry
 }
 
@@ -348,6 +349,7 @@ func (c *Collector) pollAll() {
 				dnsCache:      make(map[string]string),
 				adgIPDomain:   make(map[string]string),
 				recentAppHits: make(map[string]ActiveAppSummary),
+				lastHistWrite: make(map[string]int64),
 			}
 			c.workers[cfg.ID] = w
 		} else {
@@ -904,17 +906,29 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			ipAppBytes[clientIP][appInfo.App] += weight
 
 			if dRx > 0 || dTx > 0 {
-				d, ok := ipDeltaMap[clientIP]
-				if !ok {
-					d = &store.IPTrafficDelta{
-						IP:       clientIP,
-						HostName: hostName,
-						MAC:      mac,
+				statIP := clientIP
+				statHost := hostName
+				if !store.IsPrivateLANIP(statIP) && mac != "" {
+					if lease, ok := w.leasesByMAC[mac]; ok && store.IsPrivateLANIP(lease.Address) {
+						statIP = lease.Address
+						if statHost == "" {
+							statHost = lease.HostName
+						}
 					}
-					ipDeltaMap[clientIP] = d
 				}
-				d.RxBytes += dRx
-				d.TxBytes += dTx
+				if store.IsPrivateLANIP(statIP) {
+					d, ok := ipDeltaMap[statIP]
+					if !ok {
+						d = &store.IPTrafficDelta{
+							IP:       statIP,
+							HostName: statHost,
+							MAC:      mac,
+						}
+						ipDeltaMap[statIP] = d
+					}
+					d.RxBytes += dRx
+					d.TxBytes += dTx
+				}
 			}
 		}
 
@@ -1005,6 +1019,43 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		}
 		return (liveConns[i].RxBytes + liveConns[i].TxBytes) > (liveConns[j].RxBytes + liveConns[j].TxBytes)
 	})
+	// 写入 14 天去重连接访问历史 (同一五元组+域名每 5 分钟最多刷新一次)
+	if w.lastHistWrite == nil {
+		w.lastHistWrite = make(map[string]int64)
+	}
+	var histBatch []store.ConnHistoryEntry
+	for _, lc := range liveConns {
+		if lc.ClientIP == "" || lc.RemoteIP == "" {
+			continue
+		}
+		hKey := fmt.Sprintf("%s|%s|%d|%s", lc.ClientIP, lc.RemoteIP, lc.RemotePort, lc.Domain)
+		if lastW, ok := w.lastHistWrite[hKey]; !ok || nowUnix-lastW >= 300 {
+			w.lastHistWrite[hKey] = nowUnix
+			histBatch = append(histBatch, store.ConnHistoryEntry{
+				RouterID:   w.cfg.ID,
+				ClientIP:   lc.ClientIP,
+				HostName:   lc.HostName,
+				RemoteIP:   lc.RemoteIP,
+				RemotePort: lc.RemotePort,
+				Protocol:   lc.Protocol,
+				Domain:     lc.Domain,
+				Location:   lc.Location,
+				LocationEN: lc.LocationEN,
+				ISP:        lc.ISP,
+				App:        lc.App,
+				Category:   lc.Category,
+				BytesTotal: lc.RxBytes + lc.TxBytes,
+				TS:         nowUnix,
+			})
+		}
+	}
+	if len(w.lastHistWrite) > 10000 {
+		w.lastHistWrite = make(map[string]int64)
+	}
+	if len(histBatch) > 0 {
+		_ = c.store.UpsertConnHistory(w.cfg.ID, histBatch)
+	}
+
 	if len(liveConns) > 1000 {
 		liveConns = liveConns[:1000]
 	}

@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -350,6 +351,26 @@ func (s *Store) migrate() error {
 		updated_at INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY (router_id, ip)
 	);
+
+	CREATE TABLE IF NOT EXISTS conn_history (
+		router_id INTEGER NOT NULL,
+		client_ip TEXT NOT NULL,
+		host_name TEXT NOT NULL DEFAULT '',
+		remote_ip TEXT NOT NULL,
+		remote_port INTEGER NOT NULL DEFAULT 0,
+		protocol TEXT NOT NULL DEFAULT '',
+		domain TEXT NOT NULL DEFAULT '',
+		location TEXT NOT NULL DEFAULT '',
+		location_en TEXT NOT NULL DEFAULT '',
+		isp TEXT NOT NULL DEFAULT '',
+		app TEXT NOT NULL DEFAULT '',
+		category TEXT NOT NULL DEFAULT '',
+		bytes_total INTEGER NOT NULL DEFAULT 0,
+		first_ts INTEGER NOT NULL,
+		last_ts INTEGER NOT NULL,
+		PRIMARY KEY (router_id, client_ip, remote_ip, remote_port, domain)
+	);
+	CREATE INDEX IF NOT EXISTS idx_conn_hist_q ON conn_history(router_id, last_ts DESC);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -366,6 +387,19 @@ func (s *Store) migrate() error {
 		WHERE NOT EXISTS (SELECT 1 FROM ip_traffic_total LIMIT 1)
 		GROUP BY router_id, ip;
 	`)
+	if rows, err := s.db.Query(`SELECT DISTINCT ip FROM ip_traffic_total`); err == nil {
+		var toDel []string
+		for rows.Next() {
+			var ip string
+			if rows.Scan(&ip) == nil && !IsPrivateLANIP(ip) {
+				toDel = append(toDel, ip)
+			}
+		}
+		rows.Close()
+		for _, ip := range toDel {
+			_, _ = s.db.Exec(`DELETE FROM ip_traffic_total WHERE ip=?`, ip)
+		}
+	}
 	return nil
 }
 
@@ -706,8 +740,10 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 	defer stmtIPTotal.Close()
 
 	for _, d := range ips {
-		if _, err := stmtIPTotal.Exec(routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes, ts); err != nil {
-			return err
+		if IsPrivateLANIP(d.IP) {
+			if _, err := stmtIPTotal.Exec(routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes, ts); err != nil {
+				return err
+			}
 		}
 		if _, err := stmtIP1m.Exec(b1m, routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes); err != nil {
 			return err
@@ -955,6 +991,118 @@ func (s *Store) QueryIPHistory(routerID int64, ip, rangeKey string) ([]IfaceSeri
 	return out, nil
 }
 
+type ConnHistoryEntry struct {
+	RouterID   int64  `json:"router_id"`
+	ClientIP   string `json:"client_ip"`
+	HostName   string `json:"host_name"`
+	RemoteIP   string `json:"remote_ip"`
+	RemotePort int    `json:"remote_port"`
+	Protocol   string `json:"protocol"`
+	Domain     string `json:"domain"`
+	Location   string `json:"location"`
+	LocationEN string `json:"location_en"`
+	ISP        string `json:"isp"`
+	App        string `json:"app"`
+	Category   string `json:"category"`
+	BytesTotal int64  `json:"bytes_total"`
+	TS         int64  `json:"ts"`
+	Source     string `json:"source"`
+}
+
+func IsPrivateLANIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 10 || (ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) || (ip4[0] == 192 && ip4[1] == 168)
+	}
+	return len(ip) == net.IPv6len && (ip[0]&0xfe) == 0xfc
+}
+
+func (s *Store) UpsertConnHistory(routerID int64, items []ConnHistoryEntry) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`
+		INSERT INTO conn_history (router_id, client_ip, host_name, remote_ip, remote_port, protocol, domain, location, location_en, isp, app, category, bytes_total, first_ts, last_ts)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT(router_id, client_ip, remote_ip, remote_port, domain) DO UPDATE SET
+			host_name = CASE WHEN excluded.host_name != '' THEN excluded.host_name ELSE host_name END,
+			location = CASE WHEN excluded.location != '' THEN excluded.location ELSE location END,
+			location_en = CASE WHEN excluded.location_en != '' THEN excluded.location_en ELSE location_en END,
+			isp = CASE WHEN excluded.isp != '' THEN excluded.isp ELSE isp END,
+			app = CASE WHEN excluded.app != '' THEN excluded.app ELSE app END,
+			category = CASE WHEN excluded.category != '' THEN excluded.category ELSE category END,
+			bytes_total = MAX(bytes_total, excluded.bytes_total),
+			last_ts = MAX(last_ts, excluded.last_ts)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, it := range items {
+		if _, err := stmt.Exec(routerID, it.ClientIP, it.HostName, it.RemoteIP, it.RemotePort, it.Protocol, it.Domain, it.Location, it.LocationEN, it.ISP, it.App, it.Category, it.BytesTotal, it.TS, it.TS); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) QueryHistorySearch(routerID int64, q string, days, limit, offset int) ([]ConnHistoryEntry, int, error) {
+	if days <= 0 {
+		days = 14
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	since := time.Now().Add(-time.Duration(days) * 24 * time.Hour).Unix()
+	like := "%" + strings.ToLower(strings.TrimSpace(q)) + "%"
+	trimQ := strings.TrimSpace(q)
+
+	baseCTE := `
+		WITH merged AS (
+			SELECT last_ts AS ts, client_ip, host_name, remote_ip, remote_port, protocol, domain, location, location_en, isp, app, category, bytes_total, 'Flow' AS source
+			FROM conn_history
+			WHERE router_id=? AND last_ts>=?
+			UNION ALL
+			SELECT ts, client_ip, host_name, '' AS remote_ip, 0 AS remote_port, 'DNS' AS protocol, domain, '' AS location, '' AS location_en, '' AS isp, app, category, 0 AS bytes_total, source
+			FROM domain_audit
+			WHERE router_id=? AND ts>=?
+		)
+	`
+	whereClause := `
+		WHERE (? = '' OR LOWER(client_ip) LIKE ? OR LOWER(host_name) LIKE ? OR LOWER(remote_ip) LIKE ? OR LOWER(domain) LIKE ? OR LOWER(app) LIKE ? OR LOWER(category) LIKE ? OR LOWER(location) LIKE ? OR LOWER(location_en) LIKE ? OR LOWER(isp) LIKE ?)
+	`
+	args := []any{routerID, since, routerID, since, trimQ, like, like, like, like, like, like, like, like, like}
+	var total int
+	_ = s.db.QueryRow(baseCTE+"SELECT COUNT(*) FROM merged "+whereClause, args...).Scan(&total)
+
+	qArgs := append(args, limit, offset)
+	rows, err := s.db.Query(baseCTE+"SELECT ts, client_ip, host_name, remote_ip, remote_port, protocol, domain, location, location_en, isp, app, category, bytes_total, source FROM merged "+whereClause+" ORDER BY ts DESC LIMIT ? OFFSET ?", qArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]ConnHistoryEntry, 0)
+	for rows.Next() {
+		var it ConnHistoryEntry
+		if rows.Scan(&it.TS, &it.ClientIP, &it.HostName, &it.RemoteIP, &it.RemotePort, &it.Protocol, &it.Domain, &it.Location, &it.LocationEN, &it.ISP, &it.App, &it.Category, &it.BytesTotal, &it.Source) == nil {
+			it.RouterID = routerID
+			out = append(out, it)
+		}
+	}
+	return out, total, nil
+}
+
 func (s *Store) QueryClientTotalTraffic(routerID int64) ([]ClientTotalStat, error) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
@@ -984,7 +1132,9 @@ func (s *Store) QueryClientTotalTraffic(routerID int64) ([]ClientTotalStat, erro
 				st.TodayTx = td[1]
 				st.TodayTotal = td[0] + td[1]
 			}
-			out = append(out, st)
+			if IsPrivateLANIP(st.IP) {
+				out = append(out, st)
+			}
 		}
 	}
 	return out, nil
@@ -1233,11 +1383,12 @@ func (s *Store) PruneOldData() {
 	s.db.Exec(`DELETE FROM app_traffic_1m WHERE bucket_ts < ?`, now-86400)
 	s.db.Exec(`DELETE FROM iface_rollup WHERE gran='5m' AND bucket_ts < ?`, now-7*86400)
 	s.db.Exec(`DELETE FROM iface_rollup WHERE gran='1h' AND bucket_ts < ?`, now-35*86400)
-	s.db.Exec(`DELETE FROM ip_traffic_5m WHERE bucket_ts < ?`, now-7*86400)
+	s.db.Exec(`DELETE FROM ip_traffic_5m WHERE bucket_ts < ?`, now-14*86400)
 	s.db.Exec(`DELETE FROM ip_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
-	s.db.Exec(`DELETE FROM app_traffic_5m WHERE bucket_ts < ?`, now-7*86400)
+	s.db.Exec(`DELETE FROM app_traffic_5m WHERE bucket_ts < ?`, now-14*86400)
 	s.db.Exec(`DELETE FROM app_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
-	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-7*86400)
+	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-14*86400)
+	s.db.Exec(`DELETE FROM conn_history WHERE last_ts < ?`, now-14*86400)
 	s.db.Exec(`DELETE FROM ip_isp_cache WHERE updated_at < ?`, now-30*86400)
 	s.db.Exec(`DELETE FROM security_events WHERE ts < ?`, now-30*86400)
 }
