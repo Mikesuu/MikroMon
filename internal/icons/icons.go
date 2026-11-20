@@ -21,6 +21,16 @@ type appLookup struct {
 }
 
 var appCatalog = map[string]appLookup{
+	"TikTok":        {term: "TikTok", country: "us"},
+	"番茄小说":          {term: "番茄免费小说", country: "cn"},
+	"番茄畅听":          {term: "番茄畅听", country: "cn"},
+	"红果短剧":          {term: "红果免费短剧", country: "cn"},
+	"七猫小说":          {term: "七猫免费小说", country: "cn"},
+	"河马剧场":          {term: "河马剧场", country: "cn"},
+	"起点读书":          {term: "起点读书", country: "cn"},
+	"掌阅":            {term: "掌阅", country: "cn"},
+	"书旗小说":          {term: "书旗小说", country: "cn"},
+	"晋江文学":          {term: "晋江小说阅读", country: "cn"},
 	"微信":            {id: "414478124", country: "cn"},
 	"QQ":            {id: "444934666", country: "cn"},
 	"抖音":            {id: "1142110895", country: "cn"},
