@@ -81,7 +81,11 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/tools/flush-dns", s.handleFlushDNS)
 
 	sub, _ := fs.Sub(staticFS, "static")
-	mux.Handle("/", http.FileServer(http.FS(sub)))
+	fileSrv := http.FileServer(http.FS(sub))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		fileSrv.ServeHTTP(w, r)
+	})
 
 	srv := &http.Server{
 		Addr:              addr,

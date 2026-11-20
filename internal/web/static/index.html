@@ -148,10 +148,13 @@
         <button id="updateHeaderBtn" onclick="openSettings()" class="hidden px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500 font-medium animate-pulse"></button>
       </div>
 
-      <div class="flex items-center gap-2 flex-1 max-w-md mx-2 hidden md:flex">
-        <div class="relative flex-1">
-          <input id="globalSearchInput" onkeydown="onGlobalSearchKey(event)" data-i18n-ph="ph_global_search" placeholder="搜索 IP / 设备 / 域名 / App (回车跳转)..." class="luci-input rounded-md pl-7 pr-2.5 py-1 text-xs w-full focus:outline-none focus:border-[#0099cc]" />
+      <div id="hdrSearchBox" class="flex items-center gap-2 flex-1 max-w-md mx-2 hidden md:flex transition-all duration-200">
+        <div id="globalSearchWrap" class="relative flex-1 transition-all duration-200">
+          <input id="globalSearchInput" oninput="onGlobalSearchInput()" onfocus="onGlobalSearchFocus()" onkeydown="onGlobalSearchKey(event)" autocomplete="off" data-i18n-ph="ph_global_search" placeholder="搜索 IP / 设备 / 应用..." class="luci-input rounded-lg pl-7 pr-12 py-1 text-xs w-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:shadow-lg" />
           <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs luci-txt2 pointer-events-none">🔍</span>
+          <button id="globalSearchClear" onclick="clearGlobalSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-[11px] luci-txt2 hover:text-rose-500 px-1">✕</button>
+          <span id="globalSearchKbd" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] luci-txt2 opacity-60 pointer-events-none font-mono hidden sm:inline">⌘K</span>
+          <div id="spotlightDropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 min-w-[340px] luci-card rounded-xl shadow-2xl border luci-border z-50 max-h-[68vh] overflow-y-auto p-2 space-y-2 text-xs"></div>
         </div>
         <button id="livePauseBtn" onclick="toggleLivePause()" class="luci-sub px-2 py-1 rounded text-[11px] flex items-center gap-1 shrink-0 hover:opacity-80" title="Pause / Resume auto refresh">
           <span id="liveDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -195,7 +198,7 @@
               <div class="text-[11px] luci-txt2" data-i18n="kpi_net">联网状态</div>
               <div id="kpiNetState" class="text-base font-bold text-emerald-500 leading-tight">-</div>
               <div id="kpiWanSummary" class="text-[10px] luci-txt2 truncate">-</div>
-              <div id="kpiWanLatency" class="text-[10px] font-mono luci-txt2 truncate">CN - · Global -</div>
+              <div id="kpiWanLatency" class="text-[10px] font-mono luci-txt2 leading-tight space-y-0.5 mt-0.5">-</div>
             </div>
             <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between">
               <div class="text-[11px] luci-txt2" data-i18n="kpi_apps">活跃 APP</div>
@@ -859,7 +862,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -908,7 +911,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -970,6 +973,71 @@ function fmtGeo(locZH, locEN) {
     return tGeo(locEN || locZH);
   }
   return locZH || locEN || '';
+}
+
+
+function geoFlag(txt) {
+  if (!txt) return '';
+  const s = txt.trim().toLowerCase();
+  const map = [
+    ['carrier nat', '🏢'], ['运营商内网', '🏢'], ['cgnat', '🏢'],
+    ['lan', '🏠'], ['内网', '🏠'], ['局域网', '🏠'],
+    ['anycast', '🌐'], ['global', '🌐'], ['海外', '🌐'],
+    ['hong kong', '🇭🇰'], ['香港', '🇭🇰'],
+    ['macao', '🇲🇴'], ['macau', '🇲🇴'], ['澳门', '🇲🇴'],
+    ['taiwan', '🇹🇼'], ['台湾', '🇹🇼'],
+    ['china', '🇨🇳'], ['中国', '🇨🇳'],
+    ['united states', '🇺🇸'], ['usa', '🇺🇸'], ['美国', '🇺🇸'],
+    ['united kingdom', '🇬🇧'], ['uk', '🇬🇧'], ['英国', '🇬🇧'],
+    ['united arab emirates', '🇦🇪'], ['阿联酋', '🇦🇪'],
+    ['singapore', '🇸🇬'], ['新加坡', '🇸🇬'],
+    ['japan', '🇯🇵'], ['日本', '🇯🇵'],
+    ['south korea', '🇰🇷'], ['korea', '🇰🇷'], ['韩国', '🇰🇷'],
+    ['germany', '🇩🇪'], ['德国', '🇩🇪'],
+    ['france', '🇫🇷'], ['法国', '🇫🇷'],
+    ['netherlands', '🇳🇱'], ['荷兰', '🇳🇱'],
+    ['canada', '🇨🇦'], ['加拿大', '🇨🇦'],
+    ['australia', '🇦🇺'], ['澳大利亚', '🇦🇺'],
+    ['new zealand', '🇳🇿'], ['新西兰', '🇳🇿'],
+    ['russia', '🇷🇺'], ['俄罗斯', '🇷🇺'],
+    ['israel', '🇮🇱'], ['以色列', '🇮🇱'],
+    ['india', '🇮🇳'], ['印度', '🇮🇳'],
+    ['brazil', '🇧🇷'], ['巴西', '🇧🇷'],
+    ['ireland', '🇮🇪'], ['爱尔兰', '🇮🇪'],
+    ['sweden', '🇸🇪'], ['瑞典', '🇸🇪'],
+    ['switzerland', '🇨🇭'], ['瑞士', '🇨🇭'],
+    ['finland', '🇫🇮'], ['芬兰', '🇫🇮'],
+    ['norway', '🇳🇴'], ['挪威', '🇳🇴'],
+    ['italy', '🇮🇹'], ['意大利', '🇮🇹'],
+    ['spain', '🇪🇸'], ['西班牙', '🇪🇸'],
+    ['poland', '🇵🇱'], ['波兰', '🇵🇱'],
+    ['malaysia', '🇲🇾'], ['马来西亚', '🇲🇾'],
+    ['thailand', '🇹🇭'], ['泰国', '🇹🇭'],
+    ['vietnam', '🇻🇳'], ['越南', '🇻🇳'],
+    ['indonesia', '🇮🇩'], ['印度尼西亚', '🇮🇩'], ['印尼', '🇮🇩'],
+    ['philippines', '🇵🇭'], ['菲律宾', '🇵🇭'],
+    ['turkey', '🇹🇷'], ['土耳其', '🇹🇷'],
+    ['south africa', '🇿🇦'], ['南非', '🇿🇦'],
+    ['ukraine', '🇺🇦'], ['乌克兰', '🇺🇦'],
+    ['czech', '🇨🇿'], ['捷克', '🇨🇿'],
+    ['austria', '🇦🇹'], ['奥地利', '🇦🇹'],
+    ['belgium', '🇧🇪'], ['比利时', '🇧🇪'],
+    ['denmark', '🇩🇰'], ['丹麦', '🇩🇰'],
+    ['portugal', '🇵🇹'], ['葡萄牙', '🇵🇹'],
+    ['mexico', '🇲🇽'], ['墨西哥', '🇲🇽'],
+    ['argentina', '🇦🇷'], ['阿根廷', '🇦🇷'],
+    ['saudi arabia', '🇸🇦'], ['沙特', '🇸🇦'],
+  ];
+  for (const [k, f] of map) {
+    if (s === k || s.startsWith(k + ' ') || s.startsWith(k + ',')) return f;
+  }
+  return '🌍';
+}
+function fmtGeoFlag(locZH, locEN) {
+  const txt = fmtGeo(locZH, locEN);
+  if (!txt) return '';
+  const f = geoFlag(txt);
+  return f ? `${f} ${txt}` : txt;
 }
 
 let currentLang = localStorage.getItem('mikromon_lang') || 'zh';
@@ -1497,7 +1565,9 @@ function toggleSidebar(force) {
   d.classList.toggle('-translate-x-full', !open);
   m.classList.toggle('hidden', !open);
 }
+let currentActiveTab = 'overview';
 function switchTab(name) {
+  currentActiveTab = name;
   toggleSidebar(false);
   if (name === 'overview' || name === 'ips') closeOtherMenus('');
   document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
@@ -1606,7 +1676,7 @@ async function pollSnapshot() {
         <span class="font-medium truncate">${w.interface}</span>
         <span class="font-mono truncate ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
         <span class="font-mono text-[10px] truncate">${w.asn ? `<span class="px-1 py-0.2 rounded bg-[#0099cc]/15 text-[#0099cc]">${w.asn}</span>` : '<span class="luci-txt2">-</span>'}</span>
-        <span class="text-[10px] luci-txt2 text-right truncate">${shortISP(fmtGeo(w.location, w.location_en), tGeo(w.isp)) || '-'}</span>
+        <span class="text-[10px] luci-txt2 text-right truncate">${shortISP(fmtGeoFlag(w.location, w.location_en), tGeo(w.isp)) || '-'}</span>
       </div>
     `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
@@ -1656,7 +1726,7 @@ async function pollSnapshot() {
         const cls = v < 40 ? 'text-emerald-500' : (v < 120 ? 'text-amber-500' : 'text-rose-500');
         return `<span class="${cls}">${Number(v).toFixed(1)}ms</span>`;
       };
-      latEl.innerHTML = `CN: ${fmtLat(snap.wan_latency_cn)} · Global: ${fmtLat(snap.wan_latency_global)}`;
+      latEl.innerHTML = `<div>🇨🇳 CN: ${fmtLat(snap.wan_latency_cn)}</div><div>🌐 Global: ${fmtLat(snap.wan_latency_global)}</div>`;
     }
     renderSecurityRadar(snap);
 
@@ -1830,7 +1900,7 @@ function renderRightExtras(snap) {
       const pct = Math.round((cnt * 100) / total);
       return `
       <div class="space-y-0.5">
-        <div class="flex justify-between text-[11px]"><span class="truncate">${name}</span><span class="font-mono luci-txt2">${cnt} (${pct}%)</span></div>
+        <div class="flex justify-between text-[11px]"><span class="truncate">${geoFlag(name)} ${name}</span><span class="font-mono luci-txt2">${cnt} (${pct}%)</span></div>
         <div class="w-full h-1.5 rounded bg-slate-500/20 overflow-hidden"><div class="h-full bg-[#0099cc]" style="width:${pct}%"></div></div>
       </div>`;
     }).join('') : '<div class="luci-txt2">-</div>';
@@ -1918,7 +1988,7 @@ function renderConnections() {
       <td class="py-1.5 uppercase luci-txt2">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
       <td class="py-1.5 font-mono"><div>${maskIP(c.client_ip)}:${c.client_port}</div><div class="text-[10px] luci-txt2">${c.host_name || ''}</div></td>
       <td class="py-1.5 font-mono"><div>${maskIP(c.remote_ip)}:${c.remote_port}</div>${c.domain ? `<div class="text-[11px] text-amber-500">${c.domain}</div>` : ''}</td>
-      <td class="py-1.5"><div>${fmtGeo(c.location, c.location_en) || '-'}</div><div class="text-[10px] text-[#0099cc]">${tGeo(c.isp) || ''}</div></td>
+      <td class="py-1.5"><div>${fmtGeoFlag(c.location, c.location_en) || '-'}</div><div class="text-[10px] text-[#0099cc]">${tGeo(c.isp) || ''}</div></td>
       <td class="py-1.5 text-[#0099cc]">${fmtBps(c.rx_bps)}</td>
       <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
       <td class="py-1.5">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
@@ -2411,20 +2481,150 @@ function manualRefreshAll() {
   pollSnapshot();
   refreshHistoryAll();
 }
+let auditSearchTimer = null;
+function syncTabSearchFilter(kw) {
+  if (currentActiveTab === 'connections') {
+    if (!kw) {
+      document.getElementById('connFilterIp').value = '';
+      document.getElementById('connFilterApp').value = '';
+      document.getElementById('connFilterIsp').value = '';
+    } else if (/^[\d.:]+$/.test(kw)) {
+      document.getElementById('connFilterIp').value = kw;
+      document.getElementById('connFilterApp').value = '';
+    } else {
+      document.getElementById('connFilterApp').value = kw;
+      document.getElementById('connFilterIp').value = '';
+    }
+    connPage = 1;
+    renderConnections();
+  } else if (currentActiveTab === 'ips') {
+    document.getElementById('ipSearch').value = kw;
+    renderLiveIPs();
+  } else if (currentActiveTab === 'audit') {
+    document.getElementById('auditSearch').value = kw;
+    clearTimeout(auditSearchTimer);
+    auditSearchTimer = setTimeout(() => { auditPage = 1; loadAudit(); }, 200);
+  }
+}
+function updateSearchUI(kw) {
+  const clr = document.getElementById('globalSearchClear');
+  const kbd = document.getElementById('globalSearchKbd');
+  if (clr) clr.classList.toggle('hidden', !kw);
+  if (kbd) kbd.classList.toggle('hidden', !!kw);
+}
+function renderSpotlight(kw) {
+  const drop = document.getElementById('spotlightDropdown');
+  if (!drop) return;
+  if (!kw || !lastSnap) { drop.classList.add('hidden'); drop.innerHTML = ''; return; }
+  const q = kw.toLowerCase();
+  const apps = (lastSnap.active_apps || []).filter(a => a.app.toLowerCase().includes(q) || tApp(a.app).toLowerCase().includes(q)).slice(0, 4);
+  const devs = (lastSnap.live_ips || []).filter(d => d.ip.toLowerCase().includes(q) || (d.host_name||'').toLowerCase().includes(q) || (d.mac||'').toLowerCase().includes(q)).slice(0, 4);
+  const conns = (lastSnap.connections || []).filter(c =>
+    c.client_ip.toLowerCase().includes(q) || (c.host_name||'').toLowerCase().includes(q) ||
+    c.remote_ip.toLowerCase().includes(q) || (c.domain||'').toLowerCase().includes(q) ||
+    tApp(c.app).toLowerCase().includes(q) || fmtGeo(c.location, c.location_en).toLowerCase().includes(q)
+  );
+  const doms = (lastSnap.recent_domains || []).filter(d => d.domain.toLowerCase().includes(q) || (d.client_ip||'').toLowerCase().includes(q)).slice(0, 4);
+  let html = '';
+  if (apps.length) {
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">Apps (${apps.length})</div>`;
+    html += apps.map(a => `<button onclick="spotlightPickApp('${a.app}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="font-medium">${tApp(a.app)}</span><span class="font-mono text-[11px] text-[#0099cc]">${fmtBps(a.rx_bps + a.tx_bps)}</span></button>`).join('');
+  }
+  if (devs.length) {
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">Devices (${devs.length})</div>`;
+    html += devs.map(d => `<button onclick="spotlightPickDevice('${d.ip}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate"><b>${d.host_name || d.ip}</b> <span class="font-mono luci-txt2">${d.ip}</span></span><span class="font-mono text-[11px] text-emerald-500 shrink-0">↓${fmtBps(d.rx_bps)}</span></button>`).join('');
+  }
+  if (conns.length) {
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold flex justify-between"><span>Connections (${conns.length})</span><button onclick="spotlightJumpConns()" class="text-[#0099cc] hover:underline">View All →</button></div>`;
+    html += conns.slice(0, 5).map(c => `<button onclick="spotlightJumpConns()" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate font-mono text-[11px]"><span class="text-[#0099cc]">${tApp(c.app)}</span> · ${maskIP(c.client_ip)} → ${c.domain || maskIP(c.remote_ip)}:${c.remote_port}</span><span class="text-[10px] luci-txt2 shrink-0">${fmtGeoFlag(c.location, c.location_en)}</span></button>`).join('');
+  }
+  if (doms.length) {
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">Domains</div>`;
+    html += doms.map(d => `<button onclick="spotlightJumpAudit('${d.domain}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate font-mono text-amber-500">${d.domain}</span><span class="text-[10px] luci-txt2 shrink-0">${tApp(d.app)}</span></button>`).join('');
+  }
+  if (!html) html = `<div class="py-4 text-center luci-txt2">No matches for "${kw}"</div>`;
+  drop.innerHTML = html;
+  drop.classList.remove('hidden');
+}
+function onGlobalSearchFocus() {
+  const box = document.getElementById('hdrSearchBox');
+  if (box) { box.classList.remove('max-w-md'); box.classList.add('max-w-xl'); }
+  const kw = document.getElementById('globalSearchInput').value.trim();
+  if (kw) renderSpotlight(kw);
+}
+function closeSpotlight() {
+  const drop = document.getElementById('spotlightDropdown');
+  if (drop) drop.classList.add('hidden');
+  const box = document.getElementById('hdrSearchBox');
+  if (box) { box.classList.remove('max-w-xl'); box.classList.add('max-w-md'); }
+}
+function onGlobalSearchInput() {
+  const kw = document.getElementById('globalSearchInput').value.trim();
+  updateSearchUI(kw);
+  renderSpotlight(kw);
+  syncTabSearchFilter(kw);
+}
+function clearGlobalSearch() {
+  const inp = document.getElementById('globalSearchInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  updateSearchUI('');
+  renderSpotlight('');
+  syncTabSearchFilter('');
+}
+function spotlightPickApp(app) {
+  closeSpotlight();
+  document.getElementById('connFilterApp').value = app;
+  document.getElementById('connFilterIp').value = '';
+  connPage = 1;
+  switchTab('connections');
+  renderConnections();
+}
+function spotlightPickDevice(ip) {
+  closeSpotlight();
+  switchTab('ips');
+  switchIpsSub('live');
+  loadIPDetail(ip);
+}
+function spotlightJumpConns() {
+  const kw = document.getElementById('globalSearchInput').value.trim();
+  closeSpotlight();
+  switchTab('connections');
+  syncTabSearchFilter(kw);
+}
+function spotlightJumpAudit(kw) {
+  closeSpotlight();
+  document.getElementById('auditSearch').value = kw;
+  auditPage = 1;
+  switchTab('audit');
+}
 function onGlobalSearchKey(e) {
+  if (e.key === 'Escape') { closeSpotlight(); e.target.blur(); return; }
   if (e.key !== 'Enter') return;
   const kw = e.target.value.trim();
+  closeSpotlight();
   if (!kw) return;
-  if (/^\d{1,3}(\.\d{1,3}){1,3}$/.test(kw) || kw.includes(':')) {
+  if (/^[\d.:]+$/.test(kw)) {
     document.getElementById('connFilterIp').value = kw;
     document.getElementById('connFilterApp').value = '';
   } else {
     document.getElementById('connFilterApp').value = kw;
     document.getElementById('connFilterIp').value = '';
   }
+  connPage = 1;
   switchTab('connections');
   renderConnections();
 }
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('globalSearchWrap');
+  if (wrap && !wrap.contains(e.target)) closeSpotlight();
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const inp = document.getElementById('globalSearchInput');
+    if (inp) { inp.focus(); inp.select(); onGlobalSearchFocus(); }
+  }
+});
 
 (async function init() {
   applyTheme(localStorage.getItem('mikromon_theme') || 'dark');
