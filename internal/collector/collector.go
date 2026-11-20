@@ -840,8 +840,8 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		}
 		return (liveConns[i].RxBytes + liveConns[i].TxBytes) > (liveConns[j].RxBytes + liveConns[j].TxBytes)
 	})
-	if len(liveConns) > 400 {
-		liveConns = liveConns[:400]
+	if len(liveConns) > 1000 {
+		liveConns = liveConns[:1000]
 	}
 
 	return liveConns, liveIPs, activeApps

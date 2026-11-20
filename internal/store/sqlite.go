@@ -458,6 +458,41 @@ func (s *Store) QueryDomainAudit(routerID int64, q string, limit int) ([]DomainA
 	return out, nil
 }
 
+func (s *Store) QueryDomainAuditPaged(routerID int64, q string, limit, offset int) ([]DomainAuditEntry, int, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var total int
+	var rows *sql.Rows
+	var err error
+	if q != "" {
+		like := "%" + strings.ToLower(q) + "%"
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM domain_audit WHERE router_id=? AND (LOWER(client_ip) LIKE ? OR LOWER(host_name) LIKE ? OR LOWER(domain) LIKE ? OR LOWER(app) LIKE ?)`,
+			routerID, like, like, like, like).Scan(&total)
+		rows, err = s.db.Query(`SELECT ts, router_id, client_ip, host_name, domain, app, category, source FROM domain_audit WHERE router_id=? AND (LOWER(client_ip) LIKE ? OR LOWER(host_name) LIKE ? OR LOWER(domain) LIKE ? OR LOWER(app) LIKE ?) ORDER BY ts DESC, id DESC LIMIT ? OFFSET ?`,
+			routerID, like, like, like, like, limit, offset)
+	} else {
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM domain_audit WHERE router_id=?`, routerID).Scan(&total)
+		rows, err = s.db.Query(`SELECT ts, router_id, client_ip, host_name, domain, app, category, source FROM domain_audit WHERE router_id=? ORDER BY ts DESC, id DESC LIMIT ? OFFSET ?`,
+			routerID, limit, offset)
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]DomainAuditEntry, 0)
+	for rows.Next() {
+		var it DomainAuditEntry
+		if err := rows.Scan(&it.TS, &it.RouterID, &it.ClientIP, &it.HostName, &it.Domain, &it.App, &it.Category, &it.Source); err == nil {
+			out = append(out, it)
+		}
+	}
+	return out, total, nil
+}
+
 func (s *Store) InsertIfaceSamples(samples []IfaceSample) error {
 	if len(samples) == 0 {
 		return nil
@@ -690,6 +725,50 @@ func (s *Store) QueryIfaceHistory(routerID int64, iface, rangeKey string) ([]Ifa
 		pts = append(pts, p)
 	}
 	return pts, nil
+}
+
+func (s *Store) QueryIfaceVolume(routerID int64, iface, rangeKey string) (int64, int64, error) {
+	dur, mode := RangeDuration(rangeKey)
+	since := time.Now().Add(-dur).Unix()
+
+	switch mode {
+	case "raw", "raw60", "raw120":
+		rows, err := s.db.Query(`SELECT rx_bytes, tx_bytes FROM iface_raw WHERE router_id=? AND iface=? AND ts>=? ORDER BY ts ASC`, routerID, iface, since)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer rows.Close()
+		var totRx, totTx, prevRx, prevTx int64
+		first := true
+		for rows.Next() {
+			var rx, tx int64
+			if err := rows.Scan(&rx, &tx); err != nil {
+				return 0, 0, err
+			}
+			if first {
+				prevRx, prevTx = rx, tx
+				first = false
+				continue
+			}
+			if rx >= prevRx {
+				totRx += rx - prevRx
+			}
+			if tx >= prevTx {
+				totTx += tx - prevTx
+			}
+			prevRx, prevTx = rx, tx
+		}
+		return totRx, totTx, nil
+	case "5m":
+		var rx, tx int64
+		err := s.db.QueryRow(`SELECT COALESCE(SUM(rx_bps_avg),0)*300/8, COALESCE(SUM(tx_bps_avg),0)*300/8 FROM iface_rollup WHERE router_id=? AND iface=? AND gran='5m' AND bucket_ts>=?`, routerID, iface, since).Scan(&rx, &tx)
+		return rx, tx, err
+	case "1h":
+		var rx, tx int64
+		err := s.db.QueryRow(`SELECT COALESCE(SUM(rx_bps_avg),0)*3600/8, COALESCE(SUM(tx_bps_avg),0)*3600/8 FROM iface_rollup WHERE router_id=? AND iface=? AND gran='1h' AND bucket_ts>=?`, routerID, iface, since).Scan(&rx, &tx)
+		return rx, tx, err
+	}
+	return 0, 0, nil
 }
 
 func (s *Store) QueryTopIPs(routerID int64, rangeKey string, limit int) ([]IPStat, error) {

@@ -668,8 +668,8 @@ func GetLogs(c *routeros.Client) ([]LogEntry, error) {
 	}
 	n := len(r.Re)
 	start := 0
-	if n > 120 {
-		start = n - 120
+	if n > 500 {
+		start = n - 500
 	}
 	out := make([]LogEntry, 0, n-start)
 	for i := n - 1; i >= start; i-- {

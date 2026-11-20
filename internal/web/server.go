@@ -45,6 +45,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/routers/test", s.handleTestRouter)
 	mux.HandleFunc("/api/snapshot", s.handleSnapshot)
 	mux.HandleFunc("/api/history/interface", s.handleIfaceHistory)
+	mux.HandleFunc("/api/history/iface-volume", s.handleIfaceVolume)
 	mux.HandleFunc("/api/history/ips", s.handleIPTop)
 	mux.HandleFunc("/api/history/ip", s.handleIPDetailHistory)
 	mux.HandleFunc("/api/history/apps", s.handleAppTop)
@@ -223,6 +224,23 @@ func (s *Server) handleIfaceHistory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, pts)
 }
 
+func (s *Server) handleIfaceVolume(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	iface := r.URL.Query().Get("iface")
+	rng := r.URL.Query().Get("range")
+	rx, tx, err := s.store.QueryIfaceVolume(id, iface, rng)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"iface":    iface,
+		"range":    rng,
+		"rx_bytes": rx,
+		"tx_bytes": tx,
+	})
+}
+
 func (s *Server) handleIPTop(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	rng := r.URL.Query().Get("range")
@@ -263,18 +281,33 @@ func (s *Server) handleAppTop(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDomainAudit(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	q := r.URL.Query().Get("q")
-	list, err := s.store.QueryDomainAudit(id, q, 200)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 50
+	}
+	offset := (page - 1) * pageSize
+	list, total, err := s.store.QueryDomainAuditPaged(id, q, pageSize, offset)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
-	if len(list) == 0 {
+	if total == 0 && page == 1 {
 		snap := s.col.GetSnapshot(id)
 		if snap != nil && len(snap.RecentDomains) > 0 {
 			list = snap.RecentDomains
+			total = len(list)
 		}
 	}
-	writeJSON(w, 200, list)
+	writeJSON(w, 200, map[string]any{
+		"items":     list,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
 }
 
 func (s *Server) handleNetworkDetails(w http.ResponseWriter, r *http.Request) {

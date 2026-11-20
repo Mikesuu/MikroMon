@@ -119,6 +119,7 @@
     <header class="luci-header px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30">
       <div class="flex items-center gap-2 flex-wrap">
         <button onclick="toggleSidebar()" class="luci-sub px-2.5 py-1 rounded text-sm font-bold" title="Menu">☰</button>
+        <button onclick="switchTab('overview')" class="luci-sub px-2 py-1 rounded text-sm hover:opacity-80 flex items-center justify-center" title="Home / Overview"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5M5 9.5V20a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V9.5"/></svg></button>
         <select id="routerSelect" class="luci-input rounded px-2.5 py-1 text-xs"></select>
         <span id="statusBadge" class="px-2 py-0.5 rounded text-xs bg-slate-500/15 luci-txt2">...</span>
         <button id="updateHeaderBtn" onclick="openSettings()" class="hidden px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500 font-medium animate-pulse"></button>
@@ -188,7 +189,7 @@
               <div class="text-[10px] luci-txt2 truncate" data-i18n="kpi_conns_sub">实时并发会话</div>
             </div>
             <div class="luci-card rounded-lg px-3 py-2 flex flex-col justify-between col-span-2 sm:col-span-1">
-              <div class="text-[11px] luci-txt2 truncate"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span>)</div>
+              <div class="text-[11px] luci-txt2 truncate"><span data-i18n="kpi_traffic">统计流量</span> (<span class="range-lbl">1小时</span><span id="kpiTrafficIface" class="text-[#0099cc]"></span>)</div>
               <div class="font-mono leading-tight text-xs font-bold">
                 <span class="text-[#0099cc]">↓<span id="kpiTrafficDl">0 B</span></span>
                 <span class="text-emerald-500 ml-1">↑<span id="kpiTrafficUl">0 B</span></span>
@@ -241,8 +242,15 @@
           </div>
 
           <div class="luci-card rounded-lg p-4">
-            <div class="flex justify-between items-center mb-3">
-              <h2 class="text-sm font-semibold" data-i18n="sec_active_apps">活跃 APP</h2>
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="text-sm font-semibold" data-i18n="sec_active_apps">活跃 APP</h2>
+                <select id="activeAppClientSelect" onchange="onActiveAppClientChange()" class="luci-input rounded text-xs px-2.5 py-1 max-w-[240px]">
+                  <option value="" data-i18n="opt_all_clients">全部终端 (All Clients)</option>
+                </select>
+                <span id="activeAppClientInfo" class="hidden text-[11px] font-mono luci-sub px-2 py-0.5 rounded text-[#0099cc]"></span>
+                <button id="activeAppClientClear" onclick="clearActiveAppClient()" class="hidden text-xs text-rose-500 hover:underline" data-i18n="btn_clear_flt">清除</button>
+              </div>
               <div class="flex items-center gap-3">
                 <span class="text-[11px] luci-txt2" data-i18n="hint_click_app">点击任意 APP 查看连接明细</span>
                 <button onclick="toggleShowAllApps()" id="btnExpandApps" class="text-xs text-[#0099cc] hover:underline">展开全部</button>
@@ -271,9 +279,23 @@
             <div id="sideIfaceList" class="space-y-1.5 text-xs"></div>
           </div>
 
-          <div class="luci-card rounded-lg p-4 space-y-2">
+                    <div class="luci-card rounded-lg p-4 space-y-2">
             <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_domains">活跃域名 (URL)</h3>
             <div id="sideDomainFeed" class="space-y-1 text-xs max-h-56 overflow-y-auto"></div>
+          </div>
+
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <div class="flex justify-between items-center border-b luci-border pb-2">
+              <h3 class="text-sm font-semibold" data-i18n="side_top_clients">实时速率 Top 终端</h3>
+              <button onclick="switchTab('ips')" class="text-[11px] text-[#0099cc] hover:underline" data-i18n="btn_more">更多</button>
+            </div>
+            <div id="sideTopClients" class="space-y-1.5 text-xs"></div>
+          </div>
+
+          <div class="luci-card rounded-lg p-4 space-y-3">
+            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_conn_breakdown">连接与地域分布</h3>
+            <div id="sideSessionStats" class="grid grid-cols-2 gap-1.5 text-[11px] font-mono"></div>
+            <div id="sideGeoTop" class="space-y-1.5 text-xs pt-1 border-t luci-border"></div>
           </div>
         </div>
         </div>
@@ -339,9 +361,9 @@
       <section id="tab-connections" class="tab-panel hidden space-y-4">
         <div class="luci-card rounded-lg p-3 flex flex-wrap gap-2.5 items-center justify-between">
           <div class="flex gap-2 flex-wrap">
-            <input id="connFilterIp" oninput="renderConnections()" data-i18n-ph="ph_flt_ip" placeholder="过滤内网 IP / 设备名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
-            <input id="connFilterApp" oninput="renderConnections()" data-i18n-ph="ph_flt_app" placeholder="过滤应用 / 分类 / 域名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
-            <input id="connFilterIsp" oninput="renderConnections()" data-i18n-ph="ph_flt_isp" placeholder="过滤归属地 / 服务商..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterIp" oninput="onConnFilterInput()" data-i18n-ph="ph_flt_ip" placeholder="过滤内网 IP / 设备名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterApp" oninput="onConnFilterInput()" data-i18n-ph="ph_flt_app" placeholder="过滤应用 / 分类 / 域名..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
+            <input id="connFilterIsp" oninput="onConnFilterInput()" data-i18n-ph="ph_flt_isp" placeholder="过滤归属地 / 服务商..." class="luci-input rounded px-2.5 py-1 text-xs w-48" />
           </div>
           <div class="flex items-center gap-2"><button onclick="toggleShowIPs()" class="btn-toggle-ip luci-sub px-2 py-1 rounded text-xs">👁 查看 IP</button><span id="connCountLabel" class="text-xs luci-txt2">0</span></div>
         </div>
@@ -356,6 +378,7 @@
             </thead>
             <tbody id="connTableBody" class="divide-y luci-border"></tbody>
           </table>
+          <div id="connPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
         </div>
       </section>
 
@@ -398,8 +421,8 @@
             <p class="text-xs luci-txt2 mt-0.5" data-i18n="audit_sub">支持 RouterOS DNS 缓存与 AdGuard Home 实时查询同步</p>
           </div>
           <div class="flex gap-2">
-            <input id="auditSearch" data-i18n-ph="ph_audit" placeholder="搜索 IP / 域名 / 应用..." class="luci-input rounded px-3 py-1 text-xs w-56" />
-            <button onclick="loadAudit()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_query">刷新查询</button>
+            <input id="auditSearch" onkeydown="if(event.key==='Enter'){auditPage=1;loadAudit();}" data-i18n-ph="ph_audit" placeholder="搜索 IP / 域名 / 应用..." class="luci-input rounded px-3 py-1 text-xs w-56" />
+            <button onclick="auditPage=1;loadAudit()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_query">刷新查询</button>
           </div>
         </div>
         <div class="luci-card rounded-lg p-4 overflow-x-auto">
@@ -409,6 +432,7 @@
             </thead>
             <tbody id="auditBody" class="divide-y luci-border"></tbody>
           </table>
+          <div id="auditPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
         </div>
       </section>
 
@@ -506,6 +530,7 @@
             <thead class="luci-txt2 border-b luci-border"><tr><th class="py-1.5" data-i18n="th_time">时间</th><th class="py-1.5">Topics</th><th class="py-1.5" data-i18n="th_msg">日志内容</th></tr></thead>
             <tbody id="logsBody" class="divide-y luci-border font-mono"></tbody>
           </table>
+          <div id="logsPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
         </div>
       </section>
 
@@ -658,7 +683,7 @@ const I18N = {
     blk_title: 'IP 黑名单 (mikromon_blocked)', btn_block: '拉黑', th_note: '备注',
     fw_title: '防火墙规则命中统计 (/ip/firewall/filter)', th_action: '动作', th_pkts: '命中数据包', th_bytes: '命中流量',
     torch_title: '实时 Torch 抓包', btn_snap: '抓取快照', btn_auto_on: '开启自动刷新', btn_auto_off: '停止自动刷新',
-    th_src_ep: '源', th_dst_ep: '目标', ping_title: '路由器 Ping 诊断', logs_title: '路由器实时系统日志 (最近 120 条)', th_msg: '日志内容',
+    th_src_ep: '源', th_dst_ep: '目标', ping_title: '路由器 Ping 诊断', logs_title: '路由器实时系统日志 (最近 500 条)', th_msg: '日志内容',
     db_title: 'DPI 应用特征库 & Geo/ASN 数据库状态', db_sig: '内置 DPI 特征', db_geo: '已缓存 Geo/ASN IP', db_audit: '域名审计记录', db_samples: '24h 原始采样',
     btn_clear_geo: '清空 Geo/ASN 缓存重抓', upd_title: '在线升级', btn_check_upd: '检查更新', btn_apply_upd: '立即更新', upd_auto: '发现新版本自动下载并重启',
     set_title: '路由器、主题、语言与数据源配置', set_theme: '外观主题', theme_dark: '黑夜', theme_light: '白天', set_lang: '界面语言',
@@ -676,7 +701,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停'
+    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -708,7 +733,7 @@ const I18N = {
     blk_title: 'IP Blocklist (mikromon_blocked)', btn_block: 'Block', th_note: 'Comment',
     fw_title: 'Firewall Filter Hit Counters', th_action: 'Action', th_pkts: 'Packets', th_bytes: 'Bytes',
     torch_title: 'Live Torch Capture', btn_snap: 'Capture', btn_auto_on: 'Auto Refresh', btn_auto_off: 'Stop Auto',
-    th_src_ep: 'Source', th_dst_ep: 'Destination', ping_title: 'Router Ping Tool', logs_title: 'RouterOS System Logs (Last 120)', th_msg: 'Message',
+    th_src_ep: 'Source', th_dst_ep: 'Destination', ping_title: 'Router Ping Tool', logs_title: 'RouterOS System Logs (Last 500)', th_msg: 'Message',
     db_title: 'DPI Signatures & Geo/ASN Cache', db_sig: 'DPI Signatures', db_geo: 'Cached Geo IPs', db_audit: 'Audit Rows', db_samples: '24h Raw Samples',
     btn_clear_geo: 'Clear Geo Cache', upd_title: 'OTA Update', btn_check_upd: 'Check', btn_apply_upd: 'Update Now', upd_auto: 'Auto-download & restart on new release',
     set_title: 'Router, Theme, Language & Data Sources', set_theme: 'Theme', theme_dark: 'Dark', theme_light: 'Light', set_lang: 'Language',
@@ -725,7 +750,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -818,6 +843,55 @@ function toggleShowIPs() {
   pollSnapshot();
   refreshHistoryAll();
 }
+let selectedAppClient = '';
+let connPage = 1;
+let connPageSize = 50;
+let auditPage = 1;
+let auditPageSize = 50;
+let logsCache = [];
+let logsPage = 1;
+let logsPageSize = 50;
+
+function onActiveAppClientChange() {
+  selectedAppClient = document.getElementById('activeAppClientSelect').value;
+  lastAppWallKey = '';
+  if (lastSnap) renderActiveAppsSection(lastSnap);
+}
+function clearActiveAppClient() {
+  selectedAppClient = '';
+  const sel = document.getElementById('activeAppClientSelect');
+  if (sel) sel.value = '';
+  lastAppWallKey = '';
+  if (lastSnap) renderActiveAppsSection(lastSnap);
+}
+function onConnFilterInput() {
+  connPage = 1;
+  renderConnections();
+}
+function buildPagerHTML(page, total, pageSize, onPageFn, onSizeFn) {
+  const tp = Math.max(1, Math.ceil(total / pageSize));
+  const p = Math.min(Math.max(1, page), tp);
+  const info = t('page_fmt').replace('{p}', p).replace('{tp}', tp).replace('{t}', total);
+  const opts = [25, 50, 100, 200].map(n => `<option value="${n}" ${n===pageSize?'selected':''}>${n}</option>`).join('');
+  return `
+    <div class="flex items-center gap-2">
+      <span>${info}</span>
+      ${onSizeFn ? `<span class="opacity-50">|</span><span>${t('per_page_lbl')}</span><select onchange="${onSizeFn}(Number(this.value))" class="luci-input rounded px-1.5 py-0.5 text-xs">${opts}</select>` : ''}
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button onclick="${onPageFn}(1)" ${p<=1?'disabled':''} class="luci-sub px-2 py-0.5 rounded disabled:opacity-40">«</button>
+      <button onclick="${onPageFn}(${p-1})" ${p<=1?'disabled':''} class="luci-sub px-2.5 py-0.5 rounded disabled:opacity-40">${t('prev_page')}</button>
+      <button onclick="${onPageFn}(${p+1})" ${p>=tp?'disabled':''} class="luci-sub px-2.5 py-0.5 rounded disabled:opacity-40">${t('next_page')}</button>
+      <button onclick="${onPageFn}(${tp})" ${p>=tp?'disabled':''} class="luci-sub px-2 py-0.5 rounded disabled:opacity-40">»</button>
+    </div>`;
+}
+function setConnPage(p) { connPage = Math.max(1, p); renderConnections(); }
+function setConnPageSize(sz) { connPageSize = sz; connPage = 1; renderConnections(); }
+function setAuditPage(p) { auditPage = Math.max(1, p); loadAudit(); }
+function setAuditPageSize(sz) { auditPageSize = sz; auditPage = 1; loadAudit(); }
+function setLogsPage(p) { logsPage = Math.max(1, p); renderLogsPage(); }
+function setLogsPageSize(sz) { logsPageSize = sz; logsPage = 1; renderLogsPage(); }
+
 let torchTimer = null;
 
 const INLINE_ICONS = {
@@ -1035,6 +1109,8 @@ function toggleShowAllApps() {
 
 function jumpAppFilter(appName) {
   document.getElementById('connFilterApp').value = appName;
+  document.getElementById('connFilterIp').value = selectedAppClient || '';
+  connPage = 1;
   switchTab('connections');
   renderConnections();
 }
@@ -1153,41 +1229,8 @@ async function pollSnapshot() {
       document.getElementById('overviewRatePill').innerHTML = `<span class="text-[#0099cc]">${t('dl_lbl')} ${fmtBps(dl)}</span> · <span class="text-emerald-500">${t('ul_lbl')} ${fmtBps(ul)}</span>`;
     }
 
-    const appRows = showAllApps ? apps : apps.slice(0, 18);
-    const wallEl = document.getElementById('activeAppsWall');
-    const wallKey = currentLang + '|' + lastIconVer + '|' + appRows.map(a => a.app).join(',');
-    if (!appRows.length) {
-      lastAppWallKey = '';
-      wallEl.innerHTML = `<div class="col-span-full text-xs luci-txt2 py-4 text-center">...</div>`;
-    } else if (wallKey !== lastAppWallKey) {
-      lastAppWallKey = wallKey;
-      wallEl.innerHTML = appRows.map((a, idx) => {
-        const liveSpeed = a.rx_bps + a.tx_bps;
-        const totBytes = appTotalBytesMap[a.app] || 0;
-        const dispName = tApp(a.app);
-        return `
-        <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
-          <img src="${getIconSrc(a.app, a.color)}" data-app="${a.app}" data-color="${a.color}" onerror="imgFallback(this)" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
-          <div class="text-xs font-semibold mt-1.5 truncate w-full">${dispName}</div>
-          <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
-            <div id="appLive_${idx}" class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">${t('live_lbl')}: ${fmtBps(liveSpeed)}</div>
-            <div id="appTot_${idx}" class="luci-txt2">${t('total_lbl')}: ${fmtBytes(totBytes)}</div>
-          </div>
-        </button>`;
-      }).join('');
-    } else {
-      appRows.forEach((a, idx) => {
-        const liveSpeed = a.rx_bps + a.tx_bps;
-        const totBytes = appTotalBytesMap[a.app] || 0;
-        const lEl = document.getElementById(`appLive_${idx}`);
-        const tEl = document.getElementById(`appTot_${idx}`);
-        if (lEl) {
-          lEl.className = liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2';
-          lEl.textContent = `${t('live_lbl')}: ${fmtBps(liveSpeed)}`;
-        }
-        if (tEl) tEl.textContent = `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
-      });
-    }
+    renderActiveAppsSection(snap);
+    renderRightExtras(snap);
 
     document.getElementById('sideIfaceList').innerHTML = ifaces.filter(i => !i.disabled).slice(0, 7).map(i => `
       <div class="flex justify-between items-center">
@@ -1223,6 +1266,146 @@ async function pollSnapshot() {
     renderLiveIPs();
     renderConnections();
   } catch (e) { console.error(e); }
+}
+
+function renderActiveAppsSection(snap) {
+  const sel = document.getElementById('activeAppClientSelect');
+  const liveIps = snap.live_ips || [];
+  if (sel && document.activeElement !== sel) {
+    const sortedClients = [...liveIps].sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps) || b.active_conns - a.active_conns);
+    const sig = currentLang + '|' + showFullIPs + '|' + sortedClients.map(c => c.ip + ':' + (c.host_name||'')).join(',');
+    if (sel.dataset.sig !== sig) {
+      sel.dataset.sig = sig;
+      const keep = selectedAppClient;
+      sel.innerHTML = `<option value="">${t('opt_all_clients')}</option>` + sortedClients.map(c => {
+        const label = c.host_name ? `${c.host_name} (${maskIP(c.ip)})` : maskIP(c.ip);
+        return `<option value="${c.ip}">${label}</option>`;
+      }).join('');
+      if (keep && sortedClients.some(c => c.ip === keep)) sel.value = keep;
+      else if (keep) { selectedAppClient = ''; sel.value = ''; }
+    }
+  }
+
+  let apps = snap.active_apps || [];
+  const infoEl = document.getElementById('activeAppClientInfo');
+  const clrEl = document.getElementById('activeAppClientClear');
+  if (selectedAppClient) {
+    const cMap = {};
+    let totDl = 0, totUl = 0, totConns = 0;
+    (snap.connections || []).forEach(c => {
+      if (c.client_ip !== selectedAppClient) return;
+      totDl += c.rx_bps || 0;
+      totUl += c.tx_bps || 0;
+      totConns++;
+      if (!cMap[c.app]) {
+        cMap[c.app] = { app: c.app, category: c.category, color: c.color, rx_bps: 0, tx_bps: 0, session_bytes: 0, conns: 0, is_real: c.is_real_app };
+      }
+      cMap[c.app].rx_bps += c.rx_bps || 0;
+      cMap[c.app].tx_bps += c.tx_bps || 0;
+      cMap[c.app].session_bytes += (c.rx_bytes || 0) + (c.tx_bytes || 0);
+      cMap[c.app].conns++;
+    });
+    apps = Object.values(cMap).sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps) || (b.is_real ? 1 : 0) - (a.is_real ? 1 : 0) || b.session_bytes - a.session_bytes);
+    if (infoEl) {
+      infoEl.textContent = `${apps.length} apps · ${totConns} conns · ↓ ${fmtBps(totDl)} ↑ ${fmtBps(totUl)}`;
+      infoEl.classList.remove('hidden');
+    }
+    if (clrEl) clrEl.classList.remove('hidden');
+  } else {
+    if (infoEl) infoEl.classList.add('hidden');
+    if (clrEl) clrEl.classList.add('hidden');
+  }
+
+  const appRows = showAllApps ? apps : apps.slice(0, 18);
+  const wallEl = document.getElementById('activeAppsWall');
+  const wallKey = currentLang + '|' + lastIconVer + '|' + selectedAppClient + '|' + appRows.map(a => a.app).join(',');
+  if (!appRows.length) {
+    lastAppWallKey = '';
+    wallEl.innerHTML = `<div class="col-span-full text-xs luci-txt2 py-4 text-center">-</div>`;
+  } else if (wallKey !== lastAppWallKey) {
+    lastAppWallKey = wallKey;
+    wallEl.innerHTML = appRows.map((a, idx) => {
+      const liveSpeed = (a.rx_bps || 0) + (a.tx_bps || 0);
+      const totBytes = selectedAppClient ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
+      const dispName = tApp(a.app);
+      const subLbl = selectedAppClient ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
+      return `
+      <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
+        <img src="${getIconSrc(a.app, a.color)}" data-app="${a.app}" data-color="${a.color}" onerror="imgFallback(this)" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
+        <div class="text-xs font-semibold mt-1.5 truncate w-full">${dispName}</div>
+        <div class="text-[10px] font-mono mt-1 w-full space-y-0.5">
+          <div id="appLive_${idx}" class="${liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2'}">${t('live_lbl')}: ${fmtBps(liveSpeed)}</div>
+          <div id="appTot_${idx}" class="luci-txt2">${subLbl}</div>
+        </div>
+      </button>`;
+    }).join('');
+  } else {
+    appRows.forEach((a, idx) => {
+      const liveSpeed = (a.rx_bps || 0) + (a.tx_bps || 0);
+      const totBytes = selectedAppClient ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
+      const lEl = document.getElementById(`appLive_${idx}`);
+      const tEl = document.getElementById(`appTot_${idx}`);
+      if (lEl) {
+        lEl.className = liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2';
+        lEl.textContent = `${t('live_lbl')}: ${fmtBps(liveSpeed)}`;
+      }
+      if (tEl) tEl.textContent = selectedAppClient ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
+    });
+  }
+}
+
+function renderRightExtras(snap) {
+  const topEl = document.getElementById('sideTopClients');
+  if (topEl) {
+    const ips = [...(snap.live_ips || [])].sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps)).slice(0, 6);
+    topEl.innerHTML = ips.length ? ips.map(c => `
+      <div onclick="switchTab('ips');loadIPDetail('${c.ip}')" class="flex items-center justify-between gap-2 luci-sub rounded px-2 py-1.5 cursor-pointer hover:opacity-80">
+        <div class="min-w-0">
+          <div class="font-medium truncate">${c.host_name || maskIP(c.ip)}</div>
+          <div class="text-[10px] luci-txt2 font-mono truncate">${maskIP(c.ip)} · ${tApp(c.top_app) || '-'}</div>
+        </div>
+        <div class="text-right font-mono text-[10px] shrink-0">
+          <div class="text-[#0099cc]">↓ ${fmtBps(c.rx_bps)}</div>
+          <div class="text-emerald-500">↑ ${fmtBps(c.tx_bps)}</div>
+        </div>
+      </div>
+    `).join('') : '<div class="luci-txt2">-</div>';
+  }
+
+  const conns = snap.connections || [];
+  const sessEl = document.getElementById('sideSessionStats');
+  const geoEl = document.getElementById('sideGeoTop');
+  let tcp = 0, udp = 0, v6 = 0, ft = 0;
+  const geoCnt = {};
+  conns.forEach(c => {
+    const p = (c.protocol || '').toLowerCase();
+    if (p === 'tcp') tcp++;
+    else if (p === 'udp') udp++;
+    if (c.ip_version === 6) v6++;
+    if (c.fasttrack) ft++;
+    const rawGeo = fmtGeo(c.location, c.location_en) || 'Unknown';
+    const country = rawGeo.split(' ')[0] || rawGeo;
+    geoCnt[country] = (geoCnt[country] || 0) + 1;
+  });
+  if (sessEl) {
+    sessEl.innerHTML = `
+      <div class="luci-sub rounded px-2 py-1 flex justify-between"><span class="luci-txt2">TCP</span><b class="text-[#0099cc]">${tcp}</b></div>
+      <div class="luci-sub rounded px-2 py-1 flex justify-between"><span class="luci-txt2">UDP</span><b class="text-emerald-500">${udp}</b></div>
+      <div class="luci-sub rounded px-2 py-1 flex justify-between"><span class="luci-txt2">IPv6</span><b class="text-purple-400">${v6}</b></div>
+      <div class="luci-sub rounded px-2 py-1 flex justify-between"><span class="luci-txt2">FastTrack</span><b class="text-amber-500">${ft}</b></div>`;
+  }
+  if (geoEl) {
+    const total = Math.max(1, conns.length);
+    const topGeo = Object.entries(geoCnt).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    geoEl.innerHTML = topGeo.length ? topGeo.map(([name, cnt]) => {
+      const pct = Math.round((cnt * 100) / total);
+      return `
+      <div class="space-y-0.5">
+        <div class="flex justify-between text-[11px]"><span class="truncate">${name}</span><span class="font-mono luci-txt2">${cnt} (${pct}%)</span></div>
+        <div class="w-full h-1.5 rounded bg-slate-500/20 overflow-hidden"><div class="h-full bg-[#0099cc]" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('') : '<div class="luci-txt2">-</div>';
+  }
 }
 
 function renderLiveIPs() {
@@ -1291,8 +1474,12 @@ function renderConnections() {
     const hitIsp = !fIsp || (c.location||'').toLowerCase().includes(fIsp) || (c.location_en||'').toLowerCase().includes(fIsp) || locDisp.toLowerCase().includes(fIsp) || (c.isp||'').toLowerCase().includes(fIsp) || c.remote_ip.toLowerCase().includes(fIsp);
     return hitIp && hitApp && hitIsp;
   });
+  const tp = Math.max(1, Math.ceil(filtered.length / connPageSize));
+  if (connPage > tp) connPage = tp;
+  const start = (connPage - 1) * connPageSize;
+  const pageRows = filtered.slice(start, start + connPageSize);
   document.getElementById('connCountLabel').textContent = t('showing_conns').replace('{n}', filtered.length);
-  document.getElementById('connTableBody').innerHTML = filtered.slice(0, 200).map(c => `
+  document.getElementById('connTableBody').innerHTML = pageRows.map(c => `
     <tr class="luci-tr">
       <td class="py-1.5"><span class="px-2 py-0.5 rounded font-medium text-white text-[11px]" style="background:${c.color || '#0099cc'}">${tApp(c.app)}</span></td>
       <td class="py-1.5 uppercase luci-txt2">${c.protocol}${c.ip_version===6?'6':''}${c.fasttrack ? ' ⚡' : ''}</td>
@@ -1305,6 +1492,8 @@ function renderConnections() {
       <td class="py-1.5 luci-txt2">${c.tcp_state || c.timeout}</td>
     </tr>
   `).join('');
+  const pager = document.getElementById('connPager');
+  if (pager) pager.innerHTML = buildPagerHTML(connPage, filtered.length, connPageSize, 'setConnPage', 'setConnPageSize');
 }
 
 async function loadOverviewChart() {
@@ -1314,9 +1503,21 @@ async function loadOverviewChart() {
   const badge = document.getElementById('ovLanBadge');
   if (badge) badge.classList.toggle('hidden', !inv);
 
-  const res = await fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`);
-  const pts = await res.json();
+  const [ptsRes, volRes] = await Promise.all([
+    fetch(`/api/history/interface?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`),
+    fetch(`/api/history/iface-volume?router_id=${currentRouterId}&iface=${encodeURIComponent(iface)}&range=${currentRange}`)
+  ]);
+  const pts = await ptsRes.json();
+  const vol = await volRes.json();
   renderTrafficChart(chartOverview, pts, inv);
+
+  const dlBytes = inv ? (vol.tx_bytes || 0) : (vol.rx_bytes || 0);
+  const ulBytes = inv ? (vol.rx_bytes || 0) : (vol.tx_bytes || 0);
+  document.getElementById('kpiTrafficDl').textContent = fmtBytes(dlBytes);
+  document.getElementById('kpiTrafficUl').textContent = fmtBytes(ulBytes);
+  document.getElementById('kpiTrafficTot').textContent = fmtBytes(dlBytes + ulBytes);
+  const ifaceLbl = document.getElementById('kpiTrafficIface');
+  if (ifaceLbl) ifaceLbl.textContent = ` · ${iface}`;
 
   let maxDl = 0, maxUl = 0, sumDl = 0, sumUl = 0;
   if (Array.isArray(pts) && pts.length > 0) {
@@ -1350,12 +1551,6 @@ async function loadAppCharts() {
   const nextMap = {};
   list.forEach(a => { nextMap[a.app] = a.total_bytes; });
   appTotalBytesMap = nextMap;
-
-  const dlBytes = list.reduce((s, a) => s + a.rx_bytes, 0);
-  const ulBytes = list.reduce((s, a) => s + a.tx_bytes, 0);
-  document.getElementById('kpiTrafficDl').textContent = fmtBytes(dlBytes);
-  document.getElementById('kpiTrafficUl').textContent = fmtBytes(ulBytes);
-  document.getElementById('kpiTrafficTot').textContent = fmtBytes(dlBytes + ulBytes);
 
   document.getElementById('dpiRankBody').innerHTML = list.map(a => `
     <tr class="luci-tr"><td class="py-1.5 font-medium flex items-center gap-2"><img src="${getIconSrc(a.app, '#0099cc')}" data-app="${a.app}" data-color="#0099cc" onerror="imgFallback(this)" class="w-5 h-5 rounded object-cover" /><span>${tApp(a.app)}</span></td><td class="py-1.5 luci-txt2">${tCat(a.category)}</td><td class="py-1.5 text-[#0099cc]">${fmtBytes(a.rx_bytes)}</td><td class="py-1.5 text-emerald-500">${fmtBytes(a.tx_bytes)}</td><td class="py-1.5 font-semibold">${fmtBytes(a.total_bytes)}</td></tr>
@@ -1417,8 +1612,10 @@ async function loadIPDetail(ip) {
 
 async function loadAudit() {
   const q = document.getElementById('auditSearch').value.trim();
-  const res = await fetch(`/api/audit/domains?router_id=${currentRouterId}&q=${encodeURIComponent(q)}`);
-  const rows = await res.json();
+  const res = await fetch(`/api/audit/domains?router_id=${currentRouterId}&q=${encodeURIComponent(q)}&page=${auditPage}&page_size=${auditPageSize}`);
+  const data = await res.json();
+  const rows = Array.isArray(data) ? data : (data.items || []);
+  const total = Array.isArray(data) ? rows.length : (data.total || 0);
   document.getElementById('auditBody').innerHTML = rows.map(r => `
     <tr class="luci-tr">
       <td class="py-1.5 luci-txt2">${new Date(r.ts * 1000).toLocaleString()}</td>
@@ -1430,6 +1627,8 @@ async function loadAudit() {
       <td class="py-1.5 luci-txt2">${r.source}</td>
     </tr>
   `).join('');
+  const pager = document.getElementById('auditPager');
+  if (pager) pager.innerHTML = buildPagerHTML(auditPage, total, auditPageSize, 'setAuditPage', 'setAuditPageSize');
 }
 
 async function loadNetworkDetails() {
@@ -1471,9 +1670,20 @@ async function loadFirewallRules() {
 async function loadLogs() {
   const res = await fetch(`/api/system/logs?router_id=${currentRouterId}`);
   const rows = await res.json();
-  document.getElementById('logsBody').innerHTML = (rows || []).map(l => `
+  logsCache = Array.isArray(rows) ? rows : [];
+  logsPage = 1;
+  renderLogsPage();
+}
+function renderLogsPage() {
+  const tp = Math.max(1, Math.ceil(logsCache.length / logsPageSize));
+  if (logsPage > tp) logsPage = tp;
+  const start = (logsPage - 1) * logsPageSize;
+  const rows = logsCache.slice(start, start + logsPageSize);
+  document.getElementById('logsBody').innerHTML = rows.map(l => `
     <tr class="luci-tr"><td class="py-1 luci-txt2 whitespace-nowrap pr-3">${l.time}</td><td class="py-1 text-[#0099cc] whitespace-nowrap pr-3">${l.topics}</td><td class="py-1">${l.message}</td></tr>
   `).join('');
+  const pager = document.getElementById('logsPager');
+  if (pager) pager.innerHTML = buildPagerHTML(logsPage, logsCache.length, logsPageSize, 'setLogsPage', 'setLogsPageSize');
 }
 
 async function makeStatic(id) {
