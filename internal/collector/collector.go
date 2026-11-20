@@ -1103,3 +1103,12 @@ func countUniqueDevices(ips []LiveIP) (devs, v4, v6 int) {
 	}
 	return len(devSet), v4, v6
 }
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
