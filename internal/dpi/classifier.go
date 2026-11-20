@@ -640,3 +640,43 @@ func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) App
 	}
 	return AppInfo{App: strings.ToUpper(p), Category: "其他协议", Color: "#6366f1", IsRealApp: false}
 }
+
+var miningKeywords = []string{
+	"xmrig", "minexmr", "nanopool", "f2pool", "ethermine", "nicehash",
+	"supportxmr", "coinhive", "c3pool", "herominers", "hashvault", "stratum", "moneroocean",
+}
+
+var tunnelKeywords = []string{
+	"ngrok", "trycloudflare", "localtunnel", "serveo.net",
+}
+
+func ClassifyThreat(domain string, dstPort int) (rule, level, detail string) {
+	d := strings.ToLower(domain)
+	if d != "" {
+		for _, kw := range miningKeywords {
+			if strings.Contains(d, kw) {
+				return "crypto_mining", "high", "Crypto Mining Pool / Miner (" + kw + ")"
+			}
+		}
+		for _, kw := range tunnelKeywords {
+			if strings.Contains(d, kw) {
+				return "tunnel_domain", "medium", "Public Tunnel Domain (" + kw + ")"
+			}
+		}
+	}
+	switch dstPort {
+	case 21:
+		return "cleartext_proto", "medium", "FTP Cleartext (21)"
+	case 23:
+		return "high_risk_port", "high", "Telnet Cleartext (23)"
+	case 445:
+		return "high_risk_port", "high", "External SMB (445)"
+	case 3389:
+		return "high_risk_port", "high", "External RDP (3389)"
+	case 1080, 3128:
+		return "proxy_port", "medium", fmt.Sprintf("Proxy Port (%d)", dstPort)
+	case 3333, 4444, 5555, 14444:
+		return "high_risk_port", "high", fmt.Sprintf("Mining / C2 Port (%d)", dstPort)
+	}
+	return "", "", ""
+}

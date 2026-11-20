@@ -145,6 +145,9 @@ type Collector struct {
 	latMu            sync.RWMutex
 	wanLatencyCN     int64
 	wanLatencyGlobal int64
+	eventMu          sync.Mutex
+	lastEventAt      map[string]int64
+	autoBlocked      map[string]bool
 	enricher         *geo.Enricher
 	mu               sync.RWMutex
 	snapshots        map[int64]*RouterSnapshot
@@ -153,11 +156,26 @@ type Collector struct {
 
 func New(st *store.Store) *Collector {
 	return &Collector{
-		store:     st,
-		enricher:  geo.New(st),
-		snapshots: make(map[int64]*RouterSnapshot),
-		workers:   make(map[int64]*routerWorker),
+		store:       st,
+		enricher:    geo.New(st),
+		snapshots:   make(map[int64]*RouterSnapshot),
+		workers:     make(map[int64]*routerWorker),
+		lastEventAt: make(map[string]int64),
+		autoBlocked: make(map[string]bool),
 	}
+}
+
+func (c *Collector) shouldEmitEvent(key string, nowUnix int64) bool {
+	c.eventMu.Lock()
+	defer c.eventMu.Unlock()
+	if last, ok := c.lastEventAt[key]; ok && nowUnix-last < 600 {
+		return false
+	}
+	c.lastEventAt[key] = nowUnix
+	if len(c.lastEventAt) > 2000 {
+		c.lastEventAt = make(map[string]int64)
+	}
+	return true
 }
 
 func (c *Collector) ClearGeoCache() error {
@@ -503,6 +521,25 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		}
 		w.wanIPs = wans
 		c.syncAdGuard(w)
+		var devList []store.KnownDevice
+		for _, l := range w.leasesByMAC {
+			if l.MAC != "" {
+				devList = append(devList, store.KnownDevice{
+					RouterID: w.cfg.ID, MAC: l.MAC, LastIP: l.Address, HostName: l.HostName,
+				})
+			}
+		}
+		if newDevs, err := c.store.UpsertKnownDevices(w.cfg.ID, nowUnix, devList); err == nil && len(newDevs) > 0 {
+			var evs []store.SecurityEventRecord
+			for _, nd := range newDevs {
+				evs = append(evs, store.SecurityEventRecord{
+					TS: nowUnix, RouterID: w.cfg.ID, Level: "info", Rule: "new_device",
+					ClientIP: nd.LastIP, HostName: nd.HostName,
+					Detail: fmt.Sprintf("New MAC joined: %s", nd.MAC),
+				})
+			}
+			_ = c.store.InsertSecurityEvents(evs)
+		}
 		w.lastMetaAt = now
 	}
 
@@ -651,6 +688,12 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 			if !dedupAudit[akey] {
 				dedupAudit[akey] = true
 				audits = append(audits, item)
+				if tRule, tLvl, tDetail := dpi.ClassifyThreat(e.Domain, 0); tRule != "" && c.shouldEmitEvent("dom|"+e.ClientIP+"|"+e.Domain, nowUnix) {
+					_ = c.store.InsertSecurityEvents([]store.SecurityEventRecord{{
+						TS: nowUnix, RouterID: w.cfg.ID, Level: tLvl, Rule: tRule,
+						ClientIP: e.ClientIP, HostName: host, Domain: e.Domain, Detail: tDetail,
+					}})
+				}
 			}
 			if e.TS > maxTS {
 				maxTS = e.TS
@@ -931,17 +974,26 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		liveConns = liveConns[:1000]
 	}
 
-	// === 安全态势与异常连接检测 (Panabit / iKuai 风格) ===
+	// === 安全态势与异常连接检测 (支持威胁域名、高危端口、Geo 关注列表、持久化事件与自动封禁) ===
 	var secAlerts []SecurityAlert
+	var secEventsToSave []store.SecurityEventRecord
+	autoBlock := c.store.GetSetting("sec_auto_block") == "true"
+	geoWatchRaw := strings.TrimSpace(c.store.GetSetting("sec_geo_watch"))
+	var geoWatches []string
+	if geoWatchRaw != "" {
+		for _, g := range strings.Split(geoWatchRaw, ",") {
+			g = strings.ToLower(strings.TrimSpace(g))
+			if g != "" {
+				geoWatches = append(geoWatches, g)
+			}
+		}
+	}
+
 	seenAlert := make(map[string]bool)
 	clientPorts := make(map[string]map[int]bool)
 	clientConns := make(map[string]int)
 	clientHost := make(map[string]string)
-	highRiskPorts := map[int]string{
-		23: "Telnet Cleartext", 445: "External SMB", 3389: "External RDP",
-		1080: "SOCKS Proxy", 3128: "HTTP Proxy",
-		3333: "Mining Pool", 4444: "Mining / C2", 5555: "Mining / ADB", 14444: "Mining Pool",
-	}
+
 	for _, lc := range liveConns {
 		clientConns[lc.ClientIP]++
 		if lc.HostName != "" {
@@ -954,21 +1006,51 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			clientPorts[lc.ClientIP][lc.RemotePort] = true
 		}
 		if !isPrivateIP(lc.RemoteIP) {
-			if reason, risky := highRiskPorts[lc.RemotePort]; risky {
-				k := fmt.Sprintf("port|%s|%s|%d", lc.ClientIP, lc.RemoteIP, lc.RemotePort)
-				if !seenAlert[k] && len(secAlerts) < 80 {
+			tRule, tLvl, tDetail := dpi.ClassifyThreat(lc.Domain, lc.RemotePort)
+			if tRule == "" && len(geoWatches) > 0 {
+				geoAll := strings.ToLower(lc.Location + " " + lc.LocationEN)
+				for _, gw := range geoWatches {
+					if strings.Contains(geoAll, gw) {
+						tRule, tLvl, tDetail = "geo_watch", "medium", "Geo Watchlist Match: "+firstNonEmpty(lc.LocationEN, lc.Location)
+						break
+					}
+				}
+			}
+			if tRule != "" {
+				k := fmt.Sprintf("%s|%s|%s|%d", tRule, lc.ClientIP, lc.RemoteIP, lc.RemotePort)
+				if !seenAlert[k] && len(secAlerts) < 100 {
 					seenAlert[k] = true
 					secAlerts = append(secAlerts, SecurityAlert{
-						Level: "high", Rule: "high_risk_port",
+						Level: tLvl, Rule: tRule,
 						ClientIP: lc.ClientIP, HostName: lc.HostName,
 						RemoteIP: lc.RemoteIP, RemotePort: lc.RemotePort,
 						Protocol: lc.Protocol, Bytes: lc.RxBytes + lc.TxBytes,
-						Detail: reason,
+						Detail: tDetail,
 					})
+					act := ""
+					if autoBlock && tLvl == "high" && lc.RemoteIP != "" {
+						c.eventMu.Lock()
+						alreadyBlk := c.autoBlocked[lc.RemoteIP]
+						c.autoBlocked[lc.RemoteIP] = true
+						c.eventMu.Unlock()
+						if !alreadyBlk && w.client != nil {
+							if err := mikrotik.BlockIP(w.client, lc.RemoteIP, "AutoBlock:"+tRule); err == nil {
+								act = "auto_blocked"
+							}
+						}
+					}
+					if c.shouldEmitEvent(k, nowUnix) {
+						secEventsToSave = append(secEventsToSave, store.SecurityEventRecord{
+							TS: nowUnix, RouterID: w.cfg.ID, Level: tLvl, Rule: tRule,
+							ClientIP: lc.ClientIP, HostName: lc.HostName,
+							RemoteIP: lc.RemoteIP, RemotePort: lc.RemotePort, Domain: lc.Domain,
+							Detail: tDetail, ActionTaken: act,
+						})
+					}
 				}
 			} else if lc.Domain == "" && (lc.RxBytes+lc.TxBytes) >= 20*1024*1024 {
 				k := fmt.Sprintf("nodns|%s|%s", lc.ClientIP, lc.RemoteIP)
-				if !seenAlert[k] && len(secAlerts) < 80 {
+				if !seenAlert[k] && len(secAlerts) < 100 {
 					seenAlert[k] = true
 					secAlerts = append(secAlerts, SecurityAlert{
 						Level: "info", Rule: "direct_ip_heavy",
@@ -984,12 +1066,22 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 	for ip, cnt := range clientConns {
 		pCnt := len(clientPorts[ip])
 		if cnt >= 80 || pCnt >= 25 {
+			det := fmt.Sprintf("%d sessions / %d ports", cnt, pCnt)
 			secAlerts = append(secAlerts, SecurityAlert{
 				Level: "medium", Rule: "conn_flood",
 				ClientIP: ip, HostName: clientHost[ip],
-				Detail: fmt.Sprintf("%d sessions / %d ports", cnt, pCnt),
+				Detail: det,
 			})
+			if c.shouldEmitEvent("flood|"+ip, nowUnix) {
+				secEventsToSave = append(secEventsToSave, store.SecurityEventRecord{
+					TS: nowUnix, RouterID: w.cfg.ID, Level: "medium", Rule: "conn_flood",
+					ClientIP: ip, HostName: clientHost[ip], Detail: det,
+				})
+			}
 		}
+	}
+	if len(secEventsToSave) > 0 {
+		_ = c.store.InsertSecurityEvents(secEventsToSave)
 	}
 
 	return liveConns, liveIPs, activeApps, secAlerts

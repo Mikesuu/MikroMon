@@ -97,6 +97,31 @@ type DomainAuditEntry struct {
 	Source   string `json:"source"`
 }
 
+type SecurityEventRecord struct {
+	ID          int64  `json:"id"`
+	TS          int64  `json:"ts"`
+	RouterID    int64  `json:"router_id"`
+	Level       string `json:"level"`
+	Rule        string `json:"rule"`
+	ClientIP    string `json:"client_ip"`
+	HostName    string `json:"host_name"`
+	RemoteIP    string `json:"remote_ip"`
+	RemotePort  int    `json:"remote_port"`
+	Domain      string `json:"domain"`
+	Detail      string `json:"detail"`
+	ActionTaken string `json:"action_taken"`
+}
+
+type KnownDevice struct {
+	RouterID  int64  `json:"router_id"`
+	MAC       string `json:"mac"`
+	LastIP    string `json:"last_ip"`
+	HostName  string `json:"host_name"`
+	FirstSeen int64  `json:"first_seen"`
+	LastSeen  int64  `json:"last_seen"`
+	Trusted   bool   `json:"trusted"`
+}
+
 type DBStats struct {
 	GeoCachedIPs   int64 `json:"geo_cached_ips"`
 	AuditRecords   int64 `json:"audit_records"`
@@ -267,6 +292,33 @@ func (s *Store) migrate() error {
 		source TEXT NOT NULL DEFAULT ''
 	);
 	CREATE INDEX IF NOT EXISTS idx_domain_audit_q ON domain_audit(router_id, ts DESC);
+
+	CREATE TABLE IF NOT EXISTS security_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ts INTEGER NOT NULL,
+		router_id INTEGER NOT NULL,
+		level TEXT NOT NULL,
+		rule TEXT NOT NULL,
+		client_ip TEXT NOT NULL DEFAULT '',
+		host_name TEXT NOT NULL DEFAULT '',
+		remote_ip TEXT NOT NULL DEFAULT '',
+		remote_port INTEGER NOT NULL DEFAULT 0,
+		domain TEXT NOT NULL DEFAULT '',
+		detail TEXT NOT NULL DEFAULT '',
+		action_taken TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX IF NOT EXISTS idx_sec_events_q ON security_events(router_id, ts DESC);
+
+	CREATE TABLE IF NOT EXISTS known_devices (
+		router_id INTEGER NOT NULL,
+		mac TEXT NOT NULL,
+		last_ip TEXT NOT NULL DEFAULT '',
+		host_name TEXT NOT NULL DEFAULT '',
+		first_seen INTEGER NOT NULL,
+		last_seen INTEGER NOT NULL,
+		trusted INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (router_id, mac)
+	);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -887,6 +939,135 @@ func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppS
 	return out, nil
 }
 
+func (s *Store) InsertSecurityEvents(items []SecurityEventRecord) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO security_events (ts, router_id, level, rule, client_ip, host_name, remote_ip, remote_port, domain, detail, action_taken) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, it := range items {
+		if _, err := stmt.Exec(it.TS, it.RouterID, it.Level, it.Rule, it.ClientIP, it.HostName, it.RemoteIP, it.RemotePort, it.Domain, it.Detail, it.ActionTaken); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) QuerySecurityEvents(routerID int64, limit, offset int) ([]SecurityEventRecord, int, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var total int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM security_events WHERE router_id=?`, routerID).Scan(&total)
+	rows, err := s.db.Query(`SELECT id, ts, router_id, level, rule, client_ip, host_name, remote_ip, remote_port, domain, detail, action_taken FROM security_events WHERE router_id=? ORDER BY ts DESC, id DESC LIMIT ? OFFSET ?`, routerID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]SecurityEventRecord, 0)
+	for rows.Next() {
+		var it SecurityEventRecord
+		if err := rows.Scan(&it.ID, &it.TS, &it.RouterID, &it.Level, &it.Rule, &it.ClientIP, &it.HostName, &it.RemoteIP, &it.RemotePort, &it.Domain, &it.Detail, &it.ActionTaken); err == nil {
+			out = append(out, it)
+		}
+	}
+	return out, total, nil
+}
+
+func (s *Store) UpsertKnownDevices(routerID, now int64, devs []KnownDevice) ([]KnownDevice, error) {
+	if len(devs) == 0 {
+		return nil, nil
+	}
+	var existingCnt int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM known_devices WHERE router_id=?`, routerID).Scan(&existingCnt)
+
+	knownMap := make(map[string]bool)
+	rows, err := s.db.Query(`SELECT mac FROM known_devices WHERE router_id=?`, routerID)
+	if err == nil {
+		for rows.Next() {
+			var m string
+			if rows.Scan(&m) == nil {
+				knownMap[m] = true
+			}
+		}
+		rows.Close()
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`
+		INSERT INTO known_devices (router_id, mac, last_ip, host_name, first_seen, last_seen, trusted)
+		VALUES (?,?,?,?,?,?,0)
+		ON CONFLICT(router_id, mac) DO UPDATE SET
+			last_ip = CASE WHEN excluded.last_ip != '' THEN excluded.last_ip ELSE last_ip END,
+			host_name = CASE WHEN excluded.host_name != '' THEN excluded.host_name ELSE host_name END,
+			last_seen = excluded.last_seen
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	var newDevs []KnownDevice
+	for _, d := range devs {
+		if d.MAC == "" {
+			continue
+		}
+		if existingCnt > 0 && !knownMap[d.MAC] {
+			knownMap[d.MAC] = true
+			newDevs = append(newDevs, d)
+		}
+		if _, err := stmt.Exec(routerID, d.MAC, d.LastIP, d.HostName, now, now); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return newDevs, nil
+}
+
+func (s *Store) ListKnownDevices(routerID int64) ([]KnownDevice, error) {
+	rows, err := s.db.Query(`SELECT router_id, mac, last_ip, host_name, first_seen, last_seen, trusted FROM known_devices WHERE router_id=? ORDER BY last_seen DESC`, routerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]KnownDevice, 0)
+	for rows.Next() {
+		var d KnownDevice
+		var tr int
+		if err := rows.Scan(&d.RouterID, &d.MAC, &d.LastIP, &d.HostName, &d.FirstSeen, &d.LastSeen, &tr); err == nil {
+			d.Trusted = tr == 1
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) SetDeviceTrusted(routerID int64, mac string, trusted bool) error {
+	tr := 0
+	if trusted {
+		tr = 1
+	}
+	_, err := s.db.Exec(`UPDATE known_devices SET trusted=? WHERE router_id=? AND mac=?`, tr, routerID, mac)
+	return err
+}
+
 func (s *Store) PruneOldData() {
 	now := time.Now().Unix()
 	s.db.Exec(`DELETE FROM iface_raw WHERE ts < ?`, now-86400)
@@ -900,6 +1081,7 @@ func (s *Store) PruneOldData() {
 	s.db.Exec(`DELETE FROM app_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
 	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-7*86400)
 	s.db.Exec(`DELETE FROM ip_isp_cache WHERE updated_at < ?`, now-30*86400)
+	s.db.Exec(`DELETE FROM security_events WHERE ts < ?`, now-30*86400)
 }
 
 func (s *Store) GetSetting(k string) string {

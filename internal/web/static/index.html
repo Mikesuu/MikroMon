@@ -8,28 +8,46 @@
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <style>
     :root, html[data-theme="dark"] {
-      --bg-body: #14171c;
-      --bg-sidebar: #1a1e24;
-      --bg-header: #1b1f26;
-      --bg-card: #1e232b;
-      --bg-sub: #252b35;
-      --border: #2e3542;
-      --text-1: #f1f5f9;
-      --text-2: #94a3b8;
-      --grid-line: #282f3b;
+      --bg-body: #14171c; --bg-sidebar: #1a1e24; --bg-header: #1b1f26;
+      --bg-card: #1e232b; --bg-sub: #252b35; --border: #2e3542;
+      --text-1: #f1f5f9; --text-2: #94a3b8; --grid-line: #282f3b;
       --hover-row: rgba(51, 65, 85, 0.35);
+      --accent: #0099cc; --accent-soft: rgba(0, 153, 204, 0.18);
     }
     html[data-theme="light"] {
-      --bg-body: #f1f5f9;
-      --bg-sidebar: #ffffff;
-      --bg-header: #ffffff;
-      --bg-card: #ffffff;
-      --bg-sub: #f8fafc;
-      --border: #e2e8f0;
-      --text-1: #0f172a;
-      --text-2: #64748b;
-      --grid-line: #e2e8f0;
+      --bg-body: #f1f5f9; --bg-sidebar: #ffffff; --bg-header: #ffffff;
+      --bg-card: #ffffff; --bg-sub: #f8fafc; --border: #e2e8f0;
+      --text-1: #0f172a; --text-2: #64748b; --grid-line: #e2e8f0;
       --hover-row: rgba(226, 232, 240, 0.55);
+      --accent: #0284c7; --accent-soft: rgba(2, 132, 199, 0.14);
+    }
+    html[data-theme="cyber"] {
+      --bg-body: #070b14; --bg-sidebar: #0b1120; --bg-header: #0d1426;
+      --bg-card: #11192e; --bg-sub: #17213a; --border: #1e2d4d;
+      --text-1: #e2e8f0; --text-2: #7dd3fc; --grid-line: #1b2847;
+      --hover-row: rgba(34, 211, 238, 0.12);
+      --accent: #22d3ee; --accent-soft: rgba(34, 211, 238, 0.18);
+    }
+    html[data-theme="nord"] {
+      --bg-body: #242933; --bg-sidebar: #2e3440; --bg-header: #2e3440;
+      --bg-card: #3b4252; --bg-sub: #434c5e; --border: #4c566a;
+      --text-1: #eceff4; --text-2: #d8dee9; --grid-line: #434c5e;
+      --hover-row: rgba(136, 192, 208, 0.14);
+      --accent: #88c0d0; --accent-soft: rgba(136, 192, 208, 0.2);
+    }
+    html[data-theme="emerald"] {
+      --bg-body: #09120e; --bg-sidebar: #0e1a15; --bg-header: #0f1f18;
+      --bg-card: #13261e; --bg-sub: #193127; --border: #224436;
+      --text-1: #ecfdf5; --text-2: #86efac; --grid-line: #1c3a2e;
+      --hover-row: rgba(16, 185, 129, 0.14);
+      --accent: #10b981; --accent-soft: rgba(16, 185, 129, 0.2);
+    }
+    html[data-theme="warm"] {
+      --bg-body: #f6f1e7; --bg-sidebar: #fffdf8; --bg-header: #fffdf8;
+      --bg-card: #fffdf8; --bg-sub: #f3ece0; --border: #e5dccb;
+      --text-1: #292524; --text-2: #78716c; --grid-line: #e7dfd0;
+      --hover-row: rgba(217, 119, 6, 0.1);
+      --accent: #d97706; --accent-soft: rgba(217, 119, 6, 0.15);
     }
     body { background-color: var(--bg-body); color: var(--text-1); transition: background-color .2s, color .2s; }
     .luci-card { background-color: var(--bg-card); border: 1px solid var(--border); }
@@ -40,6 +58,10 @@
     .luci-txt2 { color: var(--text-2); }
     .luci-border { border-color: var(--border); }
     tr.luci-tr:hover { background-color: var(--hover-row); }
+    .text-\[\#0099cc\] { color: var(--accent) !important; }
+    .bg-\[\#0099cc\] { background-color: var(--accent) !important; }
+    .bg-\[\#0099cc\]\/20, .bg-\[\#0099cc\]\/15 { background-color: var(--accent-soft) !important; }
+    .focus\:border-\[\#0099cc\]:focus { border-color: var(--accent) !important; }
   </style>
 </head>
 <body class="min-h-screen font-sans flex">
@@ -547,33 +569,94 @@
         </div>
       </section>
 
-            <!-- 11.5 安全态势雷达 -->
+                  <!-- 11.5 安全态势雷达 (4 子模块：实时异常 / 事件历史 / 准入资产 / 基线与联动策略) -->
       <section id="tab-security" class="tab-panel hidden space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="luci-card rounded-lg p-4">
-            <div class="text-xs luci-txt2" data-i18n="sec_high_cnt">高危端口连接</div>
-            <div id="secHighCnt" class="text-2xl font-bold text-rose-500 mt-1">0</div>
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div class="inline-flex flex-wrap rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchSecSub('live')" id="subSecLiveBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="sec_sub_live">实时异常外联</button>
+            <button onclick="switchSecSub('events')" id="subSecEventsBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="sec_sub_events">安全事件历史</button>
+            <button onclick="switchSecSub('nac')" id="subSecNacBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="sec_sub_nac">终端准入资产 (NAC)</button>
+            <button onclick="switchSecSub('baseline')" id="subSecBaseBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="sec_sub_base">安全基线与自动封禁</button>
           </div>
-          <div class="luci-card rounded-lg p-4">
-            <div class="text-xs luci-txt2" data-i18n="sec_flood_cnt">连接风暴 / 扫描嫌疑</div>
-            <div id="secFloodCnt" class="text-2xl font-bold text-amber-500 mt-1">0</div>
+          <button onclick="refreshSecActiveTab()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
+        </div>
+
+        <div id="panelSecLive" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="luci-card rounded-lg p-4">
+              <div class="text-xs luci-txt2" data-i18n="sec_high_cnt">高危端口 / 恶意特征</div>
+              <div id="secHighCnt" class="text-2xl font-bold text-rose-500 mt-1">0</div>
+            </div>
+            <div class="luci-card rounded-lg p-4">
+              <div class="text-xs luci-txt2" data-i18n="sec_flood_cnt">连接风暴 / 扫描 / Geo告警</div>
+              <div id="secFloodCnt" class="text-2xl font-bold text-amber-500 mt-1">0</div>
+            </div>
+            <div class="luci-card rounded-lg p-4">
+              <div class="text-xs luci-txt2" data-i18n="sec_nodns_cnt">无 DNS 大流量直连</div>
+              <div id="secNodnsCnt" class="text-2xl font-bold text-[#0099cc] mt-1">0</div>
+            </div>
           </div>
-          <div class="luci-card rounded-lg p-4">
-            <div class="text-xs luci-txt2" data-i18n="sec_nodns_cnt">无 DNS 大流量直连</div>
-            <div id="secNodnsCnt" class="text-2xl font-bold text-[#0099cc] mt-1">0</div>
+          <div class="luci-card rounded-lg p-4 overflow-x-auto">
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="text-sm font-semibold" data-i18n="sec_radar_title">实时安全态势与异常行为审计</h2>
+              <span class="text-xs luci-txt2" data-i18n="sec_radar_sub">基于挖矿/隧道特征、高危端口、连接频次与 Geo 监控列表实时检测</span>
+            </div>
+            <table class="w-full text-xs text-left">
+              <thead class="luci-txt2 border-b luci-border">
+                <tr><th class="py-2" data-i18n="th_level">级别</th><th class="py-2" data-i18n="th_rule">异常类型</th><th class="py-2" data-i18n="th_src">内网终端</th><th class="py-2" data-i18n="th_dst_ep">目标端点</th><th class="py-2" data-i18n="th_bytes">流量</th><th class="py-2" data-i18n="th_msg">详情</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+              </thead>
+              <tbody id="secAlertBody" class="divide-y luci-border"></tbody>
+            </table>
           </div>
         </div>
-        <div class="luci-card rounded-lg p-4 overflow-x-auto">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-sm font-semibold" data-i18n="sec_radar_title">实时安全态势与异常行为审计</h2>
-            <span class="text-xs luci-txt2" data-i18n="sec_radar_sub">基于实时连接特征、高危端口、连接频次与无 DNS 行为检测</span>
-          </div>
+
+        <div id="panelSecEvents" class="hidden luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
             <thead class="luci-txt2 border-b luci-border">
-              <tr><th class="py-2" data-i18n="th_level">级别</th><th class="py-2" data-i18n="th_rule">异常类型</th><th class="py-2" data-i18n="th_src">内网终端</th><th class="py-2" data-i18n="th_dst_ep">目标端点</th><th class="py-2" data-i18n="th_bytes">流量</th><th class="py-2" data-i18n="th_msg">详情</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+              <tr><th class="py-2" data-i18n="th_time">时间</th><th class="py-2" data-i18n="th_level">级别</th><th class="py-2" data-i18n="th_rule">规则</th><th class="py-2" data-i18n="th_src">终端</th><th class="py-2" data-i18n="th_dst_ep">目标 / 域名</th><th class="py-2" data-i18n="th_msg">详情</th><th class="py-2" data-i18n="th_action">处置</th></tr>
             </thead>
-            <tbody id="secAlertBody" class="divide-y luci-border"></tbody>
+            <tbody id="secEventBody" class="divide-y luci-border"></tbody>
           </table>
+          <div id="secEventPager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
+        </div>
+
+        <div id="panelSecNac" class="hidden luci-card rounded-lg p-4 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border">
+              <tr><th class="py-2">MAC</th><th class="py-2">IP</th><th class="py-2" data-i18n="th_device">主机名</th><th class="py-2" data-i18n="th_first_seen">首次上线</th><th class="py-2" data-i18n="th_last_seen">最近活动</th><th class="py-2" data-i18n="th_status">状态</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+            </thead>
+            <tbody id="secNacBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+
+        <div id="panelSecBaseline" class="hidden space-y-4">
+          <div class="luci-card rounded-lg p-4 space-y-3 text-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b luci-border pb-2">
+              <span class="text-sm font-semibold" data-i18n="sec_policy_title">联动封禁与 Geo 外联监控策略</span>
+              <button onclick="saveSecConfig()" class="bg-[#0099cc] text-white px-3 py-1 rounded font-medium" data-i18n="btn_save">保存配置</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="chkAutoBlockSec" type="checkbox" />
+                <span data-i18n="sec_auto_block_lbl">高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)</span>
+              </label>
+              <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+                <span class="luci-txt2 shrink-0" data-i18n="sec_geo_watch_lbl">Geo 告警地区(逗号分隔):</span>
+                <input id="inpGeoWatch" placeholder="e.g. Russia,North Korea,Iran" class="luci-input rounded px-2.5 py-1 flex-1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="luci-card rounded-lg p-4 space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <h2 class="text-sm font-semibold" data-i18n="sec_base_title">RouterOS 安全基线一键体检</h2>
+              <div class="flex gap-2">
+                <button onclick="ensureBlocklistFW()" class="luci-sub px-3 py-1 rounded text-xs hover:opacity-80" data-i18n="btn_ensure_fw">一键下发阻断防火墙规则</button>
+                <button onclick="loadSecBaseline()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_run_audit">开始体检</button>
+              </div>
+            </div>
+            <div id="secBaselineList" class="space-y-2 text-xs"></div>
+          </div>
         </div>
       </section>
 
@@ -604,12 +687,16 @@
         <button onclick="closeSettings()" class="luci-txt2 hover:opacity-75">✕</button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-        <div class="luci-sub rounded-lg p-2.5 flex items-center justify-between">
-          <span class="font-medium" data-i18n="set_theme">外观主题</span>
-          <div class="flex gap-1.5">
-            <button onclick="setTheme('dark')" id="btnThemeDark" class="px-2.5 py-1 rounded border luci-border" data-i18n="theme_dark">黑夜</button>
-            <button onclick="setTheme('light')" id="btnThemeLight" class="px-2.5 py-1 rounded border luci-border" data-i18n="theme_light">白天</button>
+            <div class="space-y-2.5 text-xs">
+        <div class="luci-sub rounded-lg p-2.5 space-y-2">
+          <div class="font-medium" data-i18n="set_theme">外观主题 (6 套内置)</div>
+          <div id="themePickerGrid" class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc] ring-1 ring-white/30"></span><span>Dark</span></button>
+            <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span>Light</span></button>
+            <button onclick="setTheme('cyber')" data-th="cyber" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#22d3ee] ring-1 ring-slate-700"></span><span>Cyber</span></button>
+            <button onclick="setTheme('nord')" data-th="nord" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0] ring-1 ring-slate-500"></span><span>Nord</span></button>
+            <button onclick="setTheme('emerald')" data-th="emerald" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981] ring-1 ring-emerald-900"></span><span>Matrix</span></button>
+            <button onclick="setTheme('warm')" data-th="warm" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#d97706] ring-1 ring-amber-200"></span><span>Warm</span></button>
           </div>
         </div>
         <div class="luci-sub rounded-lg p-2.5 flex items-center justify-between">
@@ -744,7 +831,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -793,7 +880,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -1015,6 +1102,103 @@ function updateOverviewPortSpeed(activeIf) {
   }
 }
 
+
+let secSubTab = 'live';
+let secEventPage = 1, secEventPageSize = 50;
+function switchSecSub(mode) {
+  secSubTab = mode;
+  const map = { live: ['panelSecLive', 'subSecLiveBtn'], events: ['panelSecEvents', 'subSecEventsBtn'], nac: ['panelSecNac', 'subSecNacBtn'], baseline: ['panelSecBaseline', 'subSecBaseBtn'] };
+  Object.entries(map).forEach(([k, [pid, bid]]) => {
+    const pe = document.getElementById(pid), be = document.getElementById(bid);
+    if (pe) pe.classList.toggle('hidden', k !== mode);
+    if (be) be.className = k === mode ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  });
+  refreshSecActiveTab();
+}
+function refreshSecActiveTab() {
+  if (secSubTab === 'events') loadSecEvents();
+  else if (secSubTab === 'nac') loadSecNac();
+  else if (secSubTab === 'baseline') { loadSecConfig(); loadSecBaseline(); }
+  else if (lastSnap) renderSecurityRadar(lastSnap);
+}
+function setSecEventPage(p) { secEventPage = Math.max(1, p); loadSecEvents(); }
+function setSecEventPageSize(sz) { secEventPageSize = sz; secEventPage = 1; loadSecEvents(); }
+async function loadSecEvents() {
+  const res = await fetch(`/api/security/events?router_id=${currentRouterId}&page=${secEventPage}&page_size=${secEventPageSize}`);
+  const d = await res.json();
+  const rows = d.items || [];
+  document.getElementById('secEventBody').innerHTML = rows.length ? rows.map(r => {
+    const cls = r.level === 'high' ? 'bg-rose-500/20 text-rose-500' : (r.level === 'medium' ? 'bg-amber-500/20 text-amber-500' : 'bg-[#0099cc]/20 text-[#0099cc]');
+    return `<tr class="luci-tr">
+      <td class="py-1.5 luci-txt2 whitespace-nowrap">${new Date(r.ts * 1000).toLocaleString()}</td>
+      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${cls}">${r.level}</span></td>
+      <td class="py-1.5 font-mono">${r.rule}</td>
+      <td class="py-1.5 font-mono">${maskIP(r.client_ip)} ${r.host_name ? `<span class="luci-txt2">(${r.host_name})</span>` : ''}</td>
+      <td class="py-1.5 font-mono">${r.domain || (r.remote_ip ? `${maskIP(r.remote_ip)}:${r.remote_port}` : '-')}</td>
+      <td class="py-1.5">${r.detail}</td>
+      <td class="py-1.5">${r.action_taken ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 text-[10px]">${r.action_taken}</span>` : '-'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="py-6 text-center luci-txt2">-</td></tr>';
+  document.getElementById('secEventPager').innerHTML = buildPagerHTML(secEventPage, d.total || 0, secEventPageSize, 'setSecEventPage', 'setSecEventPageSize');
+}
+async function loadSecNac() {
+  const res = await fetch(`/api/security/devices?router_id=${currentRouterId}`);
+  const rows = await res.json();
+  document.getElementById('secNacBody').innerHTML = (rows || []).map(d => `
+    <tr class="luci-tr">
+      <td class="py-1.5 font-mono">${d.mac}</td>
+      <td class="py-1.5 font-mono text-[#0099cc]">${maskIP(d.last_ip)}</td>
+      <td class="py-1.5">${d.host_name || '-'}</td>
+      <td class="py-1.5 luci-txt2">${new Date(d.first_seen * 1000).toLocaleString()}</td>
+      <td class="py-1.5 luci-txt2">${new Date(d.last_seen * 1000).toLocaleString()}</td>
+      <td class="py-1.5">${d.trusted ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 text-[10px]">${t('lbl_trusted')}</span>` : `<span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 text-[10px]">${t('lbl_untrusted')}</span>`}</td>
+      <td class="py-1.5"><button onclick="toggleTrustDevice('${d.mac}', ${!d.trusted})" class="text-[#0099cc] hover:underline">${d.trusted ? t('btn_untrust') : t('btn_trust')}</button></td>
+    </tr>
+  `).join('');
+}
+async function toggleTrustDevice(mac, trusted) {
+  await fetch(`/api/security/devices/trust?router_id=${currentRouterId}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ mac, trusted })
+  });
+  loadSecNac();
+}
+async function loadSecConfig() {
+  const res = await fetch('/api/security/config');
+  const d = await res.json();
+  document.getElementById('chkAutoBlockSec').checked = !!d.auto_block;
+  document.getElementById('inpGeoWatch').value = d.geo_watch || '';
+}
+async function saveSecConfig() {
+  await fetch('/api/security/config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ auto_block: document.getElementById('chkAutoBlockSec').checked, geo_watch: document.getElementById('inpGeoWatch').value.trim() })
+  });
+  alert('Saved');
+}
+async function loadSecBaseline() {
+  const el = document.getElementById('secBaselineList');
+  el.innerHTML = '<div class="luci-txt2">Auditing RouterOS...</div>';
+  const res = await fetch(`/api/security/baseline?router_id=${currentRouterId}`);
+  const rows = await res.json();
+  if (rows.error) { el.innerHTML = `<div class="text-rose-500">${rows.error}</div>`; return; }
+  el.innerHTML = (rows || []).map(c => {
+    const cls = c.status === 'pass' ? 'bg-emerald-500/20 text-emerald-500' : (c.status === 'warn' ? 'bg-amber-500/20 text-amber-500' : 'bg-rose-500/20 text-rose-500');
+    return `<div class="luci-sub rounded p-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <div class="font-semibold flex items-center gap-2"><span class="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${cls}">${c.status}</span><span>${c.title}</span></div>
+        <div class="luci-txt2 mt-0.5">${c.detail}</div>
+      </div>
+      ${c.remediation ? `<code class="text-[10px] px-2 py-1 rounded luci-card font-mono text-amber-400">${c.remediation}</code>` : ''}
+    </div>`;
+  }).join('');
+}
+async function ensureBlocklistFW() {
+  const res = await fetch(`/api/security/ensure-fw?router_id=${currentRouterId}`, { method: 'POST' });
+  const d = await res.json();
+  if (d.error) alert(d.error);
+  else loadSecBaseline();
+}
+
 function renderSecurityRadar(snap) {
   const alerts = snap.security_alerts || [];
   const badge = document.getElementById('navSecBadge');
@@ -1023,7 +1207,7 @@ function renderSecurityRadar(snap) {
     badge.classList.toggle('hidden', alerts.length === 0);
   }
   const hi = alerts.filter(a => a.level === 'high').length;
-  const fl = alerts.filter(a => a.rule === 'conn_flood').length;
+  const fl = alerts.filter(a => a.rule === 'conn_flood' || a.rule === 'geo_watch').length;
   const nd = alerts.filter(a => a.rule === 'direct_ip_heavy').length;
   const eH = document.getElementById('secHighCnt'), eF = document.getElementById('secFloodCnt'), eN = document.getElementById('secNodnsCnt');
   if (eH) eH.textContent = hi;
@@ -1158,23 +1342,36 @@ function setLang(l) { applyLang(l); }
 function toggleLangQuick() { applyLang(currentLang === 'zh' ? 'en' : 'zh'); }
 
 function getCssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const THEMES = ['dark', 'light', 'cyber', 'nord', 'emerald', 'warm'];
+const THEME_META = {
+  dark: { label: 'Dark', icon: '🌙' },
+  light: { label: 'Light', icon: '☀️' },
+  cyber: { label: 'Cyber', icon: '💠' },
+  nord: { label: 'Nord', icon: '❄️' },
+  emerald: { label: 'Matrix', icon: '🟢' },
+  warm: { label: 'Warm', icon: '📜' },
+};
 function applyTheme(theme) {
+  if (!THEMES.includes(theme)) theme = 'dark';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('mikromon_theme', theme);
+  const meta = THEME_META[theme] || THEME_META.dark;
   const btn = document.getElementById('themeToggleBtn');
-  if (btn) btn.textContent = theme === 'dark' ? t('btn_light') : t('btn_dark');
+  if (btn) btn.textContent = `${meta.icon} ${meta.label}`;
   const hdrT = document.getElementById('hdrThemeBtn');
-  if (hdrT) hdrT.textContent = theme === 'dark' ? '☀️' : '🌙';
-  const dBtn = document.getElementById('btnThemeDark');
-  const lBtn = document.getElementById('btnThemeLight');
-  if (dBtn && lBtn) {
-    dBtn.className = `px-2.5 py-1 rounded border luci-border ${theme==='dark'?'bg-[#0099cc] text-white':''}`;
-    lBtn.className = `px-2.5 py-1 rounded border luci-border ${theme==='light'?'bg-[#0099cc] text-white':''}`;
-  }
+  if (hdrT) { hdrT.textContent = meta.icon; hdrT.title = `Theme: ${meta.label}`; }
+  document.querySelectorAll('.th-btn').forEach(b => {
+    const active = b.dataset.th === theme;
+    b.className = `th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center ${active ? 'bg-[#0099cc] text-white font-semibold' : ''}`;
+  });
   if (lastSnap) { refreshHistoryAll(); pollSnapshot(); }
 }
 function setTheme(th) { applyTheme(th); }
-function toggleThemeQuick() { applyTheme((document.documentElement.getAttribute('data-theme')||'dark') === 'dark' ? 'light' : 'dark'); }
+function toggleThemeQuick() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const idx = (THEMES.indexOf(cur) + 1) % THEMES.length;
+  applyTheme(THEMES[idx]);
+}
 
 const chartOverview = echarts.init(document.getElementById('overviewTrafficChart'));
 const chartAppCat = echarts.init(document.getElementById('appCatChart'));
@@ -1242,7 +1439,7 @@ function renderTrafficChart(chart, points, invert=false) {
     xAxis: { type: 'category', data: points.map(p => fmtTime(p.ts)), axisLabel: { color: txt2, fontSize: 10 } },
     yAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBps(v) }, splitLine: { lineStyle: { color: gridLine } } },
     series: [
-      { name: dlName, type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#0099cc' }, itemStyle: { color: '#0099cc' }, data: rxArr },
+      { name: dlName, type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: getCssVar('--accent') || '#0099cc' }, itemStyle: { color: getCssVar('--accent') || '#0099cc' }, data: rxArr },
       { name: ulName, type: 'line', smooth: true, showSymbol: false, areaStyle: { opacity: 0.16 }, lineStyle: { color: '#10b981' }, itemStyle: { color: '#10b981' }, data: txArr }
     ]
   }, true);
@@ -1286,6 +1483,7 @@ function switchTab(name) {
   if (name === 'policy') loadPolicy();
   if (name === 'ips') loadHistIPs();
   if (name === 'audit') loadAudit();
+  if (name === 'security') refreshSecActiveTab();
   if (name === 'network') loadNetworkDetails();
   if (name === 'firewall') loadFirewallRules();
   if (name === 'logs') loadLogs();
@@ -1802,7 +2000,7 @@ async function loadHistIPs() {
     xAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: gridLine } } },
     yAxis: { type: 'category', data: top8.map(u => u.host_name || maskIP(u.ip)), axisLabel: { color: txt1, fontSize: 10, formatter: v => v.length > 17 ? v.slice(0, 16) + '…' : v } },
     series: [
-      { name: dlName, type: 'bar', stack: 'tot', itemStyle: { color: '#0099cc' }, data: top8.map(u => u.rx_bytes) },
+      { name: dlName, type: 'bar', stack: 'tot', itemStyle: { color: getCssVar('--accent') || '#0099cc' }, data: top8.map(u => u.rx_bytes) },
       { name: ulName, type: 'bar', stack: 'tot', itemStyle: { color: '#10b981' }, data: top8.map(u => u.tx_bytes) }
     ]
   }, true);

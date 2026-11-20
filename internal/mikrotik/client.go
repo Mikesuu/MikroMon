@@ -763,3 +763,140 @@ func WakeOnLAN(c *routeros.Client, mac, iface string) error {
 	_, err := c.RunArgs(args)
 	return err
 }
+
+type BaselineCheck struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Status      string `json:"status"`
+	Detail      string `json:"detail"`
+	Remediation string `json:"remediation,omitempty"`
+}
+
+func RunBaselineAudit(c *routeros.Client) ([]BaselineCheck, error) {
+	var checks []BaselineCheck
+
+	// 1. Check /ip/service/print
+	if r, err := c.Run("/ip/service/print"); err == nil {
+		var insecure []string
+		var unrestricted []string
+		for _, re := range r.Re {
+			m := re.Map
+			if m["disabled"] == "true" {
+				continue
+			}
+			name := m["name"]
+			if name == "telnet" || name == "ftp" || name == "www" {
+				insecure = append(insecure, name+":"+m["port"])
+			}
+			if (name == "api" || name == "winbox" || name == "ssh") && strings.TrimSpace(m["address"]) == "" {
+				unrestricted = append(unrestricted, name)
+			}
+		}
+		if len(insecure) > 0 {
+			checks = append(checks, BaselineCheck{
+				ID: "insecure_services", Title: "Cleartext Mgmt Services (Telnet/FTP/HTTP)",
+				Status: "warn", Detail: "Enabled: " + strings.Join(insecure, ", "),
+				Remediation: "/ip service disable telnet,ftp,www",
+			})
+		} else {
+			checks = append(checks, BaselineCheck{
+				ID: "insecure_services", Title: "Cleartext Mgmt Services (Telnet/FTP/HTTP)",
+				Status: "pass", Detail: "Telnet / FTP / HTTP disabled",
+			})
+		}
+		if len(unrestricted) > 0 {
+			checks = append(checks, BaselineCheck{
+				ID: "mgmt_acl", Title: "Management Service Source IP ACL",
+				Status: "warn", Detail: "No IP restriction on: " + strings.Join(unrestricted, ", "),
+				Remediation: "Restrict Allowed Address to LAN subnet in /ip/service",
+			})
+		} else {
+			checks = append(checks, BaselineCheck{
+				ID: "mgmt_acl", Title: "Management Service Source IP ACL",
+				Status: "pass", Detail: "Management services restricted by IP ACL",
+			})
+		}
+	}
+
+	// 2. Check /ip/dns/print (DNS Open Resolver risk)
+	if r, err := c.Run("/ip/dns/print"); err == nil && len(r.Re) > 0 {
+		allowRem := r.Re[0].Map["allow-remote-requests"] == "true"
+		if allowRem {
+			checks = append(checks, BaselineCheck{
+				ID: "dns_remote", Title: "DNS Remote Requests",
+				Status: "warn", Detail: "allow-remote-requests=yes (Ensure WAN UDP/53 is dropped in input chain)",
+				Remediation: "Ensure firewall input drops UDP/TCP 53 from WAN interface",
+			})
+		} else {
+			checks = append(checks, BaselineCheck{
+				ID: "dns_remote", Title: "DNS Remote Requests",
+				Status: "pass", Detail: "allow-remote-requests=no",
+			})
+		}
+	}
+
+	// 3. Check /ip/firewall/filter/print (Drop rules & mikromon_blocked enforcement)
+	if r, err := c.Run("/ip/firewall/filter/print"); err == nil {
+		hasDrop := false
+		hasBlocklistRule := false
+		for _, re := range r.Re {
+			m := re.Map
+			if m["disabled"] == "true" {
+				continue
+			}
+			if m["action"] == "drop" || m["action"] == "reject" {
+				hasDrop = true
+				if m["dst-address-list"] == "mikromon_blocked" || m["src-address-list"] == "mikromon_blocked" {
+					hasBlocklistRule = true
+				}
+			}
+		}
+		if hasDrop {
+			checks = append(checks, BaselineCheck{
+				ID: "fw_drop", Title: "Firewall Filter Drop Policy",
+				Status: "pass", Detail: "Active drop/reject rules detected",
+			})
+		} else {
+			checks = append(checks, BaselineCheck{
+				ID: "fw_drop", Title: "Firewall Filter Drop Policy",
+				Status: "fail", Detail: "No active drop/reject rules in /ip/firewall/filter",
+				Remediation: "Add default drop rules on WAN input/forward chains",
+			})
+		}
+		if hasBlocklistRule {
+			checks = append(checks, BaselineCheck{
+				ID: "mikromon_fw", Title: "MikroMon Blocklist Enforcement (mikromon_blocked)",
+				Status: "pass", Detail: "Active firewall drop rule referencing mikromon_blocked",
+			})
+		} else {
+			checks = append(checks, BaselineCheck{
+				ID: "mikromon_fw", Title: "MikroMon Blocklist Enforcement (mikromon_blocked)",
+				Status: "fail", Detail: "Blocked IPs won't drop packets until a filter rule uses mikromon_blocked",
+				Remediation: "/ip firewall filter add chain=forward dst-address-list=mikromon_blocked action=drop",
+			})
+		}
+	}
+
+	return checks, nil
+}
+
+func EnsureBlocklistFirewallRule(c *routeros.Client) error {
+	if r, err := c.Run("/ip/firewall/filter/print"); err == nil {
+		for _, re := range r.Re {
+			m := re.Map
+			if m["disabled"] != "true" && (m["action"] == "drop" || m["action"] == "reject") &&
+				(m["dst-address-list"] == "mikromon_blocked" || m["src-address-list"] == "mikromon_blocked") {
+				return nil
+			}
+		}
+	}
+	_, err := c.Run(
+		"/ip/firewall/filter/add",
+		"=chain=forward",
+		"=dst-address-list=mikromon_blocked",
+		"=action=drop",
+		"=place-before=0",
+		"=comment=MikroMon Auto-Block",
+	)
+	return err
+}

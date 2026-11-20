@@ -71,6 +71,12 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/tools/ping", s.handlePing)
 	mux.HandleFunc("/api/tools/traceroute", s.handleTraceroute)
 	mux.HandleFunc("/api/tools/dnslookup", s.handleDNSLookup)
+	mux.HandleFunc("/api/security/events", s.handleSecurityEvents)
+	mux.HandleFunc("/api/security/devices", s.handleKnownDevices)
+	mux.HandleFunc("/api/security/devices/trust", s.handleTrustDevice)
+	mux.HandleFunc("/api/security/baseline", s.handleSecurityBaseline)
+	mux.HandleFunc("/api/security/ensure-fw", s.handleEnsureBlockFW)
+	mux.HandleFunc("/api/security/config", s.handleSecurityConfig)
 
 	sub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(sub)))
@@ -617,6 +623,109 @@ func (s *Server) handleDNSLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"domain": domain, "ips": ips})
+}
+
+func (s *Server) handleSecurityEvents(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 50
+	}
+	list, total, err := s.store.QuerySecurityEvents(id, pageSize, (page-1)*pageSize)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"items": list, "total": total, "page": page, "page_size": pageSize})
+}
+
+func (s *Server) handleKnownDevices(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	list, err := s.store.ListKnownDevices(id)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, list)
+}
+
+func (s *Server) handleTrustDevice(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	var req struct {
+		MAC     string `json:"mac"`
+		Trusted bool   `json:"trusted"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := s.store.SetDeviceTrusted(id, req.MAC, req.Trusted); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleSecurityBaseline(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var checks []mikrotik.BaselineCheck
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		var e error
+		checks, e = mikrotik.RunBaselineAudit(c)
+		return e
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, checks)
+}
+
+func (s *Server) handleEnsureBlockFW(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		return mikrotik.EnsureBlocklistFirewallRule(c)
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleSecurityConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var req struct {
+			AutoBlock bool   `json:"auto_block"`
+			GeoWatch  string `json:"geo_watch"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		ab := "false"
+		if req.AutoBlock {
+			ab = "true"
+		}
+		_ = s.store.SetSetting("sec_auto_block", ab)
+		_ = s.store.SetSetting("sec_geo_watch", req.GeoWatch)
+	}
+	writeJSON(w, 200, map[string]any{
+		"auto_block": s.store.GetSetting("sec_auto_block") == "true",
+		"geo_watch":  s.store.GetSetting("sec_geo_watch"),
+	})
 }
 
 func (s *Server) handleAppIconVer(w http.ResponseWriter, r *http.Request) {
