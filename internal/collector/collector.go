@@ -104,8 +104,8 @@ type RouterSnapshot struct {
 	Connections      []LiveConnection         `json:"connections"`
 	RecentDomains    []store.DomainAuditEntry `json:"recent_domains"`
 	SecurityAlerts   []SecurityAlert          `json:"security_alerts"`
-	WanLatencyCN     int64                    `json:"wan_latency_cn"`
-	WanLatencyGlobal int64                    `json:"wan_latency_global"`
+	WanLatencyCN     float64                  `json:"wan_latency_cn"`
+	WanLatencyGlobal float64                  `json:"wan_latency_global"`
 }
 
 type prevIfaceCounter struct {
@@ -141,27 +141,40 @@ type routerWorker struct {
 }
 
 type Collector struct {
-	store            *store.Store
-	latMu            sync.RWMutex
-	wanLatencyCN     int64
-	wanLatencyGlobal int64
-	eventMu          sync.Mutex
-	lastEventAt      map[string]int64
-	autoBlocked      map[string]bool
-	enricher         *geo.Enricher
-	mu               sync.RWMutex
-	snapshots        map[int64]*RouterSnapshot
-	workers          map[int64]*routerWorker
+	store        *store.Store
+	latMu        sync.RWMutex
+	wanLatencies map[int64][2]float64
+	eventMu      sync.Mutex
+	lastEventAt  map[string]int64
+	autoBlocked  map[string]bool
+	enricher     *geo.Enricher
+	mu           sync.RWMutex
+	snapshots    map[int64]*RouterSnapshot
+	workers      map[int64]*routerWorker
+}
+
+func ReloadCustomDPIRules(st *store.Store) {
+	list, err := st.ListCustomDPIRules()
+	if err != nil {
+		return
+	}
+	var pack []struct{ Domain, App, Category, Color string }
+	for _, r := range list {
+		pack = append(pack, struct{ Domain, App, Category, Color string }{r.Domain, r.App, r.Category, r.Color})
+	}
+	dpi.SetCustomRules(pack)
 }
 
 func New(st *store.Store) *Collector {
+	ReloadCustomDPIRules(st)
 	return &Collector{
-		store:       st,
-		enricher:    geo.New(st),
-		snapshots:   make(map[int64]*RouterSnapshot),
-		workers:     make(map[int64]*routerWorker),
-		lastEventAt: make(map[string]int64),
-		autoBlocked: make(map[string]bool),
+		store:        st,
+		enricher:     geo.New(st),
+		snapshots:    make(map[int64]*RouterSnapshot),
+		workers:      make(map[int64]*routerWorker),
+		lastEventAt:  make(map[string]int64),
+		wanLatencies: make(map[int64][2]float64),
+		autoBlocked:  make(map[string]bool),
 	}
 }
 
@@ -240,38 +253,59 @@ func (c *Collector) Run(ctx context.Context) {
 	}
 }
 
-func tcpPingMs(addr string) int64 {
-	t0 := time.Now()
-	conn, err := net.DialTimeout("tcp", addr, 1500*time.Millisecond)
-	if err != nil {
-		return -1
-	}
-	_ = conn.Close()
-	ms := time.Since(t0).Milliseconds()
-	if ms < 1 {
-		ms = 1
-	}
-	return ms
-}
-
 func (c *Collector) runLatencyProbe(ctx context.Context) {
-	probe := func() {
-		cn := tcpPingMs("223.5.5.5:53")
-		gl := tcpPingMs("1.1.1.1:443")
-		c.latMu.Lock()
-		c.wanLatencyCN = cn
-		c.wanLatencyGlobal = gl
-		c.latMu.Unlock()
+	latClients := make(map[int64]*routeros.Client)
+	defer func() {
+		for _, cl := range latClients {
+			if cl != nil {
+				cl.Close()
+			}
+		}
+	}()
+
+	probeOnce := func() {
+		routers, err := c.store.ListRouters()
+		if err != nil {
+			return
+		}
+		for _, cfg := range routers {
+			if !cfg.Enabled {
+				continue
+			}
+			cl := latClients[cfg.ID]
+			if cl == nil {
+				var derr error
+				cl, derr = mikrotik.Dial(mikrotik.ConnConfig{
+					Host: cfg.Host, Port: cfg.Port, Username: cfg.Username, Password: cfg.Password,
+					UseTLS: cfg.UseTLS, TLSSkipVerify: cfg.TLSSkipVerify,
+				})
+				if derr != nil {
+					continue
+				}
+				latClients[cfg.ID] = cl
+			}
+			cn := mikrotik.PingOnceMs(cl, "223.5.5.5")
+			gl := mikrotik.PingOnceMs(cl, "8.8.8.8")
+			if cn < 0 && gl < 0 {
+				cl.Close()
+				delete(latClients, cfg.ID)
+			}
+			c.latMu.Lock()
+			c.wanLatencies[cfg.ID] = [2]float64{cn, gl}
+			c.latMu.Unlock()
+		}
 	}
-	probe()
-	ticker := time.NewTicker(15 * time.Second)
+
+	time.Sleep(1500 * time.Millisecond)
+	probeOnce()
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			probe()
+			probeOnce()
 		}
 	}
 }
@@ -573,8 +607,9 @@ func (c *Collector) pollWorker(w *routerWorker) {
 	}
 
 	c.latMu.RLock()
-	latCN, latGL := c.wanLatencyCN, c.wanLatencyGlobal
+	lats := c.wanLatencies[w.cfg.ID]
 	c.latMu.RUnlock()
+	latCN, latGL := lats[0], lats[1]
 	snap := &RouterSnapshot{
 		RouterID:         w.cfg.ID,
 		Online:           true,

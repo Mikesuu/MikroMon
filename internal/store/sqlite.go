@@ -319,6 +319,13 @@ func (s *Store) migrate() error {
 		trusted INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY (router_id, mac)
 	);
+
+	CREATE TABLE IF NOT EXISTS custom_dpi_rules (
+		domain TEXT PRIMARY KEY,
+		app TEXT NOT NULL,
+		category TEXT NOT NULL,
+		color TEXT NOT NULL DEFAULT '#0099cc'
+	);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -1065,6 +1072,68 @@ func (s *Store) SetDeviceTrusted(routerID int64, mac string, trusted bool) error
 		tr = 1
 	}
 	_, err := s.db.Exec(`UPDATE known_devices SET trusted=? WHERE router_id=? AND mac=?`, tr, routerID, mac)
+	return err
+}
+
+type CustomDPIRule struct {
+	Domain   string `json:"domain"`
+	App      string `json:"app"`
+	Category string `json:"category"`
+	Color    string `json:"color"`
+}
+
+func (s *Store) ListCustomDPIRules() ([]CustomDPIRule, error) {
+	rows, err := s.db.Query(`SELECT domain, app, category, color FROM custom_dpi_rules ORDER BY app ASC, domain ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]CustomDPIRule, 0)
+	for rows.Next() {
+		var r CustomDPIRule
+		if rows.Scan(&r.Domain, &r.App, &r.Category, &r.Color) == nil {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) SaveCustomDPIRules(items []CustomDPIRule) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO custom_dpi_rules (domain, app, category, color) VALUES (?,?,?,?) ON CONFLICT(domain) DO UPDATE SET app=excluded.app, category=excluded.category, color=excluded.color`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, it := range items {
+		d := strings.ToLower(strings.TrimSpace(it.Domain))
+		if d == "" || it.App == "" {
+			continue
+		}
+		col := it.Color
+		if col == "" {
+			col = "#0099cc"
+		}
+		cat := it.Category
+		if cat == "" {
+			cat = "其他协议"
+		}
+		if _, err := stmt.Exec(d, it.App, cat, col); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) DeleteCustomDPIRule(domain string) error {
+	_, err := s.db.Exec(`DELETE FROM custom_dpi_rules WHERE domain=?`, strings.ToLower(strings.TrimSpace(domain)))
 	return err
 }
 

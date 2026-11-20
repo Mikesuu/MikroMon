@@ -900,3 +900,28 @@ func EnsureBlocklistFirewallRule(c *routeros.Client) error {
 	)
 	return err
 }
+
+func PingOnceMs(c *routeros.Client, target string) float64 {
+	r, err := c.Run("/ping", "=address="+target, "=count=1")
+	if err != nil || len(r.Re) == 0 {
+		return -1
+	}
+	m := r.Re[0].Map
+	if m["status"] == "timeout" || m["time"] == "" {
+		return -1
+	}
+	d, err := time.ParseDuration(m["time"])
+	if err != nil {
+		return -1
+	}
+	ms := float64(d.Microseconds()) / 1000.0
+	if ms < 0.1 {
+		ms = 0.1
+	}
+	return float64(int(ms*10+0.5)) / 10.0
+}
+
+func FlushDNSCache(c *routeros.Client) error {
+	_, err := c.Run("/ip/dns/cache/flush")
+	return err
+}

@@ -77,6 +77,8 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/security/baseline", s.handleSecurityBaseline)
 	mux.HandleFunc("/api/security/ensure-fw", s.handleEnsureBlockFW)
 	mux.HandleFunc("/api/security/config", s.handleSecurityConfig)
+	mux.HandleFunc("/api/dpi/rules", s.handleDPIRules)
+	mux.HandleFunc("/api/tools/flush-dns", s.handleFlushDNS)
 
 	sub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(sub)))
@@ -726,6 +728,73 @@ func (s *Server) handleSecurityConfig(w http.ResponseWriter, r *http.Request) {
 		"auto_block": s.store.GetSetting("sec_auto_block") == "true",
 		"geo_watch":  s.store.GetSetting("sec_geo_watch"),
 	})
+}
+
+func (s *Server) handleDPIRules(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		list, err := s.store.ListCustomDPIRules()
+		if err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, list)
+	case http.MethodPost:
+		var items []store.CustomDPIRule
+		bodyBytes := make([]byte, 0)
+		_ = bodyBytes
+		dec := json.NewDecoder(r.Body)
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		if len(raw) > 0 && raw[0] == '[' {
+			if err := json.Unmarshal(raw, &items); err != nil {
+				writeJSON(w, 400, map[string]string{"error": err.Error()})
+				return
+			}
+		} else {
+			var single store.CustomDPIRule
+			if err := json.Unmarshal(raw, &single); err != nil {
+				writeJSON(w, 400, map[string]string{"error": err.Error()})
+				return
+			}
+			items = append(items, single)
+		}
+		if err := s.store.SaveCustomDPIRules(items); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		collector.ReloadCustomDPIRules(s.store)
+		writeJSON(w, 200, map[string]any{"status": "ok", "count": len(items)})
+	case http.MethodDelete:
+		dom := r.URL.Query().Get("domain")
+		if err := s.store.DeleteCustomDPIRule(dom); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		collector.ReloadCustomDPIRules(s.store)
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	default:
+		w.WriteHeader(405)
+	}
+}
+
+func (s *Server) handleFlushDNS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	err := s.col.WithClient(id, func(c *routeros.Client) error {
+		return mikrotik.FlushDNSCache(c)
+	})
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleAppIconVer(w http.ResponseWriter, r *http.Request) {

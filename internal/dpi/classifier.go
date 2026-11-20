@@ -527,7 +527,7 @@ var appMetaMap = func() map[string]AppInfo {
 }()
 
 func SignatureCount() int {
-	return len(domainRules) + len(ispASNRules) + len(appCIDRs) + 40
+	return len(domainRules) + len(suffixRules) + len(customRules) + len(ispASNRules) + len(appCIDRs) + 75
 }
 
 func CategoryOf(app string) string {
@@ -553,10 +553,21 @@ func CategoryOf(app string) string {
 func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) AppInfo {
 	d := strings.ToLower(domain)
 	if d != "" {
+		if info, ok := matchSuffixMap(d, customRules); ok {
+			return info
+		}
+		for k, info := range customRules {
+			if strings.Contains(d, k) {
+				return info
+			}
+		}
 		for _, r := range domainRules {
 			if strings.Contains(d, r.keyword) {
 				return AppInfo{App: r.app, Category: r.category, Color: r.color, IsRealApp: true}
 			}
+		}
+		if info, ok := matchSuffixMap(d, suffixRules); ok {
+			return info
 		}
 	}
 
@@ -630,6 +641,30 @@ func Classify(proto string, dstPort int, domain, remoteIP, ispAndASN string) App
 		return AppInfo{App: "NTP 对时", Category: "基础网络", Color: "#64748b", IsRealApp: false}
 	case 5353:
 		return AppInfo{App: "mDNS", Category: "基础网络", Color: "#64748b", IsRealApp: false}
+	case 54321:
+		return AppInfo{App: "米家 MiIO", Category: "智能家居", Color: "#ff6700", IsRealApp: true}
+	case 5678:
+		return AppInfo{App: "MikroTik MNDP", Category: "基础网络", Color: "#64748b", IsRealApp: false}
+	case 32100:
+		return AppInfo{App: "摄像头 P2P", Category: "智能家居", Color: "#2563eb", IsRealApp: true}
+	case 3478, 19302:
+		return AppInfo{App: "WebRTC/STUN", Category: "社交通讯", Color: "#0ea5e9", IsRealApp: false}
+	case 25565:
+		return AppInfo{App: "Minecraft", Category: "游戏娱乐", Color: "#3c8527", IsRealApp: true}
+	case 27015:
+		return AppInfo{App: "Steam", Category: "游戏娱乐", Color: "#1b2838", IsRealApp: true}
+	case 21:
+		return AppInfo{App: "FTP", Category: "安全与运维", Color: "#f59e0b", IsRealApp: false}
+	case 23:
+		return AppInfo{App: "Telnet", Category: "安全与运维", Color: "#ef4444", IsRealApp: false}
+	case 25, 465, 587, 993, 995:
+		return AppInfo{App: "Email (SMTP/IMAP)", Category: "办公协同", Color: "#0284c7", IsRealApp: true}
+	case 161, 162:
+		return AppInfo{App: "SNMP", Category: "安全与运维", Color: "#64748b", IsRealApp: false}
+	case 389, 636:
+		return AppInfo{App: "LDAP", Category: "安全与运维", Color: "#64748b", IsRealApp: false}
+	case 1701, 1723:
+		return AppInfo{App: "L2TP/PPTP VPN", Category: "VPN与P2P", Color: "#7c3aed", IsRealApp: true}
 	}
 
 	if dstPort >= 6881 && dstPort <= 6889 {
