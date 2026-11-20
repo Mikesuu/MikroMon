@@ -838,3 +838,12 @@ func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]string{"status": "restarting"})
 }
+
+func (s *Server) handleClearIcons(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	s.icons.ClearCache()
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
