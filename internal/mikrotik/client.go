@@ -41,6 +41,7 @@ type WANIPInfo struct {
 	Location   string `json:"location"`
 	LocationEN string `json:"location_en"`
 	ISP        string `json:"isp"`
+	ASN        string `json:"asn"`
 }
 
 type InterfaceInfo struct {

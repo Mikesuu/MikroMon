@@ -245,6 +245,11 @@
             <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
               <div class="flex items-center gap-2.5 flex-wrap">
                 <h2 class="text-sm font-semibold" data-i18n="sec_active_apps">活跃 APP</h2>
+                <div class="inline-flex rounded overflow-hidden border luci-border text-[11px]">
+                  <button onclick="setActiveAppIpVer('all')" id="btnAppVerAll" class="px-2 py-1 bg-[#0099cc] text-white font-medium" data-i18n="all_lbl">全部</button>
+                  <button onclick="setActiveAppIpVer('4')" id="btnAppVer4" class="px-2 py-1 luci-sub luci-txt2 hover:opacity-80">IPv4</button>
+                  <button onclick="setActiveAppIpVer('6')" id="btnAppVer6" class="px-2 py-1 luci-sub luci-txt2 hover:opacity-80">IPv6</button>
+                </div>
                 <select id="activeAppClientSelect" onchange="onActiveAppClientChange()" class="luci-input rounded text-xs px-2.5 py-1 max-w-[240px]">
                   <option value="" data-i18n="opt_all_clients">全部终端 (All Clients)</option>
                 </select>
@@ -272,30 +277,20 @@
         </div>
 
         <div class="xl:col-span-3 space-y-4">
-
-
           <div class="luci-card rounded-lg p-4 space-y-2">
             <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_ifaces">接口实时速览</h3>
             <div id="sideIfaceList" class="space-y-1.5 text-xs"></div>
-          </div>
-
-                    <div class="luci-card rounded-lg p-4 space-y-2">
-            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_domains">活跃域名 (URL)</h3>
-            <div id="sideDomainFeed" class="space-y-1 text-xs max-h-56 overflow-y-auto"></div>
-          </div>
-
-          <div class="luci-card rounded-lg p-4 space-y-2">
-            <div class="flex justify-between items-center border-b luci-border pb-2">
-              <h3 class="text-sm font-semibold" data-i18n="side_top_clients">实时速率 Top 终端</h3>
-              <button onclick="switchTab('ips')" class="text-[11px] text-[#0099cc] hover:underline" data-i18n="btn_more">更多</button>
-            </div>
-            <div id="sideTopClients" class="space-y-1.5 text-xs"></div>
           </div>
 
           <div class="luci-card rounded-lg p-4 space-y-3">
             <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_conn_breakdown">连接与地域分布</h3>
             <div id="sideSessionStats" class="grid grid-cols-2 gap-1.5 text-[11px] font-mono"></div>
             <div id="sideGeoTop" class="space-y-1.5 text-xs pt-1 border-t luci-border"></div>
+          </div>
+
+          <div class="luci-card rounded-lg p-4 space-y-2">
+            <h3 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="side_domains">活跃域名 (URL)</h3>
+            <div id="sideDomainFeed" class="space-y-1 text-xs max-h-96 overflow-y-auto"></div>
           </div>
         </div>
         </div>
@@ -701,7 +696,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 域名 / App (回车跳转)...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -750,7 +745,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / Domain / App (Enter)...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -844,6 +839,21 @@ function toggleShowIPs() {
   refreshHistoryAll();
 }
 let selectedAppClient = '';
+let selectedAppIpVer = 'all';
+function setActiveAppIpVer(ver) {
+  selectedAppIpVer = ver;
+  ['all', '4', '6'].forEach(v => {
+    const btn = document.getElementById('btnAppVer' + (v === 'all' ? 'All' : v));
+    if (!btn) return;
+    btn.className = v === ver
+      ? 'px-2 py-1 bg-[#0099cc] text-white font-medium'
+      : 'px-2 py-1 luci-sub luci-txt2 hover:opacity-80';
+  });
+  const sel = document.getElementById('activeAppClientSelect');
+  if (sel) sel.dataset.sig = '';
+  lastAppWallKey = '';
+  if (lastSnap) renderActiveAppsSection(lastSnap);
+}
 let connPage = 1;
 let connPageSize = 50;
 let auditPage = 1;
@@ -1183,10 +1193,11 @@ async function pollSnapshot() {
     const wans = snap.wan_ips || [];
     const sw = document.getElementById('sideWanList');
     if (sw) sw.innerHTML = wans.length ? wans.map(w => `
-      <div class="flex items-center justify-between gap-2 luci-sub rounded px-2 py-0.5">
-        <span class="font-medium truncate max-w-[120px]">${w.interface}</span>
-        <span class="font-mono shrink-0 ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
-        <span class="text-[10px] luci-txt2 truncate">${shortISP(fmtGeo(w.location, w.location_en), tGeo(w.isp)) || '-'}</span>
+      <div class="grid grid-cols-[95px_138px_58px_1fr] items-center gap-1.5 luci-sub rounded px-2 py-0.5">
+        <span class="font-medium truncate">${w.interface}</span>
+        <span class="font-mono truncate ${w.version===6?'text-purple-400':'text-[#0099cc]'}">${maskIP(w.address)}</span>
+        <span class="font-mono text-[10px] truncate">${w.asn ? `<span class="px-1 py-0.2 rounded bg-[#0099cc]/15 text-[#0099cc]">${w.asn}</span>` : '<span class="luci-txt2">-</span>'}</span>
+        <span class="text-[10px] luci-txt2 text-right truncate">${shortISP(fmtGeo(w.location, w.location_en), tGeo(w.isp)) || '-'}</span>
       </div>
     `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
@@ -1268,32 +1279,45 @@ async function pollSnapshot() {
   } catch (e) { console.error(e); }
 }
 
+function extractCountryLabel(rawGeo) {
+  if (!rawGeo) return 'Unknown';
+  const multi = ['United States', 'United Kingdom', 'Hong Kong', 'South Korea', 'New Zealand', 'South Africa', 'United Arab Emirates', 'Saudi Arabia', 'Czech Republic', 'Costa Rica', 'Sri Lanka', 'Dominican Republic'];
+  for (const m of multi) {
+    if (rawGeo.startsWith(m)) return m;
+  }
+  return rawGeo.split(' ')[0] || rawGeo;
+}
+
 function renderActiveAppsSection(snap) {
   const sel = document.getElementById('activeAppClientSelect');
-  const liveIps = snap.live_ips || [];
+  const liveIps = (snap.live_ips || []).filter(c => selectedAppIpVer === 'all' || String(c.ip_version || 4) === selectedAppIpVer);
+  if (selectedAppClient && !liveIps.some(c => c.ip === selectedAppClient)) {
+    selectedAppClient = '';
+  }
   if (sel && document.activeElement !== sel) {
     const sortedClients = [...liveIps].sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps) || b.active_conns - a.active_conns);
-    const sig = currentLang + '|' + showFullIPs + '|' + sortedClients.map(c => c.ip + ':' + (c.host_name||'')).join(',');
+    const sig = currentLang + '|' + selectedAppIpVer + '|' + sortedClients.map(c => c.ip + ':' + (c.host_name||'')).join(',');
     if (sel.dataset.sig !== sig) {
       sel.dataset.sig = sig;
       const keep = selectedAppClient;
       sel.innerHTML = `<option value="">${t('opt_all_clients')}</option>` + sortedClients.map(c => {
-        const label = c.host_name ? `${c.host_name} (${maskIP(c.ip)})` : maskIP(c.ip);
+        const verTag = c.ip_version === 6 ? 'v6' : 'v4';
+        const label = c.host_name ? `${c.host_name} (${c.ip}) [${verTag}]` : `${c.ip} [${verTag}]`;
         return `<option value="${c.ip}">${label}</option>`;
       }).join('');
-      if (keep && sortedClients.some(c => c.ip === keep)) sel.value = keep;
-      else if (keep) { selectedAppClient = ''; sel.value = ''; }
+      sel.value = keep || '';
     }
   }
 
   let apps = snap.active_apps || [];
   const infoEl = document.getElementById('activeAppClientInfo');
   const clrEl = document.getElementById('activeAppClientClear');
-  if (selectedAppClient) {
+  if (selectedAppClient || selectedAppIpVer !== 'all') {
     const cMap = {};
     let totDl = 0, totUl = 0, totConns = 0;
     (snap.connections || []).forEach(c => {
-      if (c.client_ip !== selectedAppClient) return;
+      if (selectedAppIpVer !== 'all' && String(c.ip_version || 4) !== selectedAppIpVer) return;
+      if (selectedAppClient && c.client_ip !== selectedAppClient) return;
       totDl += c.rx_bps || 0;
       totUl += c.tx_bps || 0;
       totConns++;
@@ -1310,15 +1334,16 @@ function renderActiveAppsSection(snap) {
       infoEl.textContent = `${apps.length} apps · ${totConns} conns · ↓ ${fmtBps(totDl)} ↑ ${fmtBps(totUl)}`;
       infoEl.classList.remove('hidden');
     }
-    if (clrEl) clrEl.classList.remove('hidden');
+    if (clrEl) clrEl.classList.toggle('hidden', !selectedAppClient);
   } else {
     if (infoEl) infoEl.classList.add('hidden');
     if (clrEl) clrEl.classList.add('hidden');
   }
 
+  const useSession = !!(selectedAppClient || selectedAppIpVer !== 'all');
   const appRows = showAllApps ? apps : apps.slice(0, 18);
   const wallEl = document.getElementById('activeAppsWall');
-  const wallKey = currentLang + '|' + lastIconVer + '|' + selectedAppClient + '|' + appRows.map(a => a.app).join(',');
+  const wallKey = currentLang + '|' + lastIconVer + '|' + selectedAppIpVer + '|' + selectedAppClient + '|' + appRows.map(a => a.app).join(',');
   if (!appRows.length) {
     lastAppWallKey = '';
     wallEl.innerHTML = `<div class="col-span-full text-xs luci-txt2 py-4 text-center">-</div>`;
@@ -1326,9 +1351,9 @@ function renderActiveAppsSection(snap) {
     lastAppWallKey = wallKey;
     wallEl.innerHTML = appRows.map((a, idx) => {
       const liveSpeed = (a.rx_bps || 0) + (a.tx_bps || 0);
-      const totBytes = selectedAppClient ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
+      const totBytes = useSession ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
       const dispName = tApp(a.app);
-      const subLbl = selectedAppClient ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
+      const subLbl = useSession ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
       return `
       <button onclick="jumpAppFilter('${a.app}')" class="luci-sub hover:opacity-90 rounded-lg p-2.5 flex flex-col items-center text-center transition">
         <img src="${getIconSrc(a.app, a.color)}" data-app="${a.app}" data-color="${a.color}" onerror="imgFallback(this)" alt="${dispName}" class="w-10 h-10 rounded-[10px] shadow-sm object-cover shrink-0" />
@@ -1342,36 +1367,19 @@ function renderActiveAppsSection(snap) {
   } else {
     appRows.forEach((a, idx) => {
       const liveSpeed = (a.rx_bps || 0) + (a.tx_bps || 0);
-      const totBytes = selectedAppClient ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
+      const totBytes = useSession ? (a.session_bytes || 0) : (appTotalBytesMap[a.app] || 0);
       const lEl = document.getElementById(`appLive_${idx}`);
       const tEl = document.getElementById(`appTot_${idx}`);
       if (lEl) {
         lEl.className = liveSpeed > 0 ? 'text-[#0099cc]' : 'luci-txt2';
         lEl.textContent = `${t('live_lbl')}: ${fmtBps(liveSpeed)}`;
       }
-      if (tEl) tEl.textContent = selectedAppClient ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
+      if (tEl) tEl.textContent = useSession ? `${a.conns}c · ${fmtBytes(totBytes)}` : `${t('total_lbl')}: ${fmtBytes(totBytes)}`;
     });
   }
 }
 
 function renderRightExtras(snap) {
-  const topEl = document.getElementById('sideTopClients');
-  if (topEl) {
-    const ips = [...(snap.live_ips || [])].sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps)).slice(0, 6);
-    topEl.innerHTML = ips.length ? ips.map(c => `
-      <div onclick="switchTab('ips');loadIPDetail('${c.ip}')" class="flex items-center justify-between gap-2 luci-sub rounded px-2 py-1.5 cursor-pointer hover:opacity-80">
-        <div class="min-w-0">
-          <div class="font-medium truncate">${c.host_name || maskIP(c.ip)}</div>
-          <div class="text-[10px] luci-txt2 font-mono truncate">${maskIP(c.ip)} · ${tApp(c.top_app) || '-'}</div>
-        </div>
-        <div class="text-right font-mono text-[10px] shrink-0">
-          <div class="text-[#0099cc]">↓ ${fmtBps(c.rx_bps)}</div>
-          <div class="text-emerald-500">↑ ${fmtBps(c.tx_bps)}</div>
-        </div>
-      </div>
-    `).join('') : '<div class="luci-txt2">-</div>';
-  }
-
   const conns = snap.connections || [];
   const sessEl = document.getElementById('sideSessionStats');
   const geoEl = document.getElementById('sideGeoTop');
@@ -1384,7 +1392,7 @@ function renderRightExtras(snap) {
     if (c.ip_version === 6) v6++;
     if (c.fasttrack) ft++;
     const rawGeo = fmtGeo(c.location, c.location_en) || 'Unknown';
-    const country = rawGeo.split(' ')[0] || rawGeo;
+    const country = extractCountryLabel(rawGeo);
     geoCnt[country] = (geoCnt[country] || 0) + 1;
   });
   if (sessEl) {
@@ -1593,9 +1601,9 @@ async function loadHistIPs() {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => ps.map(p => `${p.seriesName}: ${fmtBytes(p.value)}`).join('<br/>') },
     legend: { data: [dlName, ulName], textStyle: { color: txt2 }, top: 0 },
-    grid: { left: 105, right: 20, top: 28, bottom: 20 },
+    grid: { left: 132, right: 20, top: 28, bottom: 20 },
     xAxis: { type: 'value', axisLabel: { color: txt2, fontSize: 10, formatter: v => fmtBytes(v) }, splitLine: { lineStyle: { color: gridLine } } },
-    yAxis: { type: 'category', data: top8.map(u => u.host_name || maskIP(u.ip)), axisLabel: { color: txt1, fontSize: 10 } },
+    yAxis: { type: 'category', data: top8.map(u => u.host_name || maskIP(u.ip)), axisLabel: { color: txt1, fontSize: 10, formatter: v => v.length > 17 ? v.slice(0, 16) + '…' : v } },
     series: [
       { name: dlName, type: 'bar', stack: 'tot', itemStyle: { color: '#0099cc' }, data: top8.map(u => u.rx_bytes) },
       { name: ulName, type: 'bar', stack: 'tot', itemStyle: { color: '#10b981' }, data: top8.map(u => u.tx_bytes) }

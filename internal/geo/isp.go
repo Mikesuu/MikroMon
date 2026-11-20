@@ -3,6 +3,7 @@ package geo
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -147,6 +148,25 @@ func (e *Enricher) Lookup(ipStr string) (location, locationEN, isp, asnMeta stri
 	}
 	e.enqueue(ipStr)
 	return "", "", "", ""
+}
+
+func (e *Enricher) LookupASN(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil || !IsPublicIP(ipStr) {
+		return ""
+	}
+	e.mu.RLock()
+	rec, ok := e.cache[ipStr]
+	e.mu.RUnlock()
+	if ok && rec.ASN != "" {
+		return strings.Fields(rec.ASN)[0]
+	}
+	for _, sr := range staticRanges {
+		if sr.net.Contains(ip) && sr.rec.ASN != "" {
+			return strings.Fields(sr.rec.ASN)[0]
+		}
+	}
+	return ""
 }
 
 func (e *Enricher) enqueue(ipStr string) {
@@ -356,12 +376,17 @@ func (e *Enricher) queryIPWhoFallback(batch []string) {
 		if err := json.NewDecoder(resp.Body).Decode(&r); err == nil && r.Success {
 			locEN := strings.TrimSpace(joinLoc(r.Country, r.Region, r.City))
 			ispName := firstNonEmpty(r.Connection.ISP, r.Connection.Org)
+			asnStr := ""
+			if r.Connection.ASN > 0 {
+				asnStr = fmt.Sprintf("AS%d", r.Connection.ASN)
+			}
 			rec := store.ISPRecord{
 				IP:         ip,
 				Location:   locEN,
 				LocationEN: locEN,
 				ISP:        ispName,
 				Org:        r.Connection.Org,
+				ASN:        asnStr,
 				UpdatedAt:  now,
 			}
 			e.mu.Lock()
