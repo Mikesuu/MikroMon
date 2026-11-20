@@ -77,12 +77,13 @@ type AppTrafficDelta struct {
 }
 
 type ISPRecord struct {
-	IP        string `json:"ip"`
-	Location  string `json:"location"`
-	ISP       string `json:"isp"`
-	Org       string `json:"org"`
-	ASN       string `json:"asn"`
-	UpdatedAt int64  `json:"updated_at"`
+	IP         string `json:"ip"`
+	Location   string `json:"location"`
+	LocationEN string `json:"location_en"`
+	ISP        string `json:"isp"`
+	Org        string `json:"org"`
+	ASN        string `json:"asn"`
+	UpdatedAt  int64  `json:"updated_at"`
 }
 
 type DomainAuditEntry struct {
@@ -242,6 +243,7 @@ func (s *Store) migrate() error {
 	CREATE TABLE IF NOT EXISTS ip_isp_cache (
 		ip TEXT PRIMARY KEY,
 		location TEXT NOT NULL DEFAULT '',
+		location_en TEXT NOT NULL DEFAULT '',
 		isp TEXT NOT NULL DEFAULT '',
 		org TEXT NOT NULL DEFAULT '',
 		asn TEXT NOT NULL DEFAULT '',
@@ -273,6 +275,7 @@ func (s *Store) migrate() error {
 	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_user TEXT NOT NULL DEFAULT '';`)
 	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_pass TEXT NOT NULL DEFAULT '';`)
 	_, _ = s.db.Exec(`ALTER TABLE ip_isp_cache ADD COLUMN asn TEXT NOT NULL DEFAULT '';`)
+	_, _ = s.db.Exec(`ALTER TABLE ip_isp_cache ADD COLUMN location_en TEXT NOT NULL DEFAULT '';`)
 	return nil
 }
 
@@ -355,7 +358,7 @@ func (s *Store) DeleteRouter(id int64) error {
 
 func (s *Store) LoadISPCache() (map[string]ISPRecord, error) {
 	since := time.Now().Add(-30 * 24 * time.Hour).Unix()
-	rows, err := s.db.Query(`SELECT ip, location, isp, org, asn, updated_at FROM ip_isp_cache WHERE updated_at >= ?`, since)
+	rows, err := s.db.Query(`SELECT ip, location, location_en, isp, org, asn, updated_at FROM ip_isp_cache WHERE updated_at >= ?`, since)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +366,7 @@ func (s *Store) LoadISPCache() (map[string]ISPRecord, error) {
 	out := make(map[string]ISPRecord)
 	for rows.Next() {
 		var r ISPRecord
-		if err := rows.Scan(&r.IP, &r.Location, &r.ISP, &r.Org, &r.ASN, &r.UpdatedAt); err == nil {
+		if err := rows.Scan(&r.IP, &r.Location, &r.LocationEN, &r.ISP, &r.Org, &r.ASN, &r.UpdatedAt); err == nil {
 			out[r.IP] = r
 		}
 	}
@@ -379,13 +382,13 @@ func (s *Store) SaveISPCache(items []ISPRecord) error {
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := tx.Prepare(`INSERT INTO ip_isp_cache (ip, location, isp, org, asn, updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(ip) DO UPDATE SET location=excluded.location, isp=excluded.isp, org=excluded.org, asn=excluded.asn, updated_at=excluded.updated_at`)
+	stmt, err := tx.Prepare(`INSERT INTO ip_isp_cache (ip, location, location_en, isp, org, asn, updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(ip) DO UPDATE SET location=excluded.location, location_en=excluded.location_en, isp=excluded.isp, org=excluded.org, asn=excluded.asn, updated_at=excluded.updated_at`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for _, it := range items {
-		if _, err := stmt.Exec(it.IP, it.Location, it.ISP, it.Org, it.ASN, it.UpdatedAt); err != nil {
+		if _, err := stmt.Exec(it.IP, it.Location, it.LocationEN, it.ISP, it.Org, it.ASN, it.UpdatedAt); err != nil {
 			return err
 		}
 	}

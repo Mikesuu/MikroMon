@@ -35,19 +35,20 @@ type LiveConnection struct {
 	RemotePort int    `json:"remote_port"`
 	Domain     string `json:"domain"`
 	Location   string `json:"location"`
+	LocationEN string `json:"location_en"`
 	ISP        string `json:"isp"`
 	App        string `json:"app"`
 	Category   string `json:"category"`
 	Color      string `json:"color"`
-	
-	IsRealApp  bool   `json:"is_real_app"`
-	RxBps      int64  `json:"rx_bps"`
-	TxBps      int64  `json:"tx_bps"`
-	RxBytes    int64  `json:"rx_bytes"`
-	TxBytes    int64  `json:"tx_bytes"`
-	TCPState   string `json:"tcp_state"`
-	Timeout    string `json:"timeout"`
-	FastTrack  bool   `json:"fasttrack"`
+
+	IsRealApp bool   `json:"is_real_app"`
+	RxBps     int64  `json:"rx_bps"`
+	TxBps     int64  `json:"tx_bps"`
+	RxBytes   int64  `json:"rx_bytes"`
+	TxBytes   int64  `json:"tx_bytes"`
+	TCPState  string `json:"tcp_state"`
+	Timeout   string `json:"timeout"`
+	FastTrack bool   `json:"fasttrack"`
 }
 
 type LiveIP struct {
@@ -66,11 +67,11 @@ type ActiveAppSummary struct {
 	App      string `json:"app"`
 	Category string `json:"category"`
 	Color    string `json:"color"`
-	
-	RxBps    int64  `json:"rx_bps"`
-	TxBps    int64  `json:"tx_bps"`
-	Conns    int    `json:"conns"`
-	LastSeen int64  `json:"last_seen"`
+
+	RxBps    int64 `json:"rx_bps"`
+	TxBps    int64 `json:"tx_bps"`
+	Conns    int   `json:"conns"`
+	LastSeen int64 `json:"last_seen"`
 }
 
 type RouterSnapshot struct {
@@ -153,7 +154,7 @@ func (c *Collector) GetSnapshot(routerID int64) *RouterSnapshot {
 	for _, s := range c.snapshots {
 		return s
 	}
-	return &RouterSnapshot{Online: false, LastError: "尚未配置或启用路由器"}
+	return &RouterSnapshot{Online: false, LastError: "No router configured or enabled"}
 }
 
 func (c *Collector) WithClient(routerID int64, fn func(*routeros.Client) error) error {
@@ -320,14 +321,14 @@ func isLocalClient(ipStr string, v6Prefixes []*net.IPNet) bool {
 
 var ouiVendors = map[string]string{
 	"00:0C:29": "VMware", "00:50:56": "VMware",
-	"00:11:32": "Synology 群晖", "90:09:D0": "Synology 群晖",
+	"00:11:32": "Synology", "90:09:D0": "Synology",
 	"D8:3A:DD": "Raspberry Pi", "B8:27:EB": "Raspberry Pi",
-	"28:6C:07": "Xiaomi 小米", "64:09:80": "Xiaomi 小米", "78:11:DC": "Xiaomi 小米", "F0:B4:29": "Xiaomi 小米",
+	"28:6C:07": "Xiaomi", "64:09:80": "Xiaomi", "78:11:DC": "Xiaomi", "F0:B4:29": "Xiaomi",
 	"DC:4F:22": "Espressif IoT", "24:0A:C4": "Espressif IoT", "EC:FA:BC": "Espressif IoT",
-	"A4:C1:38": "Tuya 涂鸦智能", "10:D5:61": "Tuya 涂鸦智能",
+	"A4:C1:38": "Tuya", "10:D5:61": "Tuya",
 	"00:E0:4C": "Realtek", "00:1B:21": "Intel", "B0:6E:BF": "ASUS",
 	"F4:F5:D8": "Google", "3C:22:FB": "Apple", "A4:83:E7": "Apple", "F0:18:98": "Apple",
-	"E4:5E:37": "Intel", "48:2C:A0": "Xiaomi 小米", "C8:5B:76": "Lenovo",
+	"E4:5E:37": "Intel", "48:2C:A0": "Xiaomi", "C8:5B:76": "Lenovo",
 }
 
 func macVendor(mac string) string {
@@ -422,8 +423,9 @@ func (c *Collector) pollWorker(w *routerWorker) {
 		w.v6Prefixes = mikrotik.GetLocalIPv6Prefixes(w.client)
 		wans := mikrotik.GetWANIPs(w.client)
 		for i := range wans {
-			loc, isp, _ := c.enricher.Lookup(strings.Split(wans[i].Address, "/")[0])
+			loc, locEN, isp, _ := c.enricher.Lookup(strings.Split(wans[i].Address, "/")[0])
 			wans[i].Location = loc
+			wans[i].LocationEN = locEN
 			wans[i].ISP = isp
 		}
 		w.wanIPs = wans
@@ -488,7 +490,7 @@ func (c *Collector) recordDNSApps(w *routerWorker, dns map[string]string, nowUni
 			prev.App = info.App
 			prev.Category = info.Category
 			prev.Color = info.Color
-			
+
 			prev.LastSeen = nowUnix
 			w.recentAppHits[info.App] = prev
 		}
@@ -537,7 +539,7 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 			prev.App = appInfo.App
 			prev.Category = appInfo.Category
 			prev.Color = appInfo.Color
-			
+
 			if e.TS > prev.LastSeen {
 				prev.LastSeen = e.TS
 			}
@@ -603,6 +605,10 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 	var fallbackDomains []store.DomainAuditEntry
 	seenDomain := make(map[string]bool)
 
+	wanSet := make(map[string]bool, len(w.wanIPs))
+	for _, wi := range w.wanIPs {
+		wanSet[strings.Split(wi.Address, "/")[0]] = true
+	}
 	liveConns := make([]LiveConnection, 0, len(conns))
 
 	for _, rc := range conns {
@@ -645,7 +651,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		if domain == "" {
 			domain = w.dnsCache[remoteIP]
 		}
-		loc, isp, asnMeta := c.enricher.Lookup(remoteIP)
+		loc, locEN, isp, asnMeta := c.enricher.Lookup(remoteIP)
 		appInfo := dpi.Classify(rc.Protocol, remotePort, domain, remoteIP, asnMeta)
 
 		if domain != "" && len(fallbackDomains) < 40 {
@@ -676,19 +682,20 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			RemotePort: remotePort,
 			Domain:     domain,
 			Location:   loc,
+			LocationEN: locEN,
 			ISP:        isp,
 			App:        appInfo.App,
 			Category:   appInfo.Category,
 			Color:      appInfo.Color,
-			
-			IsRealApp:  appInfo.IsRealApp,
-			RxBps:      rxBps,
-			TxBps:      txBps,
-			RxBytes:    rxBytes,
-			TxBytes:    txBytes,
-			TCPState:   rc.TCPState,
-			Timeout:    rc.Timeout,
-			FastTrack:  rc.FastTrack,
+
+			IsRealApp: appInfo.IsRealApp,
+			RxBps:     rxBps,
+			TxBps:     txBps,
+			RxBytes:   rxBytes,
+			TxBytes:   txBytes,
+			TCPState:  rc.TCPState,
+			Timeout:   rc.Timeout,
+			FastTrack: rc.FastTrack,
 		})
 
 		if appInfo.IsRealApp {
@@ -698,7 +705,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 					App:      appInfo.App,
 					Category: appInfo.Category,
 					Color:    appInfo.Color,
-					
+
 					LastSeen: nowUnix,
 				}
 				realAppMap[appInfo.App] = aa
@@ -709,10 +716,6 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			w.recentAppHits[appInfo.App] = *aa
 		}
 
-		wanSet := make(map[string]bool, len(w.wanIPs))
-		for _, wi := range w.wanIPs {
-			wanSet[wi.Address] = true
-		}
 		if clientIP != "" && clientIP != "0.0.0.0" && !wanSet[clientIP] && isLocalClient(clientIP, w.v6Prefixes) {
 			lip, ok := liveIPMap[clientIP]
 			if !ok {
