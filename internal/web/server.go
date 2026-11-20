@@ -36,11 +36,21 @@ func NewServer(st *store.Store, col *collector.Collector, upd *updater.Manager) 
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	return &Server{store: st, col: col, icons: icons.New(dataDir), upd: upd}
+	srv := &Server{store: st, col: col, icons: icons.New(dataDir), upd: upd}
+	srv.ensureAuthSeed()
+	return srv
 }
 
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/auth/status", s.handleAuthStatus)
+	mux.HandleFunc("/api/auth/setup", s.handleAuthSetup)
+	mux.HandleFunc("/api/auth/login", s.handleAuthLogin)
+	mux.HandleFunc("/api/auth/logout", s.handleAuthLogout)
+	mux.HandleFunc("/api/auth/password", s.handleAuthPassword)
+	mux.HandleFunc("/api/history/ips-total", s.handleClientTotalTraffic)
+	mux.HandleFunc("/api/history/ips-total/reset", s.handleResetClientTotal)
 
 	mux.HandleFunc("/api/routers", s.handleRouters)
 	mux.HandleFunc("/api/routers/test", s.handleTestRouter)
@@ -90,7 +100,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           s.authMiddleware(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -845,5 +855,28 @@ func (s *Server) handleClearIcons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.icons.ClearCache()
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleClientTotalTraffic(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	list, err := s.store.QueryClientTotalTraffic(id)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, list)
+}
+
+func (s *Server) handleResetClientTotal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	if err := s.store.ResetClientTotalTraffic(id); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
 	writeJSON(w, 200, map[string]string{"status": "ok"})
 }

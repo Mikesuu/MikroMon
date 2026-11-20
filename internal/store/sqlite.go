@@ -45,6 +45,19 @@ type IfaceSeriesPoint struct {
 	TxBps int64 `json:"tx_bps"`
 }
 
+type ClientTotalStat struct {
+	IP         string `json:"ip"`
+	HostName   string `json:"host_name"`
+	MAC        string `json:"mac"`
+	TodayRx    int64  `json:"today_rx"`
+	TodayTx    int64  `json:"today_tx"`
+	TodayTotal int64  `json:"today_total"`
+	AllRx      int64  `json:"all_rx"`
+	AllTx      int64  `json:"all_tx"`
+	AllTotal   int64  `json:"all_total"`
+	UpdatedAt  int64  `json:"updated_at"`
+}
+
 type IPStat struct {
 	IP       string `json:"ip"`
 	HostName string `json:"host_name"`
@@ -326,6 +339,17 @@ func (s *Store) migrate() error {
 		category TEXT NOT NULL,
 		color TEXT NOT NULL DEFAULT '#0099cc'
 	);
+
+	CREATE TABLE IF NOT EXISTS ip_traffic_total (
+		router_id INTEGER NOT NULL,
+		ip TEXT NOT NULL,
+		host_name TEXT NOT NULL DEFAULT '',
+		mac TEXT NOT NULL DEFAULT '',
+		rx_bytes INTEGER NOT NULL DEFAULT 0,
+		tx_bytes INTEGER NOT NULL DEFAULT 0,
+		updated_at INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (router_id, ip)
+	);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -335,6 +359,13 @@ func (s *Store) migrate() error {
 	_, _ = s.db.Exec(`ALTER TABLE routers ADD COLUMN adg_pass TEXT NOT NULL DEFAULT '';`)
 	_, _ = s.db.Exec(`ALTER TABLE ip_isp_cache ADD COLUMN asn TEXT NOT NULL DEFAULT '';`)
 	_, _ = s.db.Exec(`ALTER TABLE ip_isp_cache ADD COLUMN location_en TEXT NOT NULL DEFAULT '';`)
+	_, _ = s.db.Exec(`
+		INSERT OR IGNORE INTO ip_traffic_total (router_id, ip, host_name, mac, rx_bytes, tx_bytes, updated_at)
+		SELECT router_id, ip, MAX(host_name), MAX(mac), SUM(rx_bytes), SUM(tx_bytes), MAX(bucket_ts)
+		FROM ip_traffic_1h
+		WHERE NOT EXISTS (SELECT 1 FROM ip_traffic_total LIMIT 1)
+		GROUP BY router_id, ip;
+	`)
 	return nil
 }
 
@@ -659,7 +690,25 @@ func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps 
 	}
 	defer stmtIP1m.Close()
 
+	stmtIPTotal, err := tx.Prepare(`
+		INSERT INTO ip_traffic_total (router_id, ip, host_name, mac, rx_bytes, tx_bytes, updated_at)
+		VALUES (?,?,?,?,?,?,?)
+		ON CONFLICT(router_id, ip) DO UPDATE SET
+			host_name = CASE WHEN excluded.host_name != '' THEN excluded.host_name ELSE host_name END,
+			mac = CASE WHEN excluded.mac != '' THEN excluded.mac ELSE mac END,
+			rx_bytes = rx_bytes + excluded.rx_bytes,
+			tx_bytes = tx_bytes + excluded.tx_bytes,
+			updated_at = excluded.updated_at
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmtIPTotal.Close()
+
 	for _, d := range ips {
+		if _, err := stmtIPTotal.Exec(routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes, ts); err != nil {
+			return err
+		}
 		if _, err := stmtIP1m.Exec(b1m, routerID, d.IP, d.HostName, d.MAC, d.RxBytes, d.TxBytes); err != nil {
 			return err
 		}
@@ -904,6 +953,46 @@ func (s *Store) QueryIPHistory(routerID int64, ip, rangeKey string) ([]IfaceSeri
 		})
 	}
 	return out, nil
+}
+
+func (s *Store) QueryClientTotalTraffic(routerID int64) ([]ClientTotalStat, error) {
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
+	todayMap := make(map[string][2]int64)
+	if rows, err := s.db.Query(`SELECT ip, SUM(rx_bytes), SUM(tx_bytes) FROM ip_traffic_5m WHERE router_id=? AND bucket_ts>=? GROUP BY ip`, routerID, todayStart); err == nil {
+		for rows.Next() {
+			var ip string
+			var rx, tx int64
+			if rows.Scan(&ip, &rx, &tx) == nil {
+				todayMap[ip] = [2]int64{rx, tx}
+			}
+		}
+		rows.Close()
+	}
+	rows, err := s.db.Query(`SELECT ip, host_name, mac, rx_bytes, tx_bytes, updated_at FROM ip_traffic_total WHERE router_id=? ORDER BY (rx_bytes + tx_bytes) DESC LIMIT 500`, routerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ClientTotalStat, 0)
+	for rows.Next() {
+		var st ClientTotalStat
+		if err := rows.Scan(&st.IP, &st.HostName, &st.MAC, &st.AllRx, &st.AllTx, &st.UpdatedAt); err == nil {
+			st.AllTotal = st.AllRx + st.AllTx
+			if td, ok := todayMap[st.IP]; ok {
+				st.TodayRx = td[0]
+				st.TodayTx = td[1]
+				st.TodayTotal = td[0] + td[1]
+			}
+			out = append(out, st)
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) ResetClientTotalTraffic(routerID int64) error {
+	_, err := s.db.Exec(`DELETE FROM ip_traffic_total WHERE router_id=?`, routerID)
+	return err
 }
 
 func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppStat, error) {

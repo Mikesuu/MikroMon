@@ -134,6 +134,39 @@
   </style>
 </head>
 <body class="min-h-screen font-sans flex">
+  <!-- OpenWrt 风格登录与初始化鉴权层 -->
+  <div id="authOverlay" class="fixed inset-0 z-[100] hidden items-center justify-center p-4" style="background:var(--bg-body);backdrop-filter:blur(10px)">
+    <div class="luci-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center gap-3 border-b luci-border pb-3">
+        <div class="w-9 h-9 rounded-lg bg-[#0099cc] flex items-center justify-center font-bold text-white text-lg">M</div>
+        <div>
+          <div class="text-base font-bold">MikroMon</div>
+          <div id="authSubtitle" class="text-xs luci-txt2" data-i18n="auth_login_sub">请输入管理员账号登录系统</div>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="luci-txt2 block mb-1" data-i18n="auth_user">用户名</label>
+          <input id="authUserInp" value="admin" autocomplete="username" class="w-full luci-input rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="luci-txt2 block mb-1" data-i18n="auth_pass">密码</label>
+          <input id="authPassInp" type="password" onkeydown="if(event.key==='Enter')submitAuth()" autocomplete="current-password" class="w-full luci-input rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div id="authConfirmWrap" class="hidden">
+          <label class="luci-txt2 block mb-1" data-i18n="auth_pass_confirm">确认密码</label>
+          <input id="authPassConfirmInp" type="password" onkeydown="if(event.key==='Enter')submitAuth()" class="w-full luci-input rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <label id="authRememberWrap" class="flex items-center gap-2 cursor-pointer luci-txt2">
+          <input id="authRememberChk" type="checkbox" checked />
+          <span data-i18n="auth_remember">7 天内免登录</span>
+        </label>
+        <div id="authErrMsg" class="hidden text-xs text-rose-500 bg-rose-500/10 px-3 py-2 rounded"></div>
+        <button id="authSubmitBtn" onclick="submitAuth()" class="w-full bg-[#0099cc] text-white font-semibold py-2 rounded-lg text-sm hover:opacity-90" data-i18n="auth_btn_login">登 录</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- 折叠式左侧边栏 -->
   <div id="sidebarMask" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
@@ -194,7 +227,8 @@
             <span data-i18n="nav_sys_grp">系统设置</span><span class="chev text-xs">▸</span>
           </button>
           <div id="grp-sys" data-submenu="1" class="hidden pl-4 space-y-0.5 mt-0.5">
-            <button onclick="openSettings()" class="w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_settings">路由器 / 主题 / 语言</button>
+            <button onclick="switchTab('sys-api')" data-tab="sys-api" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_sys_api">路由器与 API 对接</button>
+            <button onclick="switchTab('sys-admin')" data-tab="sys-admin" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_sys_admin">管理鉴权 / 主题 / 升级</button>
             <button onclick="switchTab('dbstatus')" data-tab="dbstatus" class="nav-btn w-full text-left px-3 py-1.5 rounded text-xs luci-txt2 hover:bg-slate-500/10" data-i18n="nav_db">DPI / Geo 数据库</button>
           </div>
         </div>
@@ -254,6 +288,7 @@
         <button onclick="toggleLangQuick()" id="hdrLangBtn" class="hidden sm:inline-flex luci-sub px-2 py-1 rounded text-[11px] hover:opacity-80">EN</button>
         <button onclick="toggleThemeQuick()" id="hdrThemeBtn" class="hidden sm:inline-flex luci-sub px-2 py-1 rounded text-[11px] hover:opacity-80">☀️</button>
         <button onclick="openSettings()" class="luci-sub px-2 py-1 rounded text-xs hover:opacity-80" title="Settings">⚙</button>
+        <button id="hdrLogoutBtn" onclick="logoutAuth()" class="hidden luci-sub px-2 py-1 rounded text-[11px] hover:text-rose-500" title="Logout" data-i18n="btn_logout">退出</button>
       </div>
     </header>
 
@@ -393,22 +428,23 @@
         </div>
       </section>
 
-            <!-- 2. 终端列表 (单组数据切换) -->
+                  <!-- 2. 终端列表 (单组数据切换：实时速率 / 区间排行 / 客户端累计总流量) -->
       <section id="tab-ips" class="tab-panel hidden space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
-            <button onclick="switchIpsSub('live')" id="subIpsLiveBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="dev_live_title">在线终端实时速率 (IPv4 + IPv6)</button>
+          <div class="inline-flex flex-wrap rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchIpsSub('live')" id="subIpsLiveBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="dev_live_title">在线终端实时速率</button>
             <button onclick="switchIpsSub('hist')" id="subIpsHistBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80"><span data-i18n="dev_hist_title">历史流量排行</span> (<span class="range-lbl">1小时</span>)</button>
+            <button onclick="switchIpsSub('total')" id="subIpsTotalBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="dev_total_title">客户端总流量统计</button>
           </div>
           <div class="flex items-center gap-2">
-            <input id="ipSearch" oninput="renderLiveIPs()" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-56" />
+            <input id="ipSearch" oninput="renderLiveIPs();renderClientTotals();" data-i18n-ph="ph_ip_search" placeholder="搜索 IP / 设备名 / MAC..." class="luci-input rounded px-2.5 py-1 text-xs w-56" />
           </div>
         </div>
 
         <div id="panelIpsLive" class="luci-card rounded-lg p-4 overflow-x-auto">
           <table class="w-full text-xs text-left">
             <thead class="luci-txt2 border-b luci-border">
-              <tr><th class="py-2" data-i18n="th_ip">终端 IP</th><th class="py-2" data-i18n="th_dev_vendor">设备 / 厂商</th><th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_top_app">主要应用</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
+              <tr><th class="py-2" data-i18n="th_ip">终端 IP</th><th class="py-2" data-i18n="th_dev_vendor">设备 / 厂商</th><th class="py-2" data-i18n="th_dl">下行</th><th class="py-2" data-i18n="th_ul">上行</th><th class="py-2" data-i18n="th_cum_total">累计总流量</th><th class="py-2" data-i18n="th_top_app">主要应用</th><th class="py-2" data-i18n="th_actions">操作</th></tr>
             </thead>
             <tbody id="allLiveIpBody" class="divide-y luci-border"></tbody>
           </table>
@@ -420,6 +456,22 @@
               <tr><th class="py-2">IP</th><th class="py-2" data-i18n="th_device">设备名</th><th class="py-2" data-i18n="th_dl_bytes">下载量</th><th class="py-2" data-i18n="th_ul_bytes">上传量</th><th class="py-2" data-i18n="th_total">总计</th></tr>
             </thead>
             <tbody id="histIpBody" class="divide-y luci-border"></tbody>
+          </table>
+        </div>
+
+        <div id="panelIpsTotal" class="hidden luci-card rounded-lg p-4 space-y-3 overflow-x-auto">
+          <div class="flex justify-between items-center text-xs">
+            <span class="luci-txt2" data-i18n="dev_total_hint">永久记录每个内网客户端累计总流量与今日流量（不受 24h/7d 自动清理影响）</span>
+            <div class="flex gap-2">
+              <button onclick="loadClientTotals()" class="luci-sub px-2.5 py-1 rounded hover:opacity-80" data-i18n="btn_refresh">刷新</button>
+              <button onclick="resetClientTotals()" class="bg-rose-600 text-white px-2.5 py-1 rounded hover:opacity-90" data-i18n="btn_reset_tot">清零累计统计</button>
+            </div>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="luci-txt2 border-b luci-border">
+              <tr><th class="py-2" data-i18n="th_ip">终端 IP</th><th class="py-2" data-i18n="th_device">设备名 / MAC</th><th class="py-2" data-i18n="th_today_tot">今日总流量</th><th class="py-2" data-i18n="th_all_dl">累计下行</th><th class="py-2" data-i18n="th_all_ul">累计上行</th><th class="py-2" data-i18n="th_cum_total">累计总流量</th><th class="py-2" data-i18n="th_last_seen">最近活动</th></tr>
+            </thead>
+            <tbody id="clientTotalBody" class="divide-y luci-border"></tbody>
           </table>
         </div>
 
@@ -777,115 +829,145 @@
           </div>
         </div>
       </section>
+      <!-- 13. 系统菜单：路由器与 API 对接 (OpenWrt 风格) -->
+      <section id="tab-sys-api" class="tab-panel hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div class="lg:col-span-5 luci-card rounded-lg p-5 space-y-3">
+            <div class="flex justify-between items-center border-b luci-border pb-2">
+              <h2 class="text-sm font-semibold" data-i18n="sys_router_list">已对接路由器列表 (RouterOS API)</h2>
+              <button onclick="resetRouterForm()" class="text-xs text-[#0099cc] hover:underline" data-i18n="btn_new_router">+ 新增路由器</button>
+            </div>
+            <div id="routerListBox" class="space-y-2"></div>
+          </div>
+
+          <div class="lg:col-span-7 luci-card rounded-lg p-5 space-y-4">
+            <h2 class="text-sm font-semibold border-b luci-border pb-2" data-i18n="sys_api_cfg">RouterOS API & AdGuard Home 对接配置</h2>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <input id="cfgId" type="hidden" />
+              <div class="col-span-2">
+                <label class="luci-txt2" data-i18n="set_rname">备注名称</label>
+                <input id="cfgName" value="MikroTik" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_rhost">路由器 IP / 域名</label>
+                <input id="cfgHost" placeholder="10.10.10.2" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_rport">API 端口 (8728 / 8729)</label>
+                <input id="cfgPort" type="number" value="8728" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_ruser">RouterOS 用户名</label>
+                <input id="cfgUser" value="admin" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_rpass">RouterOS 密码</label>
+                <input id="cfgPass" type="password" data-i18n-ph="ph_keep_pass" placeholder="留空表示不修改原密码" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div class="col-span-2 flex items-center gap-4">
+                <label class="flex items-center gap-1.5"><input id="cfgTls" type="checkbox" /> <span data-i18n="set_tls">启用 API-SSL (8729)</span></label>
+                <label class="flex items-center gap-1.5"><input id="cfgSkipVerify" type="checkbox" checked /> <span data-i18n="set_skip_verify">忽略自签名证书校验</span></label>
+              </div>
+
+              <div class="col-span-2 border-t luci-border pt-3 mt-1">
+                <div class="text-[#0099cc] font-medium" data-i18n="set_adg_hint">可选：对接 AdGuard Home（强烈推荐，用于补全域名识别）</div>
+              </div>
+              <div class="col-span-2">
+                <label class="luci-txt2" data-i18n="set_adg_url">AdGuard Home 地址 (如 http://10.10.10.10)</label>
+                <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_adg_user">ADG 用户名 (若无留空)</label>
+                <input id="cfgAdgUser" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="set_adg_pass">ADG 密码 (留空不修改)</label>
+                <input id="cfgAdgPass" type="password" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
+              </div>
+            </div>
+            <div id="testResultMsg" class="text-xs hidden p-2 rounded"></div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button onclick="testRouter()" class="luci-sub px-4 py-1.5 rounded text-sm" data-i18n="btn_test">测试连接</button>
+              <button onclick="saveRouter()" class="bg-[#0099cc] text-white font-medium px-4 py-1.5 rounded text-sm" data-i18n="btn_save">保存配置</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 14. 系统菜单：管理鉴权 / 主题 / 升级 -->
+      <section id="tab-sys-admin" class="tab-panel hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="luci-card rounded-lg p-5 space-y-3 text-xs">
+            <div class="flex justify-between items-center border-b luci-border pb-2">
+              <h2 class="text-sm font-semibold" data-i18n="sys_auth_title">Web 登录鉴权与密码管理</h2>
+              <button onclick="logoutAuth()" class="text-rose-500 hover:underline" data-i18n="btn_logout">退出登录</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="luci-txt2" data-i18n="auth_user">管理员用户名</label>
+                <input id="admNewUser" value="admin" class="w-full luci-input rounded px-2.5 py-1.5 mt-1" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="auth_old_pass">当前密码</label>
+                <input id="admOldPass" type="password" class="w-full luci-input rounded px-2.5 py-1.5 mt-1" />
+              </div>
+              <div>
+                <label class="luci-txt2" data-i18n="auth_new_pass">新密码 (至少4位)</label>
+                <input id="admNewPass" type="password" class="w-full luci-input rounded px-2.5 py-1.5 mt-1" />
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span id="admPwdMsg" class="luci-txt2"></span>
+              <button onclick="changeAdminPassword()" class="bg-[#0099cc] text-white px-4 py-1.5 rounded font-medium" data-i18n="btn_save_pass">修改账号密码</button>
+            </div>
+          </div>
+
+          <div class="luci-card rounded-lg p-5 space-y-3 text-xs">
+            <div class="flex items-center justify-between border-b luci-border pb-2">
+              <h2 class="text-sm font-semibold" data-i18n="upd_title">在线升级 (GitHub Releases)</h2>
+              <div class="flex items-center gap-2">
+                <span id="updVersionText" class="font-mono text-[#0099cc]">-</span>
+                <button onclick="checkUpdateNow()" class="luci-sub px-2.5 py-1 rounded hover:opacity-80" data-i18n="btn_check_upd">检查更新</button>
+                <button id="btnApplyUpd" onclick="applyUpdateNow()" class="hidden bg-emerald-600 text-white px-2.5 py-1 rounded font-medium" data-i18n="btn_apply_upd">立即更新</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input id="chkAutoUpd" type="checkbox" onchange="saveUpdateCfg()" />
+                <span data-i18n="upd_auto">发现新版本自动下载并重启</span>
+              </label>
+              <input id="inpGhMirror" onchange="saveUpdateCfg()" placeholder="GitHub 加速前缀(可选, 如 https://ghfast.top/)" class="luci-input rounded px-2.5 py-1.5 text-xs flex-1 min-w-[200px]" />
+            </div>
+            <div id="updMsg" class="text-[11px] luci-txt2"></div>
+          </div>
+        </div>
+
+        <div class="luci-card rounded-lg p-5 space-y-3 text-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b luci-border pb-2">
+            <h2 class="text-sm font-semibold" data-i18n="set_theme">外观主题 (12 套内置：经典 / 卡通 / 中国风 / 风景)</h2>
+            <div class="flex items-center gap-2">
+              <span class="luci-txt2" data-i18n="set_lang">界面语言</span>
+              <button onclick="setLang('zh')" id="btnLangZh" class="px-2.5 py-1 rounded border luci-border">中文</button>
+              <button onclick="setLang('en')" id="btnLangEn" class="px-2.5 py-1 rounded border luci-border">English</button>
+            </div>
+          </div>
+          <div id="themePickerGrid" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc]"></span><span>Dark</span></button>
+            <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span>Light</span></button>
+            <button onclick="setTheme('cyber')" data-th="cyber" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#22d3ee]"></span><span>Cyber</span></button>
+            <button onclick="setTheme('nord')" data-th="nord" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0]"></span><span>Nord</span></button>
+            <button onclick="setTheme('emerald')" data-th="emerald" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span><span>Matrix</span></button>
+            <button onclick="setTheme('warm')" data-th="warm" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span><span>Warm</span></button>
+            <button onclick="setTheme('candy')" data-th="candy" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span><span>Candy</span></button>
+            <button onclick="setTheme('pixel')" data-th="pixel" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#a855f7]"></span><span>Pixel</span></button>
+            <button onclick="setTheme('ink')" data-th="ink" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span><span>水墨</span></button>
+            <button onclick="setTheme('palace')" data-th="palace" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span><span>故宫</span></button>
+            <button onclick="setTheme('aurora')" data-th="aurora" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]"></span><span>极光</span></button>
+            <button onclick="setTheme('sunset')" data-th="sunset" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ea580c]"></span><span>落日</span></button>
+          </div>
+        </div>
+      </section>
     </main>
-  </div>
-
-  <!-- 设置弹窗 -->
-  <div id="settingsModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
-    <div class="luci-card rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center">
-        <h3 class="text-base font-semibold" data-i18n="set_title">路由器、主题、语言与数据源配置</h3>
-        <button onclick="closeSettings()" class="luci-txt2 hover:opacity-75">✕</button>
-      </div>
-
-            <div class="space-y-2.5 text-xs">
-        <div class="luci-sub rounded-lg p-2.5 space-y-2">
-          <div class="font-medium" data-i18n="set_theme">外观主题 (12 套内置：经典 / 卡通 / 中国风 / 风景)</div>
-          <div id="themePickerGrid" class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc]"></span><span>Dark</span></button>
-            <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span>Light</span></button>
-            <button onclick="setTheme('cyber')" data-th="cyber" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#22d3ee]"></span><span>Cyber</span></button>
-            <button onclick="setTheme('nord')" data-th="nord" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#88c0d0]"></span><span>Nord</span></button>
-            <button onclick="setTheme('emerald')" data-th="emerald" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span><span>Matrix</span></button>
-            <button onclick="setTheme('warm')" data-th="warm" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span><span>Warm</span></button>
-            <button onclick="setTheme('candy')" data-th="candy" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span><span>Candy</span></button>
-            <button onclick="setTheme('pixel')" data-th="pixel" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#a855f7]"></span><span>Pixel</span></button>
-            <button onclick="setTheme('ink')" data-th="ink" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span><span>水墨</span></button>
-            <button onclick="setTheme('palace')" data-th="palace" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span><span>故宫</span></button>
-            <button onclick="setTheme('aurora')" data-th="aurora" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]"></span><span>极光</span></button>
-            <button onclick="setTheme('sunset')" data-th="sunset" class="th-btn px-2 py-1.5 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ea580c]"></span><span>落日</span></button>
-          </div>
-        </div>
-        <div class="luci-sub rounded-lg p-2.5 flex items-center justify-between">
-          <span class="font-medium" data-i18n="set_lang">界面语言</span>
-          <div class="flex gap-1.5">
-            <button onclick="setLang('zh')" id="btnLangZh" class="px-2.5 py-1 rounded border luci-border">中文</button>
-            <button onclick="setLang('en')" id="btnLangEn" class="px-2.5 py-1 rounded border luci-border">English</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="luci-sub rounded-lg p-3 space-y-2 text-xs">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <span class="font-medium" data-i18n="upd_title">在线升级 (GitHub Releases)</span>
-            <span id="updVersionText" class="ml-2 font-mono text-[#0099cc]">-</span>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="checkUpdateNow()" class="luci-card px-2.5 py-1 rounded hover:opacity-80" data-i18n="btn_check_upd">检查更新</button>
-            <button id="btnApplyUpd" onclick="applyUpdateNow()" class="hidden bg-emerald-600 text-white px-2.5 py-1 rounded font-medium" data-i18n="btn_apply_upd">立即更新</button>
-          </div>
-        </div>
-        <div class="flex flex-wrap items-center gap-3 pt-1">
-          <label class="flex items-center gap-1.5 cursor-pointer">
-            <input id="chkAutoUpd" type="checkbox" onchange="saveUpdateCfg()" />
-            <span data-i18n="upd_auto">发现新版本自动下载并重启</span>
-          </label>
-          <input id="inpGhMirror" onchange="saveUpdateCfg()" placeholder="GitHub 加速前缀(可选, 如 https://ghfast.top/)" class="luci-input rounded px-2 py-1 text-xs flex-1 min-w-[200px]" />
-        </div>
-        <div id="updMsg" class="text-[11px] luci-txt2"></div>
-      </div>
-
-      <div id="routerListBox" class="space-y-2 max-h-32 overflow-y-auto"></div>
-      <div class="grid grid-cols-2 gap-3 text-xs border-t luci-border pt-4">
-        <input id="cfgId" type="hidden" />
-        <div class="col-span-2">
-          <label class="luci-txt2" data-i18n="set_rname">备注名称</label>
-          <input id="cfgName" value="MikroTik" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_rhost">路由器 IP / 域名</label>
-          <input id="cfgHost" placeholder="10.10.10.2" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_rport">API 端口 (8728 / 8729)</label>
-          <input id="cfgPort" type="number" value="8728" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_ruser">RouterOS 用户名</label>
-          <input id="cfgUser" value="admin" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_rpass">RouterOS 密码</label>
-          <input id="cfgPass" type="password" data-i18n-ph="ph_keep_pass" placeholder="留空表示不修改原密码" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div class="col-span-2 flex items-center gap-4">
-          <label class="flex items-center gap-1.5"><input id="cfgTls" type="checkbox" /> <span data-i18n="set_tls">启用 API-SSL (8729)</span></label>
-          <label class="flex items-center gap-1.5"><input id="cfgSkipVerify" type="checkbox" checked /> <span data-i18n="set_skip_verify">忽略自签名证书校验</span></label>
-        </div>
-
-        <div class="col-span-2 border-t luci-border pt-3 mt-1">
-          <div class="text-[#0099cc] font-medium" data-i18n="set_adg_hint">可选：对接 AdGuard Home（强烈推荐，用于补全域名识别）</div>
-        </div>
-        <div class="col-span-2">
-          <label class="luci-txt2" data-i18n="set_adg_url">AdGuard Home 地址 (如 http://10.10.10.10)</label>
-          <input id="cfgAdgUrl" placeholder="http://10.10.10.10" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_adg_user">ADG 用户名 (若无留空)</label>
-          <input id="cfgAdgUser" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-        <div>
-          <label class="luci-txt2" data-i18n="set_adg_pass">ADG 密码 (留空不修改)</label>
-          <input id="cfgAdgPass" type="password" class="w-full luci-input rounded px-3 py-1.5 mt-1 text-sm" />
-        </div>
-      </div>
-      <div id="testResultMsg" class="text-xs hidden p-2 rounded"></div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="testRouter()" class="luci-sub px-4 py-1.5 rounded text-sm" data-i18n="btn_test">测试连接</button>
-        <button onclick="saveRouter()" class="bg-[#0099cc] text-white font-medium px-4 py-1.5 rounded text-sm" data-i18n="btn_save">保存配置</button>
-      </div>
-    </div>
   </div>
 
 <script>
@@ -938,7 +1020,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', nav_sys_api: '路由器与 API 对接', nav_sys_admin: '管理鉴权 / 主题 / 升级', btn_logout: '退出', auth_login_sub: '请输入管理员账号登录系统', auth_setup_sub: '首次使用：请设置管理员登录密码', auth_user: '用户名', auth_pass: '密码', auth_pass_confirm: '确认密码', auth_remember: '7 天内免登录', auth_btn_login: '登 录', auth_btn_setup: '初始化并进入', sys_router_list: '已对接路由器列表 (RouterOS API)', btn_new_router: '+ 新增路由器', sys_api_cfg: 'RouterOS API & AdGuard Home 对接配置', sys_auth_title: 'Web 登录鉴权与密码管理', auth_old_pass: '当前密码', auth_new_pass: '新密码 (至少4位)', btn_save_pass: '修改账号密码', dev_total_title: '客户端总流量统计', dev_total_hint: '永久记录每个内网客户端累计总流量与今日流量（不受 24h/7d 自动清理影响）', th_cum_total: '累计总流量', th_today_tot: '今日总流量', th_all_dl: '累计下行', th_all_ul: '累计上行', btn_reset_tot: '清零累计统计', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -987,7 +1069,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', nav_sys_api: 'Router & API', nav_sys_admin: 'Admin / Theme / OTA', btn_logout: 'Logout', auth_login_sub: 'Sign in with administrator credentials', auth_setup_sub: 'First-time Setup: Set administrator password', auth_user: 'Username', auth_pass: 'Password', auth_pass_confirm: 'Confirm Password', auth_remember: 'Remember 7 days', auth_btn_login: 'Sign In', auth_btn_setup: 'Initialize & Sign In', sys_router_list: 'Configured Routers (RouterOS API)', btn_new_router: '+ Add Router', sys_api_cfg: 'RouterOS API & AdGuard Home Config', sys_auth_title: 'Web Login & Password', auth_old_pass: 'Current Password', auth_new_pass: 'New Password (min 4 chars)', btn_save_pass: 'Update Credentials', dev_total_title: 'Total Client Traffic', dev_total_hint: 'Persistent all-time & today traffic per LAN client (never pruned)', th_cum_total: 'All-Time Total', th_today_tot: 'Today Total', th_all_dl: 'All-Time DL', th_all_ul: 'All-Time UL', btn_reset_tot: 'Reset Totals', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -1240,8 +1322,11 @@ let dhcpPage = 1, arpPage = 1, routePage = 1, netPageSize = 50;
 function switchIpsSub(mode) {
   document.getElementById('panelIpsLive').classList.toggle('hidden', mode !== 'live');
   document.getElementById('panelIpsHist').classList.toggle('hidden', mode !== 'hist');
+  document.getElementById('panelIpsTotal').classList.toggle('hidden', mode !== 'total');
   document.getElementById('subIpsLiveBtn').className = mode === 'live' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
   document.getElementById('subIpsHistBtn').className = mode === 'hist' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  document.getElementById('subIpsTotalBtn').className = mode === 'total' ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
+  if (mode === 'total') loadClientTotals();
 }
 function switchNetSub(mode) {
   ['dhcp', 'arp', 'routes'].forEach(k => {
@@ -1680,13 +1765,15 @@ function switchTab(name) {
     b.classList.toggle('font-medium', active);
   });
   if (name === 'policy') loadPolicy();
-  if (name === 'ips') loadHistIPs();
+  if (name === 'ips') { loadHistIPs(); loadClientTotals(); }
   if (name === 'audit') loadAudit();
   if (name === 'security') refreshSecActiveTab();
   if (name === 'network') loadNetworkDetails();
   if (name === 'firewall') loadFirewallRules();
   if (name === 'logs') loadLogs();
   if (name === 'dbstatus') { loadDBStats(); loadCustomDPI(); }
+  if (name === 'sys-api') loadRouters();
+  if (name === 'sys-admin') { loadUpdateStatus(); loadAuthStatusUI(); }
   if (name === 'interfaces' && selectedIface) loadIfaceDetailChart(selectedIface);
   setTimeout(() => [chartOverview, chartAppCat, chartUserTop8, chartIfaceDetail, chartIpDetail].forEach(c => c.resize()), 60);
 }
@@ -1718,7 +1805,7 @@ async function loadRouters() {
   sel.innerHTML = '';
   if (!list || list.length === 0) {
     sel.innerHTML = `<option value="0">-</option>`;
-    openSettings();
+    switchTab('sys-api');
     return;
   }
   list.forEach(r => sel.add(new Option(`${r.name} (${maskIP(r.host)}:${r.port})`, r.id)));
@@ -2008,23 +2095,61 @@ function renderRightExtras(snap) {
   }
 }
 
+let clientTotalCache = [];
+let clientTotalMap = {};
 function renderLiveIPs() {
   if (!lastSnap || !lastSnap.live_ips) return;
   const kw = (document.getElementById('ipSearch').value || '').trim().toLowerCase();
   const rows = lastSnap.live_ips.filter(ip => !kw || ip.ip.toLowerCase().includes(kw) || (ip.host_name||'').toLowerCase().includes(kw) || (ip.mac||'').toLowerCase().includes(kw));
-  document.getElementById('allLiveIpBody').innerHTML = rows.map(ip => `
+  document.getElementById('allLiveIpBody').innerHTML = rows.map(ip => {
+    const ct = clientTotalMap[ip.ip];
+    const totTxt = ct ? fmtBytes(ct.all_total) : '-';
+    return `
     <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${ip.ip}')">
       <td class="py-2 font-mono text-[#0099cc]">${maskIP(ip.ip)} ${ip.ip_version === 6 ? '<span class="text-[10px] px-1 rounded bg-purple-500/20 text-purple-400">v6</span>' : ''}</td>
       <td class="py-2"><div>${ip.host_name || '-'} ${ip.vendor ? `<span class="text-[10px] luci-txt2">(${ip.vendor})</span>`:''}</div><div class="text-[10px] luci-txt2 font-mono">${ip.mac || ''}</div></td>
       <td class="py-2 text-[#0099cc]">${fmtBps(ip.rx_bps)}</td>
       <td class="py-2 text-emerald-500">${fmtBps(ip.tx_bps)}</td>
+      <td class="py-2 font-mono font-semibold">${totTxt}</td>
       <td class="py-2"><span class="px-1.5 py-0.5 rounded luci-sub">${tApp(ip.top_app) || '-'}</span></td>
       <td class="py-2 space-x-2" onclick="event.stopPropagation()">
         ${ip.mac ? `<button onclick="wakeMac('${ip.mac}')" class="text-[#0099cc] hover:underline">${t('btn_wake')}</button>` : ''}
         <button onclick="quickBlock('${ip.ip}')" class="text-rose-500 hover:underline">${t('btn_block_quick')}</button>
       </td>
+    </tr>`;
+  }).join('');
+}
+async function loadClientTotals() {
+  const res = await fetch(`/api/history/ips-total?router_id=${currentRouterId}`);
+  const list = await res.json();
+  clientTotalCache = Array.isArray(list) ? list : [];
+  const nextMap = {};
+  clientTotalCache.forEach(c => { nextMap[c.ip] = c; });
+  clientTotalMap = nextMap;
+  renderLiveIPs();
+  renderClientTotals();
+}
+function renderClientTotals() {
+  const body = document.getElementById('clientTotalBody');
+  if (!body) return;
+  const kw = (document.getElementById('ipSearch').value || '').trim().toLowerCase();
+  const rows = clientTotalCache.filter(c => !kw || c.ip.toLowerCase().includes(kw) || (c.host_name||'').toLowerCase().includes(kw) || (c.mac||'').toLowerCase().includes(kw));
+  body.innerHTML = rows.length ? rows.map(c => `
+    <tr class="luci-tr cursor-pointer" onclick="loadIPDetail('${c.ip}')">
+      <td class="py-2 font-mono text-[#0099cc]">${maskIP(c.ip)}</td>
+      <td class="py-2"><div>${c.host_name || '-'}</div><div class="text-[10px] luci-txt2 font-mono">${c.mac || ''}</div></td>
+      <td class="py-2 font-mono text-amber-500">${fmtBytes(c.today_total)}</td>
+      <td class="py-2 font-mono text-[#0099cc]">${fmtBytes(c.all_rx)}</td>
+      <td class="py-2 font-mono text-emerald-500">${fmtBytes(c.all_tx)}</td>
+      <td class="py-2 font-mono font-bold">${fmtBytes(c.all_total)}</td>
+      <td class="py-2 luci-txt2">${c.updated_at ? new Date(c.updated_at * 1000).toLocaleString() : '-'}</td>
     </tr>
-  `).join('');
+  `).join('') : '<tr><td colspan="7" class="py-6 text-center luci-txt2">-</td></tr>';
+}
+async function resetClientTotals() {
+  if (!confirm('Reset all-time per-client traffic totals?')) return;
+  await fetch(`/api/history/ips-total/reset?router_id=${currentRouterId}`, { method: 'POST' });
+  loadClientTotals();
 }
 
 function syncIfaceSelects(ifaces) {
@@ -2394,6 +2519,7 @@ function refreshHistoryAll() {
   loadOverviewChart();
   loadAppCharts();
   loadHistIPs();
+  loadClientTotals();
   if (selectedIface) loadIfaceDetailChart(selectedIface);
   if (selectedIp) loadIPDetail(selectedIp);
 }
@@ -2514,8 +2640,9 @@ async function applyUpdateNow() {
   setTimeout(() => location.reload(), 4000);
 }
 
-function openSettings() { toggleSidebar(false); loadUpdateStatus(); document.getElementById('settingsModal').classList.replace('hidden', 'flex'); }
-function closeSettings() { document.getElementById('settingsModal').classList.replace('flex', 'hidden'); }
+function openSettings(tab='sys-admin') { switchTab(tab); }
+function closeSettings() {}
+function resetRouterForm() { document.getElementById('cfgId').value = ''; document.getElementById('cfgName').value = 'MikroTik'; document.getElementById('cfgHost').value = ''; document.getElementById('cfgPort').value = 8728; document.getElementById('cfgUser').value = 'admin'; document.getElementById('cfgPass').value = ''; document.getElementById('cfgTls').checked = false; document.getElementById('cfgSkipVerify').checked = true; document.getElementById('cfgAdgUrl').value = ''; document.getElementById('cfgAdgUser').value = ''; document.getElementById('cfgAdgPass').value = ''; }
 function fillRouterForm(r) {
   document.getElementById('cfgId').value = r.id;
   document.getElementById('cfgName').value = r.name;
@@ -2565,7 +2692,7 @@ async function saveRouter() {
   document.getElementById('cfgId').value = '';
   await loadRouters();
   loadUpdateStatus();
-  closeSettings();
+  const msg = document.getElementById('testResultMsg'); if (msg) { msg.className = 'text-xs p-2 rounded bg-emerald-500/20 text-emerald-500'; msg.textContent = 'Saved!'; msg.classList.remove('hidden'); }
   pollSnapshot();
   refreshHistoryAll();
 }
@@ -2734,9 +2861,112 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-(async function init() {
-  applyTheme(localStorage.getItem('mikromon_theme') || 'dark');
-  applyLang(localStorage.getItem('mikromon_lang') || 'zh');
+
+let authNeedsSetup = false;
+let authBooted = false;
+
+function showAuthOverlay(needsSetup, adminUser) {
+  authNeedsSetup = needsSetup;
+  const ov = document.getElementById('authOverlay');
+  const sub = document.getElementById('authSubtitle');
+  const cw = document.getElementById('authConfirmWrap');
+  const rw = document.getElementById('authRememberWrap');
+  const btn = document.getElementById('authSubmitBtn');
+  const err = document.getElementById('authErrMsg');
+  if (err) err.classList.add('hidden');
+  if (adminUser) document.getElementById('authUserInp').value = adminUser;
+  if (needsSetup) {
+    sub.textContent = t('auth_setup_sub');
+    cw.classList.remove('hidden');
+    rw.classList.add('hidden');
+    btn.textContent = t('auth_btn_setup');
+  } else {
+    sub.textContent = t('auth_login_sub');
+    cw.classList.add('hidden');
+    rw.classList.remove('hidden');
+    btn.textContent = t('auth_btn_login');
+  }
+  ov.classList.remove('hidden');
+  ov.classList.add('flex');
+  setTimeout(() => document.getElementById('authPassInp').focus(), 50);
+}
+
+function hideAuthOverlay() {
+  const ov = document.getElementById('authOverlay');
+  ov.classList.add('hidden');
+  ov.classList.remove('flex');
+}
+
+async function loadAuthStatusUI() {
+  try {
+    const res = await fetch('/api/auth/status');
+    const st = await res.json();
+    const lbtn = document.getElementById('hdrLogoutBtn');
+    if (lbtn) lbtn.classList.toggle('hidden', !!st.auth_disabled || !st.authenticated);
+    const uinp = document.getElementById('admNewUser');
+    if (uinp && st.admin_user) uinp.value = st.admin_user;
+    return st;
+  } catch (e) {
+    return { authenticated: true, auth_disabled: true };
+  }
+}
+
+async function submitAuth() {
+  const user = document.getElementById('authUserInp').value.trim() || 'admin';
+  const pass = document.getElementById('authPassInp').value;
+  const errEl = document.getElementById('authErrMsg');
+  errEl.classList.add('hidden');
+  if (authNeedsSetup) {
+    const cfm = document.getElementById('authPassConfirmInp').value;
+    if (pass.length < 4) { errEl.textContent = 'Password must be >= 4 chars'; errEl.classList.remove('hidden'); return; }
+    if (pass !== cfm) { errEl.textContent = 'Passwords do not match'; errEl.classList.remove('hidden'); return; }
+    const res = await fetch('/api/auth/setup', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: user, password: pass }) });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'Setup failed'; errEl.classList.remove('hidden'); return; }
+  } else {
+    const rem = document.getElementById('authRememberChk').checked;
+    const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username: user, password: pass, remember: rem }) });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.error || 'Invalid credentials'; errEl.classList.remove('hidden'); return; }
+  }
+  document.getElementById('authPassInp').value = '';
+  document.getElementById('authPassConfirmInp').value = '';
+  hideAuthOverlay();
+  await loadAuthStatusUI();
+  if (!authBooted) startAppLoops();
+  else { await loadRouters(); manualRefreshAll(); }
+}
+
+async function logoutAuth() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  const st = await loadAuthStatusUI();
+  showAuthOverlay(st.needs_setup, st.admin_user);
+}
+
+async function changeAdminPassword() {
+  const old_password = document.getElementById('admOldPass').value;
+  const new_username = document.getElementById('admNewUser').value.trim();
+  const new_password = document.getElementById('admNewPass').value;
+  const msg = document.getElementById('admPwdMsg');
+  const res = await fetch('/api/auth/password', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ old_password, new_username, new_password })
+  });
+  const d = await res.json();
+  if (!res.ok) {
+    msg.className = 'text-rose-500';
+    msg.textContent = d.error || 'Failed';
+  } else {
+    msg.className = 'text-emerald-500';
+    msg.textContent = 'Updated!';
+    document.getElementById('admOldPass').value = '';
+    document.getElementById('admNewPass').value = '';
+  }
+}
+
+async function startAppLoops() {
+  if (authBooted) return;
+  authBooted = true;
   await loadRouters();
   loadUpdateStatus();
   setInterval(loadUpdateStatus, 60000);
@@ -2744,7 +2974,18 @@ document.addEventListener('keydown', (e) => {
   refreshHistoryAll();
   setInterval(() => { if (!livePaused) pollSnapshot(); }, 2000);
   setInterval(() => { if (!livePaused) refreshHistoryAll(); }, 15000);
-  setInterval(async () => { try { const r = await fetch('/api/appicon/ver'); const d = await r.json(); if (d.ver !== undefined && d.ver !== lastIconVer) { lastIconVer = d.ver; pollSnapshot(); } } catch(e){} }, 5000);
+  setInterval(async () => { try { const r = await fetch('/api/appicon/ver'); if (r.status === 401) { const st = await loadAuthStatusUI(); showAuthOverlay(st.needs_setup, st.admin_user); return; } const d = await r.json(); if (d.ver !== undefined && d.ver !== lastIconVer) { lastIconVer = d.ver; pollSnapshot(); } } catch(e){} }, 5000);
+}
+
+(async function init() {
+  applyTheme(localStorage.getItem('mikromon_theme') || 'dark');
+  applyLang(localStorage.getItem('mikromon_lang') || 'zh');
+  const st = await loadAuthStatusUI();
+  if (!st.auth_disabled && !st.authenticated) {
+    showAuthOverlay(st.needs_setup, st.admin_user);
+    return;
+  }
+  await startAppLoops();
 })();
 </script>
 </body>
