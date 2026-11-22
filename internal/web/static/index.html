@@ -819,6 +819,17 @@
             <div class="luci-sub p-3 rounded"><div class="luci-txt2" data-i18n="db_audit">域名审计记录</div><div id="dbAuditCnt" class="text-lg font-bold text-amber-500 mt-1">-</div></div>
             <div class="luci-sub p-3 rounded"><div class="luci-txt2" data-i18n="db_samples">24h 原始采样</div><div id="dbSampleCnt" class="text-lg font-bold text-indigo-500 mt-1">-</div></div>
           </div>
+          <div class="luci-sub rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="space-y-0.5">
+              <div class="font-semibold" data-i18n="geo_offline_title">本地离线 GeoIP 库 (IPIP.net ipipfree.ipdb)</div>
+              <div id="geoDbStatusTxt" class="luci-txt2 font-mono">-</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <input id="inpIp138Token" placeholder="可选: IP138 API Token" class="luci-input rounded px-2.5 py-1 text-xs w-44" />
+              <button onclick="saveGeoConfig()" class="luci-card px-2.5 py-1 rounded hover:opacity-80" data-i18n="btn_save">保存</button>
+              <button onclick="updateLocalGeoDB()" class="bg-emerald-600 text-white px-3 py-1 rounded font-medium" data-i18n="btn_upd_geodb">下载 / 更新离线库</button>
+            </div>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1037,7 +1048,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', nav_sys_api: '路由器与 API 对接', nav_sys_admin: '管理鉴权 / 主题 / 升级', btn_logout: '退出', auth_login_sub: '请输入管理员账号登录系统', auth_setup_sub: '首次使用：请设置管理员登录密码', auth_user: '用户名', auth_pass: '密码', auth_pass_confirm: '确认密码', auth_remember: '7 天内免登录', auth_btn_login: '登 录', auth_btn_setup: '初始化并进入', sys_router_list: '已对接路由器列表 (RouterOS API)', btn_new_router: '+ 新增路由器', sys_api_cfg: 'RouterOS API & AdGuard Home 对接配置', sys_auth_title: 'Web 登录鉴权与密码管理', auth_old_pass: '当前密码', auth_new_pass: '新密码 (至少4位)', btn_save_pass: '修改账号密码', dev_total_title: '客户端总流量统计', dev_total_hint: '严格只统计内网私有 IP（10.x / 172.16-31.x / 192.168.x / ULA）的今日与永久累计流量，公网 IPv6 自动合并到对应内网终端', mode_live: '实时连接', mode_hist_14d: '14天历史记录', th_cum_total: '累计总流量', th_today_tot: '今日总流量', th_all_dl: '累计下行', th_all_ul: '累计上行', btn_reset_tot: '清零累计统计', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', nav_sys_api: '路由器与 API 对接', nav_sys_admin: '管理鉴权 / 主题 / 升级', btn_logout: '退出', auth_login_sub: '请输入管理员账号登录系统', auth_setup_sub: '首次使用：请设置管理员登录密码', auth_user: '用户名', auth_pass: '密码', auth_pass_confirm: '确认密码', auth_remember: '7 天内免登录', auth_btn_login: '登 录', auth_btn_setup: '初始化并进入', sys_router_list: '已对接路由器列表 (RouterOS API)', btn_new_router: '+ 新增路由器', sys_api_cfg: 'RouterOS API & AdGuard Home 对接配置', sys_auth_title: 'Web 登录鉴权与密码管理', auth_old_pass: '当前密码', auth_new_pass: '新密码 (至少4位)', btn_save_pass: '修改账号密码', dev_total_title: '客户端总流量统计', dev_total_hint: '严格只统计内网私有 IP（10.x / 172.16-31.x / 192.168.x / ULA）的今日与永久累计流量，公网 IPv6 自动合并到对应内网终端', mode_live: '实时连接', mode_hist_14d: '14天历史记录', th_cum_total: '累计总流量', th_today_tot: '今日总流量', th_all_dl: '累计下行', th_all_ul: '累计上行', btn_reset_tot: '清零累计统计', geo_offline_title: '本地离线 GeoIP 库 (IPIP.net ipipfree.ipdb)', btn_upd_geodb: '下载 / 更新离线库', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -1086,7 +1097,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', nav_sys_api: 'Router & API', nav_sys_admin: 'Admin / Theme / OTA', btn_logout: 'Logout', auth_login_sub: 'Sign in with administrator credentials', auth_setup_sub: 'First-time Setup: Set administrator password', auth_user: 'Username', auth_pass: 'Password', auth_pass_confirm: 'Confirm Password', auth_remember: 'Remember 7 days', auth_btn_login: 'Sign In', auth_btn_setup: 'Initialize & Sign In', sys_router_list: 'Configured Routers (RouterOS API)', btn_new_router: '+ Add Router', sys_api_cfg: 'RouterOS API & AdGuard Home Config', sys_auth_title: 'Web Login & Password', auth_old_pass: 'Current Password', auth_new_pass: 'New Password (min 4 chars)', btn_save_pass: 'Update Credentials', dev_total_title: 'Total Client Traffic', dev_total_hint: 'Strictly tracks private LAN IPs only (RFC1918 & ULA); IPv6 client traffic merges to its LAN IPv4 by MAC', mode_live: 'Live', mode_hist_14d: '14d History', th_cum_total: 'All-Time Total', th_today_tot: 'Today Total', th_all_dl: 'All-Time DL', th_all_ul: 'All-Time UL', btn_reset_tot: 'Reset Totals', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', nav_sys_api: 'Router & API', nav_sys_admin: 'Admin / Theme / OTA', btn_logout: 'Logout', auth_login_sub: 'Sign in with administrator credentials', auth_setup_sub: 'First-time Setup: Set administrator password', auth_user: 'Username', auth_pass: 'Password', auth_pass_confirm: 'Confirm Password', auth_remember: 'Remember 7 days', auth_btn_login: 'Sign In', auth_btn_setup: 'Initialize & Sign In', sys_router_list: 'Configured Routers (RouterOS API)', btn_new_router: '+ Add Router', sys_api_cfg: 'RouterOS API & AdGuard Home Config', sys_auth_title: 'Web Login & Password', auth_old_pass: 'Current Password', auth_new_pass: 'New Password (min 4 chars)', btn_save_pass: 'Update Credentials', dev_total_title: 'Total Client Traffic', dev_total_hint: 'Strictly tracks private LAN IPs only (RFC1918 & ULA); IPv6 client traffic merges to its LAN IPv4 by MAC', mode_live: 'Live', mode_hist_14d: '14d History', th_cum_total: 'All-Time Total', th_today_tot: 'Today Total', th_all_dl: 'All-Time DL', th_all_ul: 'All-Time UL', btn_reset_tot: 'Reset Totals', geo_offline_title: 'Local Offline GeoIP DB (IPIP.net ipipfree.ipdb)', btn_upd_geodb: 'Download / Update Offline DB', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -2517,12 +2528,34 @@ async function flushRouterDNS() {
 }
 
 async function loadDBStats() {
-  const res = await fetch('/api/system/dbstats');
+  const [res, cfgRes] = await Promise.all([fetch('/api/system/dbstats'), fetch('/api/geo/config')]);
   const d = await res.json();
+  const cfg = await cfgRes.json();
   document.getElementById('dbSigCnt').textContent = d.dpi_signatures;
   document.getElementById('dbGeoCnt').textContent = d.geo_cached_ips;
   document.getElementById('dbAuditCnt').textContent = d.audit_records;
   document.getElementById('dbSampleCnt').textContent = d.history_samples;
+  const g = d.geo_db || {};
+  const gEl = document.getElementById('geoDbStatusTxt');
+  if (gEl) {
+    gEl.textContent = g.loaded ? `Loaded (${g.size_kb} KB) · ${g.path}` : (g.downloading ? 'Downloading ipipfree.ipdb...' : 'Not loaded (click Update)');
+  }
+  const tInp = document.getElementById('inpIp138Token');
+  if (tInp && document.activeElement !== tInp) tInp.value = cfg.ip138_token || '';
+}
+async function saveGeoConfig() {
+  await fetch('/api/geo/config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ip138_token: document.getElementById('inpIp138Token').value.trim() })
+  });
+  alert('Saved');
+}
+async function updateLocalGeoDB() {
+  document.getElementById('geoDbStatusTxt').textContent = 'Downloading ipipfree.ipdb...';
+  const res = await fetch('/api/geo/db/update', { method: 'POST' });
+  const d = await res.json();
+  if (d.error) alert(d.error);
+  loadDBStats();
 }
 
 async function refreshAppIcons() {

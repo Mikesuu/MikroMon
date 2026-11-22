@@ -197,6 +197,14 @@ func (c *Collector) ClearGeoCache() error {
 	return c.store.ClearISPCache()
 }
 
+func (c *Collector) GeoDBStatus() map[string]any {
+	return c.enricher.DBStatus()
+}
+
+func (c *Collector) UpdateGeoDB() error {
+	return c.enricher.DownloadLocalDB(true)
+}
+
 func (c *Collector) GetSnapshot(routerID int64) *RouterSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

@@ -481,8 +481,7 @@ func (s *Store) DeleteRouter(id int64) error {
 }
 
 func (s *Store) LoadISPCache() (map[string]ISPRecord, error) {
-	since := time.Now().Add(-30 * 24 * time.Hour).Unix()
-	rows, err := s.db.Query(`SELECT ip, location, location_en, isp, org, asn, updated_at FROM ip_isp_cache WHERE updated_at >= ?`, since)
+	rows, err := s.db.Query(`SELECT ip, location, location_en, isp, org, asn, updated_at FROM ip_isp_cache`)
 	if err != nil {
 		return nil, err
 	}
@@ -1389,7 +1388,6 @@ func (s *Store) PruneOldData() {
 	s.db.Exec(`DELETE FROM app_traffic_1h WHERE bucket_ts < ?`, now-35*86400)
 	s.db.Exec(`DELETE FROM domain_audit WHERE ts < ?`, now-14*86400)
 	s.db.Exec(`DELETE FROM conn_history WHERE last_ts < ?`, now-14*86400)
-	s.db.Exec(`DELETE FROM ip_isp_cache WHERE updated_at < ?`, now-30*86400)
 	s.db.Exec(`DELETE FROM security_events WHERE ts < ?`, now-30*86400)
 }
 

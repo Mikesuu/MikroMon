@@ -76,6 +76,8 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/update/apply", s.handleUpdateApply)
 	mux.HandleFunc("/api/system/dbstats", s.handleDBStats)
 	mux.HandleFunc("/api/system/clear-geo", s.handleClearGeo)
+	mux.HandleFunc("/api/geo/db/update", s.handleGeoDBUpdate)
+	mux.HandleFunc("/api/geo/config", s.handleGeoConfig)
 	mux.HandleFunc("/api/action/interface", s.handleToggleIface)
 	mux.HandleFunc("/api/queues", s.handleQueues)
 	mux.HandleFunc("/api/blocked", s.handleBlocked)
@@ -438,6 +440,7 @@ func (s *Server) handleDBStats(w http.ResponseWriter, r *http.Request) {
 		"geo_cached_ips":  st.GeoCachedIPs,
 		"audit_records":   st.AuditRecords,
 		"history_samples": st.HistorySamples,
+		"geo_db":          s.col.GeoDBStatus(),
 	})
 }
 
@@ -908,5 +911,33 @@ func (s *Server) handleHistorySearch(w http.ResponseWriter, r *http.Request) {
 		"page":      page,
 		"page_size": pageSize,
 		"days":      days,
+	})
+}
+
+func (s *Server) handleGeoDBUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	if err := s.col.UpdateGeoDB(); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"status": "ok", "geo_db": s.col.GeoDBStatus()})
+}
+
+func (s *Server) handleGeoConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var req struct {
+			IP138Token string `json:"ip138_token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		_ = s.store.SetSetting("geo_ip138_token", strings.TrimSpace(req.IP138Token))
+	}
+	writeJSON(w, 200, map[string]any{
+		"ip138_token": s.store.GetSetting("geo_ip138_token"),
 	})
 }
