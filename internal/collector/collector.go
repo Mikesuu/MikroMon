@@ -941,10 +941,18 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		}
 
 		if dRx > 0 || dTx > 0 {
-			ad, ok := appDeltaMap[appInfo.App]
+			appKey := appInfo.App
+			if !appInfo.IsRealApp {
+				if strings.HasPrefix(appKey, "TCP:") {
+					appKey = "Other TCP"
+				} else if strings.HasPrefix(appKey, "UDP:") {
+					appKey = "Other UDP"
+				}
+			}
+			ad, ok := appDeltaMap[appKey]
 			if !ok {
-				ad = &store.AppTrafficDelta{App: appInfo.App}
-				appDeltaMap[appInfo.App] = ad
+				ad = &store.AppTrafficDelta{App: appKey}
+				appDeltaMap[appKey] = ad
 			}
 			ad.RxBytes += dRx
 			ad.TxBytes += dTx

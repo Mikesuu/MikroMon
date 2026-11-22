@@ -297,7 +297,7 @@ func (s *Server) handleIPDetailHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAppTop(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
 	rng := r.URL.Query().Get("range")
-	list, err := s.store.QueryTopApps(id, rng, 100)
+	list, err := s.store.QueryTopApps(id, rng, 1000)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
