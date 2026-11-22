@@ -312,17 +312,22 @@ type EthernetStatus struct {
 
 func GetEthernetRates(c *routeros.Client, names []string) map[string]EthernetStatus {
 	out := make(map[string]EthernetStatus)
-	for _, name := range names {
-		r, err := c.Run("/interface/ethernet/monitor", "=numbers="+name, "=once=")
-		if err == nil && len(r.Re) > 0 {
-			m := r.Re[0].Map
-			rate := m["rate"]
-			if rate == "" && m["status"] == "no-link" {
-				rate = "no-link"
-			}
-			out[name] = EthernetStatus{
-				Rate:       rate,
-				FullDuplex: m["full-duplex"] == "true",
+	if len(names) > 0 {
+		if r, err := c.Run("/interface/ethernet/monitor", "=numbers="+strings.Join(names, ","), "=once="); err == nil {
+			for _, re := range r.Re {
+				m := re.Map
+				name := m["name"]
+				if name == "" {
+					continue
+				}
+				rate := m["rate"]
+				if rate == "" && m["status"] == "no-link" {
+					rate = "no-link"
+				}
+				out[name] = EthernetStatus{
+					Rate:       rate,
+					FullDuplex: m["full-duplex"] == "true",
+				}
 			}
 		}
 	}

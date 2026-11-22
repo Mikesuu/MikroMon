@@ -495,7 +495,7 @@ func (c *Collector) pollWorker(w *routerWorker) {
 			etherNames = append(etherNames, inf.Name)
 		}
 	}
-	if len(etherNames) > 0 && (w.etherRates == nil || now.Sub(w.lastMetaAt) >= 10*time.Second) {
+	if len(etherNames) > 0 && (w.etherRates == nil || now.Sub(w.lastMetaAt) >= 30*time.Second) {
 		w.etherRates = mikrotik.GetEthernetRates(w.client, etherNames)
 	}
 
@@ -1072,8 +1072,8 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 		_ = c.store.UpsertConnHistory(w.cfg.ID, histBatch)
 	}
 
-	if len(liveConns) > 1000 {
-		liveConns = liveConns[:1000]
+	if len(liveConns) > 500 {
+		liveConns = liveConns[:500]
 	}
 
 	// === 安全态势与异常连接检测 (支持威胁域名、高危端口、Geo 关注列表、持久化事件与自动封禁) ===

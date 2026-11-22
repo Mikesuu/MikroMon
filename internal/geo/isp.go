@@ -31,6 +31,7 @@ type Enricher struct {
 	dbDownloading  bool
 	cache          map[string]store.ISPRecord
 	pending        map[string]bool
+	saveBuf        map[string]store.ISPRecord
 	failCooldown   map[string]int64
 	ipapiBlockedAt int64
 	client         *http.Client
@@ -169,6 +170,7 @@ func New(st *store.Store) *Enricher {
 		dbPath:       dbPath,
 		cache:        cached,
 		pending:      make(map[string]bool),
+		saveBuf:      make(map[string]store.ISPRecord),
 		failCooldown: make(map[string]int64),
 		client:       &http.Client{Timeout: 6 * time.Second},
 	}
@@ -383,15 +385,12 @@ func (e *Enricher) Lookup(ipStr string) (location, locationEN, isp, asnMeta stri
 		}
 	}
 
-	// 2. 命中本地离线 IPIP 数据库并立即写入本地缓存（0 网络延迟）
+	// 2. 命中本地离线 IPIP 数据库并异步批量落盘（0 阻塞、不刷外网）
 	if rec, ok := e.lookupOfflineIPDB(ipStr); ok {
 		e.mu.Lock()
 		e.cache[ipStr] = rec
+		e.saveBuf[ipStr] = rec
 		e.mu.Unlock()
-		_ = e.store.SaveISPCache([]store.ISPRecord{rec})
-		if rec.ISP == "" {
-			e.enqueue(ipStr) // 仅后台静默补充 ISP
-		}
 		return rec.Location, rec.LocationEN, firstNonEmpty(rec.ISP, rec.Org), ""
 	}
 
@@ -447,6 +446,20 @@ func (e *Enricher) RunWorker(stop <-chan struct{}) {
 }
 
 func (e *Enricher) flushBatch() {
+	e.mu.Lock()
+	var bufList []store.ISPRecord
+	if len(e.saveBuf) > 0 {
+		bufList = make([]store.ISPRecord, 0, len(e.saveBuf))
+		for _, r := range e.saveBuf {
+			bufList = append(bufList, r)
+		}
+		e.saveBuf = make(map[string]store.ISPRecord)
+	}
+	e.mu.Unlock()
+	if len(bufList) > 0 {
+		_ = e.store.SaveISPCache(bufList)
+	}
+
 	e.mu.Lock()
 	if len(e.pending) == 0 {
 		e.mu.Unlock()

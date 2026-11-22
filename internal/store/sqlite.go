@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
 
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	writeMu sync.Mutex
 }
 
 type RouterConfig struct {
@@ -147,12 +149,13 @@ func New(dbPath string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
 
 	pragmas := []string{
 		"PRAGMA journal_mode=WAL;",
 		"PRAGMA synchronous=NORMAL;",
-		"PRAGMA busy_timeout=5000;",
+		"PRAGMA busy_timeout=10000;",
 		"PRAGMA temp_store=MEMORY;",
 	}
 	for _, p := range pragmas {
@@ -371,6 +374,10 @@ func (s *Store) migrate() error {
 		PRIMARY KEY (router_id, client_ip, remote_ip, remote_port, domain)
 	);
 	CREATE INDEX IF NOT EXISTS idx_conn_hist_q ON conn_history(router_id, last_ts DESC);
+	CREATE INDEX IF NOT EXISTS idx_conn_hist_client ON conn_history(router_id, client_ip, last_ts DESC);
+	CREATE INDEX IF NOT EXISTS idx_domain_audit_dom ON domain_audit(router_id, domain, ts DESC);
+	CREATE INDEX IF NOT EXISTS idx_app_5m_q ON app_traffic_5m(router_id, bucket_ts, app);
+	CREATE INDEX IF NOT EXISTS idx_app_1h_q ON app_traffic_1h(router_id, bucket_ts, app);
 	`
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
@@ -441,6 +448,8 @@ func (s *Store) GetRouter(id int64) (*RouterConfig, error) {
 }
 
 func (s *Store) SaveRouter(cfg RouterConfig) (int64, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	useTLS := 0
 	if cfg.UseTLS {
 		useTLS = 1
@@ -476,6 +485,8 @@ func (s *Store) SaveRouter(cfg RouterConfig) (int64, error) {
 }
 
 func (s *Store) DeleteRouter(id int64) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_, err := s.db.Exec(`DELETE FROM routers WHERE id=?`, id)
 	return err
 }
@@ -497,6 +508,8 @@ func (s *Store) LoadISPCache() (map[string]ISPRecord, error) {
 }
 
 func (s *Store) SaveISPCache(items []ISPRecord) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(items) == 0 {
 		return nil
 	}
@@ -519,6 +532,8 @@ func (s *Store) SaveISPCache(items []ISPRecord) error {
 }
 
 func (s *Store) ClearISPCache() error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_, err := s.db.Exec(`DELETE FROM ip_isp_cache`)
 	return err
 }
@@ -532,6 +547,8 @@ func (s *Store) GetDBStats() DBStats {
 }
 
 func (s *Store) InsertDomainAudits(items []DomainAuditEntry) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(items) == 0 {
 		return nil
 	}
@@ -617,6 +634,8 @@ func (s *Store) QueryDomainAuditPaged(routerID int64, q string, limit, offset in
 }
 
 func (s *Store) InsertIfaceSamples(samples []IfaceSample) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(samples) == 0 {
 		return nil
 	}
@@ -668,6 +687,8 @@ func (s *Store) InsertIfaceSamples(samples []IfaceSample) error {
 }
 
 func (s *Store) AddTrafficDeltas(routerID, ts int64, ips []IPTrafficDelta, apps []AppTrafficDelta) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(ips) == 0 && len(apps) == 0 {
 		return nil
 	}
@@ -819,9 +840,9 @@ func RangeDuration(rangeKey string) (time.Duration, string) {
 	case "1h":
 		return time.Hour, "raw"
 	case "6h":
-		return 6 * time.Hour, "raw60"
+		return 6 * time.Hour, "5m"
 	case "12h":
-		return 12 * time.Hour, "raw120"
+		return 12 * time.Hour, "5m"
 	case "24h":
 		return 24 * time.Hour, "5m"
 	case "7d":
@@ -1020,6 +1041,8 @@ func IsPrivateLANIP(ipStr string) bool {
 }
 
 func (s *Store) UpsertConnHistory(routerID int64, items []ConnHistoryEntry) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(items) == 0 {
 		return nil
 	}
@@ -1083,7 +1106,14 @@ func (s *Store) QueryHistorySearch(routerID int64, q string, days, limit, offset
 	`
 	args := []any{routerID, since, routerID, since, trimQ, like, like, like, like, like, like, like, like, like}
 	var total int
-	_ = s.db.QueryRow(baseCTE+"SELECT COUNT(*) FROM merged "+whereClause, args...).Scan(&total)
+	if trimQ == "" {
+		var c1, c2 int
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM conn_history WHERE router_id=? AND last_ts>=?`, routerID, since).Scan(&c1)
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM domain_audit WHERE router_id=? AND ts>=?`, routerID, since).Scan(&c2)
+		total = c1 + c2
+	} else {
+		_ = s.db.QueryRow(baseCTE+"SELECT COUNT(*) FROM merged "+whereClause, args...).Scan(&total)
+	}
 
 	qArgs := append(args, limit, offset)
 	rows, err := s.db.Query(baseCTE+"SELECT ts, client_ip, host_name, remote_ip, remote_port, protocol, domain, location, location_en, isp, app, category, bytes_total, source FROM merged "+whereClause+" ORDER BY ts DESC LIMIT ? OFFSET ?", qArgs...)
@@ -1140,6 +1170,8 @@ func (s *Store) QueryClientTotalTraffic(routerID int64) ([]ClientTotalStat, erro
 }
 
 func (s *Store) ResetClientTotalTraffic(routerID int64) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_, err := s.db.Exec(`DELETE FROM ip_traffic_total WHERE router_id=?`, routerID)
 	return err
 }
@@ -1185,6 +1217,8 @@ func (s *Store) QueryTopApps(routerID int64, rangeKey string, limit int) ([]AppS
 }
 
 func (s *Store) InsertSecurityEvents(items []SecurityEventRecord) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(items) == 0 {
 		return nil
 	}
@@ -1231,6 +1265,8 @@ func (s *Store) QuerySecurityEvents(routerID int64, limit, offset int) ([]Securi
 }
 
 func (s *Store) UpsertKnownDevices(routerID, now int64, devs []KnownDevice) ([]KnownDevice, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(devs) == 0 {
 		return nil, nil
 	}
@@ -1305,6 +1341,8 @@ func (s *Store) ListKnownDevices(routerID int64) ([]KnownDevice, error) {
 }
 
 func (s *Store) SetDeviceTrusted(routerID int64, mac string, trusted bool) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	tr := 0
 	if trusted {
 		tr = 1
@@ -1337,6 +1375,8 @@ func (s *Store) ListCustomDPIRules() ([]CustomDPIRule, error) {
 }
 
 func (s *Store) SaveCustomDPIRules(items []CustomDPIRule) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if len(items) == 0 {
 		return nil
 	}
@@ -1371,11 +1411,15 @@ func (s *Store) SaveCustomDPIRules(items []CustomDPIRule) error {
 }
 
 func (s *Store) DeleteCustomDPIRule(domain string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_, err := s.db.Exec(`DELETE FROM custom_dpi_rules WHERE domain=?`, strings.ToLower(strings.TrimSpace(domain)))
 	return err
 }
 
 func (s *Store) PruneOldData() {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	now := time.Now().Unix()
 	s.db.Exec(`DELETE FROM iface_raw WHERE ts < ?`, now-86400)
 	s.db.Exec(`DELETE FROM ip_traffic_1m WHERE bucket_ts < ?`, now-86400)
@@ -1398,6 +1442,8 @@ func (s *Store) GetSetting(k string) string {
 }
 
 func (s *Store) SetSetting(k, v string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_, err := s.db.Exec(`INSERT INTO app_settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v`, k, v)
 	return err
 }

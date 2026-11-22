@@ -2575,7 +2575,7 @@ function refreshHistoryAll() {
   loadOverviewChart();
   loadAppCharts();
   loadHistIPs();
-  loadClientTotals();
+  if (currentActiveTab === 'ips') loadClientTotals();
   if (selectedIface) loadIfaceDetailChart(selectedIface);
   if (selectedIp) loadIPDetail(selectedIp);
 }
