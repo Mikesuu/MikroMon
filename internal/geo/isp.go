@@ -503,8 +503,11 @@ func (e *Enricher) flushBatch() {
 		remaining = append(remaining, ip)
 	}
 
-	// 若仍有未补充完整的（且未在 5 分钟熔断期内），再尝试 ip-api 批量补充
-	if len(remaining) > 0 {
+	// 本地离线库已加载时，不再请求海外 ip-api.com（彻底杜绝超时与日志刷屏）
+	e.mu.RLock()
+	hasLocalDB := e.dbLoaded
+	e.mu.RUnlock()
+	if len(remaining) > 0 && !hasLocalDB {
 		now := time.Now().Unix()
 		e.mu.RLock()
 		blocked := now-e.ipapiBlockedAt < 300
