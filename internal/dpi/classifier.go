@@ -21,6 +21,34 @@ type rule struct {
 }
 
 var domainRules = []rule{
+	{"byteacctimg", "抖音", "视频娱乐", "#1c1c1e"},
+	{"retouchpics", "醒图", "视频娱乐", "#ec4899"},
+	{"ulikecam", "轻颜相机", "视频娱乐", "#f43f5e"},
+	{"capcut", "剪映", "视频娱乐", "#1c1c1e"},
+	{"bytegecko", "字节跳动", "视频娱乐", "#1c1c1e"},
+	{"bytegoofy", "字节跳动", "视频娱乐", "#1c1c1e"},
+	{"bytetos", "字节跳动", "视频娱乐", "#1c1c1e"},
+	{"cdnhwc", "华为云", "云与CDN", "#cf0a2c"},
+	{"hc-cdn", "华为云", "云与CDN", "#cf0a2c"},
+	{"myhuaweicloud", "华为云", "云与CDN", "#cf0a2c"},
+	{"kunlun", "阿里云", "云与CDN", "#ff6a00"},
+	{"mmstat", "阿里云", "云与CDN", "#ff6a00"},
+	{"umeng", "阿里云", "云与CDN", "#ff6a00"},
+	{"yximgs", "快手", "视频娱乐", "#ff4906"},
+	{"kwaicdn", "快手", "视频娱乐", "#ff4906"},
+	{"kwimgs", "快手", "视频娱乐", "#ff4906"},
+	{"bdydns", "百度云", "云与CDN", "#2932e1"},
+	{"bdimg", "百度", "云与CDN", "#2932e1"},
+	{"qcloudcdn", "腾讯云", "云与CDN", "#0052d9"},
+	{"gtimg", "QQ", "社交通讯", "#12b7f5"},
+	{"idqqimg", "QQ", "社交通讯", "#12b7f5"},
+	{"msftconnecttest", "Microsoft", "办公协同", "#00a4ef"},
+	{"msedge", "Microsoft", "办公协同", "#00a4ef"},
+	{"app-measurement", "Google", "云与CDN", "#4285f4"},
+	{"crashlytics", "Google", "云与CDN", "#4285f4"},
+	{"akadns", "Akamai CDN", "云与CDN", "#009bde"},
+	{"edgesuite", "Akamai CDN", "云与CDN", "#009bde"},
+	{"edgekey", "Akamai CDN", "云与CDN", "#009bde"},
 	// === TikTok 国际版 (优先于 AWS / Akamai / 字节国内规则) ===
 	{"tiktok", "TikTok", "视频娱乐", "#1c1c1e"},
 	{"tik-tokapi", "TikTok", "视频娱乐", "#1c1c1e"},
@@ -734,6 +762,17 @@ var tunnelKeywords = []string{
 func ClassifyThreat(domain string, dstPort int) (rule, level, detail string) {
 	d := strings.ToLower(domain)
 	if d != "" {
+		if l := strings.IndexByte(d, '.'); l >= 48 {
+			first, digits := d[:l], 0
+			for i := 0; i < len(first); i++ {
+				if first[i] >= '0' && first[i] <= '9' {
+					digits++
+				}
+			}
+			if digits >= 6 && !strings.Contains(d, "cloudfront") && !strings.Contains(d, "amazonaws") && !strings.Contains(d, "google") && !strings.Contains(d, "byte") {
+				return "dns_tunnel_suspect", "medium", "Suspicious Long Subdomain (DNS Tunnel)"
+			}
+		}
 		for _, kw := range miningKeywords {
 			if strings.Contains(d, kw) {
 				return "crypto_mining", "high", "Crypto Mining Pool / Miner (" + kw + ")"

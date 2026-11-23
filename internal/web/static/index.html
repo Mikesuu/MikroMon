@@ -531,6 +531,7 @@
             <button onclick="switchNetSub('dhcp')" id="subNetDhcpBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="dhcp_title">DHCP 租约列表</button>
             <button onclick="switchNetSub('arp')" id="subNetArpBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="arp_title">ARP 邻接表</button>
             <button onclick="switchNetSub('routes')" id="subNetRoutesBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="route_title">活动路由表 (/ip/route)</button>
+            <button onclick="switchNetSub('wg')" id="subNetWgBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="wg_title">WireGuard 隧道</button>
           </div>
           <button onclick="loadNetworkDetails()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
         </div>
@@ -558,6 +559,7 @@
           </table>
           <div id="routePager" class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-2 border-t luci-border text-xs luci-txt2"></div>
         </div>
+        <div id="panelNetWg" class="hidden luci-card rounded-lg p-4 overflow-x-auto"><table class="w-full text-xs text-left"><thead class="luci-txt2 border-b luci-border"><tr><th class="py-2" data-i18n="th_iface">接口</th><th class="py-2" data-i18n="th_wg_peer">节点 / 备注</th><th class="py-2" data-i18n="th_wg_ep">对端端点</th><th class="py-2" data-i18n="th_wg_allow">允许网段</th><th class="py-2" data-i18n="th_wg_hs">最近握手</th><th class="py-2" data-i18n="th_cum">累计收发</th></tr></thead><tbody id="wgBody" class="divide-y luci-border"></tbody></table></div>
       </section>
 
       <!-- 6. 上网审计 -->
@@ -630,17 +632,40 @@
         </div>
       </section>
 
-      <!-- 9. 防火墙命中 -->
+            <!-- 9. 企业级防火墙与 NAT 策略控制台 -->
       <section id="tab-firewall" class="tab-panel hidden space-y-4">
-        <div class="luci-card rounded-lg p-4 overflow-x-auto">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-sm font-semibold" data-i18n="fw_title">防火墙规则命中统计 (/ip/firewall/filter)</h2>
-            <button onclick="loadFirewallRules()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div class="inline-flex rounded-lg overflow-hidden border luci-border text-xs">
+            <button onclick="switchFwSub('filter')" id="subFwFilterBtn" class="px-3.5 py-1.5 bg-[#0099cc] text-white font-medium" data-i18n="fw_sub_filter">Filter 过滤策略</button>
+            <button onclick="switchFwSub('nat')" id="subFwNatBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="fw_sub_nat">NAT 转换与端口映射</button>
+            <button onclick="switchFwSub('addr')" id="subFwAddrBtn" class="px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80" data-i18n="fw_sub_addr">地址组管理</button>
           </div>
-          <table class="w-full text-xs text-left">
-            <thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">Chain</th><th class="py-2" data-i18n="th_action">动作</th><th class="py-2" data-i18n="th_note">规则备注</th><th class="py-2" data-i18n="th_pkts">命中数据包</th><th class="py-2" data-i18n="th_bytes">命中流量</th><th class="py-2" data-i18n="th_status">状态</th></tr></thead>
-            <tbody id="fwBody" class="divide-y luci-border"></tbody>
-          </table>
+          <button onclick="loadFirewallAll()" class="bg-[#0099cc] text-white px-3 py-1 rounded text-xs" data-i18n="btn_refresh">刷新</button>
+        </div>
+        <div id="panelFwFilter" class="space-y-4">
+          <div class="luci-card rounded-lg p-4 space-y-2 text-xs">
+            <div class="font-semibold" data-i18n="fw_add_title">快速下发防火墙策略 (/ip/firewall/filter)</div>
+            <div class="grid grid-cols-2 sm:grid-cols-7 gap-2">
+              <select id="fwAddChain" class="luci-input rounded px-2 py-1.5"><option value="forward">forward</option><option value="input">input</option></select>
+              <select id="fwAddAction" class="luci-input rounded px-2 py-1.5"><option value="drop">drop</option><option value="reject">reject</option><option value="accept">accept</option></select>
+              <select id="fwAddProto" class="luci-input rounded px-2 py-1.5"><option value="">any</option><option value="tcp">tcp</option><option value="udp">udp</option><option value="icmp">icmp</option></select>
+              <input id="fwAddPort" data-i18n-ph="ph_fw_port" placeholder="目标端口 (如 445)" class="luci-input rounded px-2 py-1.5" />
+              <input id="fwAddSrc" data-i18n-ph="ph_fw_src" placeholder="源地址 (可选)" class="luci-input rounded px-2 py-1.5" />
+              <input id="fwAddComment" data-i18n-ph="ph_note" placeholder="备注" class="luci-input rounded px-2 py-1.5" />
+              <button onclick="addFirewallFilter()" class="bg-[#0099cc] text-white rounded px-3 py-1.5 font-medium" data-i18n="btn_add_rule">下发规则</button>
+            </div>
+          </div>
+          <div class="luci-card rounded-lg p-4 overflow-x-auto"><table class="w-full text-xs text-left"><thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">Chain</th><th class="py-2" data-i18n="th_action">动作</th><th class="py-2" data-i18n="th_proto">协议/端口</th><th class="py-2" data-i18n="th_src_dst">源 / 目标地址</th><th class="py-2" data-i18n="th_note">规则备注</th><th class="py-2" data-i18n="th_pkts">命中包</th><th class="py-2" data-i18n="th_bytes">命中流量</th><th class="py-2" data-i18n="th_actions">控制</th></tr></thead><tbody id="fwBody" class="divide-y luci-border"></tbody></table></div>
+        </div>
+        <div id="panelFwNat" class="hidden luci-card rounded-lg p-4 overflow-x-auto"><table class="w-full text-xs text-left"><thead class="luci-txt2 border-b luci-border"><tr><th class="py-2">Chain</th><th class="py-2" data-i18n="th_action">动作</th><th class="py-2" data-i18n="th_proto">协议/端口</th><th class="py-2" data-i18n="th_nat_to">映射目标</th><th class="py-2" data-i18n="th_note">备注</th><th class="py-2" data-i18n="th_bytes">流量</th><th class="py-2" data-i18n="th_actions">控制</th></tr></thead><tbody id="natBody" class="divide-y luci-border"></tbody></table></div>
+        <div id="panelFwAddr" class="hidden luci-card rounded-lg p-4 space-y-3 overflow-x-auto">
+          <div class="flex flex-wrap gap-2 text-xs">
+            <input id="alListName" value="mikromon_blocked" data-i18n-ph="ph_al_list" placeholder="地址组名" class="luci-input rounded px-2.5 py-1.5 w-44" />
+            <input id="alAddress" data-i18n-ph="ph_al_addr" placeholder="IP 或网段" class="luci-input rounded px-2.5 py-1.5 flex-1 min-w-[180px]" />
+            <input id="alComment" data-i18n-ph="ph_note" placeholder="备注" class="luci-input rounded px-2.5 py-1.5 w-40" />
+            <button onclick="addAddrListEntry()" class="bg-[#0099cc] text-white rounded px-3 py-1.5 font-medium" data-i18n="btn_add">添加</button>
+          </div>
+          <table class="w-full text-xs text-left"><thead class="luci-txt2 border-b luci-border"><tr><th class="py-2" data-i18n="th_al_list">地址组</th><th class="py-2">IP / CIDR</th><th class="py-2" data-i18n="th_note">备注</th><th class="py-2" data-i18n="th_type">类型</th><th class="py-2" data-i18n="th_actions">操作</th></tr></thead><tbody id="addrListBody" class="divide-y luci-border"></tbody></table>
         </div>
       </section>
 
@@ -961,14 +986,14 @@
             </div>
           </div>
           <div id="themePickerGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc]"></span><span>Dark 经典</span></button>
-            <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span>Light 经典</span></button>
-            <button onclick="setTheme('candy')" data-th="candy" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span><span>🍭 糖果卡通</span></button>
-            <button onclick="setTheme('pixel')" data-th="pixel" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#c084fc]"></span><span>👾 像素街机</span></button>
-            <button onclick="setTheme('ink')" data-th="ink" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span><span>🖌️ 水墨中国风</span></button>
-            <button onclick="setTheme('palace')" data-th="palace" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span><span>🏮 故宫朱墙</span></button>
-            <button onclick="setTheme('aurora')" data-th="aurora" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]"></span><span>🌌 极光雪山</span></button>
-            <button onclick="setTheme('sunset')" data-th="sunset" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ea580c]"></span><span>🌅 落日海湾</span></button>
+            <button onclick="setTheme('dark')" data-th="dark" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#0099cc]"></span><span data-i18n="th_dark">经典暗夜</span></button>
+            <button onclick="setTheme('light')" data-th="light" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f1f5f9] ring-1 ring-slate-400"></span><span data-i18n="th_light">极简白天</span></button>
+            <button onclick="setTheme('candy')" data-th="candy" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span><span data-i18n="th_candy">🍭 糖果卡通</span></button>
+            <button onclick="setTheme('pixel')" data-th="pixel" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#c084fc]"></span><span data-i18n="th_pixel">👾 像素街机</span></button>
+            <button onclick="setTheme('ink')" data-th="ink" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#b91c1c]"></span><span data-i18n="th_ink">🖌️ 水墨中国风</span></button>
+            <button onclick="setTheme('palace')" data-th="palace" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span><span data-i18n="th_palace">🏮 故宫朱墙</span></button>
+            <button onclick="setTheme('aurora')" data-th="aurora" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]"></span><span data-i18n="th_aurora">🌌 极光雪山</span></button>
+            <button onclick="setTheme('sunset')" data-th="sunset" class="th-btn px-2 py-2 rounded border luci-border flex items-center gap-1.5 justify-center"><span class="w-2.5 h-2.5 rounded-full bg-[#ea580c]"></span><span data-i18n="th_sunset">🌅 落日海湾</span></button>
           </div>
         </div>
       </section>
@@ -1025,7 +1050,7 @@ const I18N = {
     btn_block_quick: '拉黑', btn_wake: '唤醒', btn_static: '设为静态', btn_unblock: '解封',
     dyn: '动态', stat: '静态', mem_lbl: '内存', showing_conns: '显示 {n} 条连接',
     btn_show_ip: '👁 查看 IP', btn_hide_ip: '🙈 隐藏 IP', ranges: { '1m':'1分钟', '5m':'5分钟', '15m':'15分钟', '30m':'30分钟', '1h':'1小时', '6h':'6小时', '12h':'12小时', '24h':'24小时', '7d':'7天', '15d':'15天', '30d':'30天' },
-    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', nav_sys_api: '路由器与 API 对接', nav_sys_admin: '管理鉴权 / 主题 / 升级', btn_logout: '退出', auth_login_sub: '请输入管理员账号登录系统', auth_setup_sub: '首次使用：请设置管理员登录密码', auth_user: '用户名', auth_pass: '密码', auth_pass_confirm: '确认密码', auth_remember: '7 天内免登录', auth_btn_login: '登 录', auth_btn_setup: '初始化并进入', sys_router_list: '已对接路由器列表 (RouterOS API)', btn_new_router: '+ 新增路由器', sys_api_cfg: 'RouterOS API & AdGuard Home 对接配置', sys_auth_title: 'Web 登录鉴权与密码管理', auth_old_pass: '当前密码', auth_new_pass: '新密码 (至少4位)', btn_save_pass: '修改账号密码', dev_total_title: '客户端总流量统计', dev_total_hint: '严格只统计内网私有 IP（10.x / 172.16-31.x / 192.168.x / ULA）的今日与永久累计流量，公网 IPv6 自动合并到对应内网终端', mode_live: '实时连接', mode_hist_14d: '14天历史记录', th_cum_total: '累计总流量', th_today_tot: '今日总流量', th_all_dl: '累计下行', th_all_ul: '累计上行', btn_reset_tot: '清零累计统计', geo_offline_title: '本地离线 GeoIP 库 (IPIP.net ipipfree.ipdb)', btn_upd_geodb: '下载 / 更新离线库', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端 (Source Client)', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
+    ph_global_search: '搜索 IP / 设备 / 应用...', peak_lbl: '峰值', avg_lbl: '均值', lan_view_badge: 'LAN 视角', paused_lbl: '已暂停', all_lbl: '全部', th_link_speed: '协商速率', btn_export_csv: '导出 CSV', diag_title: 'Ping / 路由追踪 / DNS 诊断', nav_sec_radar: '安全态势雷达', sec_high_cnt: '高危端口连接', sec_flood_cnt: '连接风暴 / 扫描嫌疑', sec_nodns_cnt: '无 DNS 大流量直连', sec_radar_title: '实时安全态势与异常行为审计', sec_radar_sub: '基于实时连接特征、高危端口、连接频次与无 DNS 行为检测', th_level: '级别', th_rule: '异常类型', sec_sub_live: '实时异常外联', sec_sub_events: '安全事件历史', sec_sub_nac: '终端准入资产 (NAC)', sec_sub_base: '安全基线与自动封禁', th_first_seen: '首次上线', th_last_seen: '最近活动', sec_policy_title: '联动封禁与 Geo 外联监控策略', sec_auto_block_lbl: '高危外联自动写入 RouterOS 黑名单 (mikromon_blocked)', sec_geo_watch_lbl: 'Geo 告警地区(逗号分隔):', sec_base_title: 'RouterOS 安全基线一键体检', btn_ensure_fw: '一键下发阻断防火墙规则', btn_run_audit: '开始体检', btn_trust: '信任', btn_untrust: '取消信任', btn_flush_dns: '清空路由 DNS 缓存', btn_refresh_icons: '重抓应用图标', nav_sys_api: '路由器与 API 对接', nav_sys_admin: '管理鉴权 / 主题 / 升级', btn_logout: '退出', auth_login_sub: '请输入管理员账号登录系统', auth_setup_sub: '首次使用：请设置管理员登录密码', auth_user: '用户名', auth_pass: '密码', auth_pass_confirm: '确认密码', auth_remember: '7 天内免登录', auth_btn_login: '登 录', auth_btn_setup: '初始化并进入', sys_router_list: '已对接路由器列表 (RouterOS API)', btn_new_router: '+ 新增路由器', sys_api_cfg: 'RouterOS API & AdGuard Home 对接配置', sys_auth_title: 'Web 登录鉴权与密码管理', auth_old_pass: '当前密码', auth_new_pass: '新密码 (至少4位)', btn_save_pass: '修改账号密码', dev_total_title: '客户端总流量统计', dev_total_hint: '严格只统计内网私有 IP（10.x / 172.16-31.x / 192.168.x / ULA）的今日与永久累计流量，公网 IPv6 自动合并到对应内网终端', mode_live: '实时连接', mode_hist_14d: '14天历史记录', th_cum_total: '累计总流量', th_today_tot: '今日总流量', th_all_dl: '累计下行', th_all_ul: '累计上行', btn_reset_tot: '清零累计统计', apps_unit: '个应用', conns_unit: '条连接', speed_lbl: '速率', no_link_lbl: '未连接', full_duplex_lbl: '全双工', virtual_lbl: '虚拟', up_lbl: '在线', down_lbl: '断开', active_lbl: '活动', inactive_lbl: '未激活', cn_lbl: '国内', global_lbl: '国际', na_lbl: '超时', geo_unknown: '未知', wan_ok_lbl: '外网正常', spot_apps: '活跃应用', spot_devs: '在线终端', spot_conns: '实时连接', spot_hist: '14天历史', spot_view_live: '查看实时 →', spot_view_hist: '查看全部 14 天 →', spot_empty: '未找到匹配记录', db_loaded_fmt: '已加载 ({kb} KB) · {path}', db_dl_ing: '正在下载离线库 ipipfree.ipdb...', db_not_loaded: '未加载（请点击下载更新）', th_dark: '经典暗夜', th_light: '极简白天', th_candy: '🍭 糖果卡通', th_pixel: '👾 像素街机', th_ink: '🖌️ 水墨中国风', th_palace: '🏮 故宫朱墙', th_aurora: '🌌 极光雪山', th_sunset: '🌅 落日海湾', wg_title: 'WireGuard 隧道', th_wg_peer: '节点 / 备注', th_wg_ep: '对端公网端点', th_wg_allow: '允许网段', th_wg_hs: '最近握手', fw_sub_filter: 'Filter 过滤策略', fw_sub_nat: 'NAT 转换与端口映射', fw_sub_addr: '地址组管理', fw_add_title: '快速下发防火墙策略 (/ip/firewall/filter)', ph_fw_port: '目标端口 (如 445)', ph_fw_src: '源地址 (可选)', th_src_dst: '源 / 目标地址', th_nat_to: '映射目标', ph_al_list: '地址组名', ph_al_addr: 'IP 或网段', th_al_list: '地址组', btn_add: '添加', btn_kill: '断开', geo_offline_title: '本地离线 GeoIP 库 (IPIP.net ipipfree.ipdb)', btn_upd_geodb: '下载 / 更新离线库', dpi_add_title: '新增自定义应用识别规则 (即时热生效)', btn_add_rule: '添加 / 更新规则', dpi_import_title: '批量导入特征包 JSON', btn_import_batch: '批量导入并热重载', dpi_custom_list: '已生效的自定义特征规则', lbl_trusted: '已信任', lbl_untrusted: '新发现/未确认', opt_all_clients: '全部终端', btn_clear_flt: '清除', side_top_clients: '实时速率 Top 终端', side_conn_breakdown: '连接与地域分布', btn_more: '全部', prev_page: '上一页', next_page: '下一页', page_fmt: '第 {p} / {tp} 页 (共 {t} 条)', per_page_lbl: '每页'
   },
   en: {
     nav_overview: 'Overview', nav_devices: 'Devices', nav_net_grp: 'Network', nav_ifaces: 'Interfaces',
@@ -1074,7 +1099,7 @@ const I18N = {
     btn_edit: 'Edit', btn_del: 'Delete', btn_enable: 'Enable', btn_disable: 'Disable', btn_disabled: 'Disabled',
     btn_block_quick: 'Block', btn_wake: 'WoL', btn_static: 'Make Static', btn_unblock: 'Unblock',
     dyn: 'Dynamic', stat: 'Static', mem_lbl: 'Memory', showing_conns: '{n} connections',
-    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', nav_sys_api: 'Router & API', nav_sys_admin: 'Admin / Theme / OTA', btn_logout: 'Logout', auth_login_sub: 'Sign in with administrator credentials', auth_setup_sub: 'First-time Setup: Set administrator password', auth_user: 'Username', auth_pass: 'Password', auth_pass_confirm: 'Confirm Password', auth_remember: 'Remember 7 days', auth_btn_login: 'Sign In', auth_btn_setup: 'Initialize & Sign In', sys_router_list: 'Configured Routers (RouterOS API)', btn_new_router: '+ Add Router', sys_api_cfg: 'RouterOS API & AdGuard Home Config', sys_auth_title: 'Web Login & Password', auth_old_pass: 'Current Password', auth_new_pass: 'New Password (min 4 chars)', btn_save_pass: 'Update Credentials', dev_total_title: 'Total Client Traffic', dev_total_hint: 'Strictly tracks private LAN IPs only (RFC1918 & ULA); IPv6 client traffic merges to its LAN IPv4 by MAC', mode_live: 'Live', mode_hist_14d: '14d History', th_cum_total: 'All-Time Total', th_today_tot: 'Today Total', th_all_dl: 'All-Time DL', th_all_ul: 'All-Time UL', btn_reset_tot: 'Reset Totals', geo_offline_title: 'Local Offline GeoIP DB (IPIP.net ipipfree.ipdb)', btn_upd_geodb: 'Download / Update Offline DB', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients (Source)', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
+    btn_show_ip: '👁 Show IPs', btn_hide_ip: '🙈 Hide IPs', ranges: { '1m':'1m', '5m':'5m', '15m':'15m', '30m':'30m', '1h':'1h', '6h':'6h', '12h':'12h', '24h':'24h', '7d':'7d', '15d':'15d', '30d':'30d' }, ph_global_search: 'Search IP / Host / App...', peak_lbl: 'Peak', avg_lbl: 'Avg', lan_view_badge: 'LAN View', paused_lbl: 'Paused', all_lbl: 'All', th_link_speed: 'Link Speed', btn_export_csv: 'Export CSV', diag_title: 'Ping / Traceroute / DNS', nav_sec_radar: 'Security Radar', sec_high_cnt: 'High-Risk Ports', sec_flood_cnt: 'Flood / Scan Suspects', sec_nodns_cnt: 'Heavy Direct-IP (No DNS)', sec_radar_title: 'Live Security & Anomaly Radar', sec_radar_sub: 'Detects risky ports, connection floods, and un-resolved heavy IP flows', th_level: 'Level', th_rule: 'Rule', sec_sub_live: 'Live Anomalies', sec_sub_events: 'Event History', sec_sub_nac: 'Devices & NAC', sec_sub_base: 'Baseline & Policy', th_first_seen: 'First Seen', th_last_seen: 'Last Seen', sec_policy_title: 'Auto-Block & Geo Watchlist Policy', sec_auto_block_lbl: 'Auto-block high severity remote IPs into mikromon_blocked', sec_geo_watch_lbl: 'Geo Watchlist (comma-separated):', sec_base_title: 'RouterOS Security Baseline Audit', btn_ensure_fw: 'Ensure FW Drop Rule', btn_run_audit: 'Run Audit', btn_trust: 'Trust', btn_untrust: 'Untrust', btn_flush_dns: 'Flush Router DNS', btn_refresh_icons: 'Refresh App Icons', nav_sys_api: 'Router & API', nav_sys_admin: 'Admin / Theme / OTA', btn_logout: 'Logout', auth_login_sub: 'Sign in with administrator credentials', auth_setup_sub: 'First-time Setup: Set administrator password', auth_user: 'Username', auth_pass: 'Password', auth_pass_confirm: 'Confirm Password', auth_remember: 'Remember 7 days', auth_btn_login: 'Sign In', auth_btn_setup: 'Initialize & Sign In', sys_router_list: 'Configured Routers (RouterOS API)', btn_new_router: '+ Add Router', sys_api_cfg: 'RouterOS API & AdGuard Home Config', sys_auth_title: 'Web Login & Password', auth_old_pass: 'Current Password', auth_new_pass: 'New Password (min 4 chars)', btn_save_pass: 'Update Credentials', dev_total_title: 'Total Client Traffic', dev_total_hint: 'Strictly tracks private LAN IPs only (RFC1918 & ULA); IPv6 client traffic merges to its LAN IPv4 by MAC', mode_live: 'Live', mode_hist_14d: '14d History', th_cum_total: 'All-Time Total', th_today_tot: 'Today Total', th_all_dl: 'All-Time DL', th_all_ul: 'All-Time UL', btn_reset_tot: 'Reset Totals', apps_unit: 'apps', conns_unit: 'conns', speed_lbl: 'Speed', no_link_lbl: 'No Link', full_duplex_lbl: 'Full', virtual_lbl: 'Virtual', up_lbl: 'UP', down_lbl: 'DOWN', active_lbl: 'Active', inactive_lbl: 'Inactive', cn_lbl: 'CN', global_lbl: 'Global', na_lbl: 'N/A', geo_unknown: 'Unknown', wan_ok_lbl: 'WAN OK', spot_apps: 'Live Apps', spot_devs: 'Devices', spot_conns: 'Live Connections', spot_hist: '14d History', spot_view_live: 'Live →', spot_view_hist: '${t('spot_view_hist')}', spot_empty: 'No matches', db_loaded_fmt: 'Loaded ({kb} KB) · {path}', db_dl_ing: 'Downloading ipipfree.ipdb...', db_not_loaded: 'Not loaded (click Update)', th_dark: 'Dark Classic', th_light: 'Light Classic', th_candy: '🍭 Candy', th_pixel: '👾 Pixel', th_ink: '🖌️ Ink Wash', th_palace: '🏮 Palace', th_aurora: '🌌 Aurora', th_sunset: '🌅 Sunset', wg_title: 'WireGuard VPN', th_wg_peer: 'Peer / Comment', th_wg_ep: 'Endpoint', th_wg_allow: 'Allowed IPs', th_wg_hs: 'Handshake', fw_sub_filter: 'Filter Rules', fw_sub_nat: 'NAT & Port Forward', fw_sub_addr: 'Address Lists', fw_add_title: 'Add Quick Firewall Filter (/ip/firewall/filter)', ph_fw_port: 'Dst Port (e.g. 445)', ph_fw_src: 'Src Addr (optional)', th_src_dst: 'Src / Dst Addr', th_nat_to: 'Translate To', ph_al_list: 'List Name', ph_al_addr: 'IP or CIDR', th_al_list: 'List', btn_add: 'Add', btn_kill: 'Kill', geo_offline_title: 'Local Offline GeoIP DB (IPIP.net ipipfree.ipdb)', btn_upd_geodb: 'Download / Update Offline DB', dpi_add_title: 'Add Custom DPI Rule (Hot Reload)', btn_add_rule: 'Add / Update Rule', dpi_import_title: 'Batch Import JSON Rule Pack', btn_import_batch: 'Import & Hot Reload', dpi_custom_list: 'Active Custom DPI Rules', lbl_trusted: 'Trusted', lbl_untrusted: 'Unverified', opt_all_clients: 'All Clients', btn_clear_flt: 'Clear', side_top_clients: 'Live Top Clients', side_conn_breakdown: 'Sessions & Geo Top', btn_more: 'All', prev_page: 'Prev', next_page: 'Next', page_fmt: 'Page {p} / {tp} ({t} total)', per_page_lbl: 'Per page'
   }
 };
 
@@ -1339,12 +1364,13 @@ function switchIpsSub(mode) {
   if (mode === 'total') loadClientTotals();
 }
 function switchNetSub(mode) {
-  ['dhcp', 'arp', 'routes'].forEach(k => {
-    const pan = document.getElementById('panelNet' + (k === 'dhcp' ? 'Dhcp' : k === 'arp' ? 'Arp' : 'Routes'));
-    const btn = document.getElementById('subNet' + (k === 'dhcp' ? 'DhcpBtn' : k === 'arp' ? 'ArpBtn' : 'RoutesBtn'));
-    if (pan) pan.classList.toggle('hidden', k !== mode);
-    if (btn) btn.className = k === mode ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80';
-  });
+  const m = { dhcp: ['panelNetDhcp', 'subNetDhcpBtn'], arp: ['panelNetArp', 'subNetArpBtn'], routes: ['panelNetRoutes', 'subNetRoutesBtn'], wg: ['panelNetWg', 'subNetWgBtn'] };
+  Object.entries(m).forEach(([k, [pid, bid]]) => { const pan = document.getElementById(pid), btn = document.getElementById(bid); if (pan) pan.classList.toggle('hidden', k !== mode); if (btn) btn.className = k === mode ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80'; });
+  if (mode === 'wg') loadWireGuardPeers();
+}
+async function loadWireGuardPeers() {
+  const rows = await (await fetch(`/api/network/wireguard?router_id=${currentRouterId}`)).json();
+  document.getElementById('wgBody').innerHTML = (rows || []).length ? rows.map(w => `<tr class="luci-tr ${w.disabled?'opacity-50':''}"><td class="py-1.5 font-medium text-[#0099cc]">${w.interface}</td><td class="py-1.5"><div>${w.comment||'-'}</div><div class="text-[10px] font-mono luci-txt2 truncate max-w-[180px]">${w.public_key}</div></td><td class="py-1.5 font-mono">${w.endpoint||'-'}</td><td class="py-1.5 font-mono text-[11px]">${w.allowed_address||'-'}</td><td class="py-1.5 luci-txt2">${w.last_handshake||'-'}</td><td class="py-1.5 font-mono">↓${fmtBytes(w.rx_bytes)} / ↑${fmtBytes(w.tx_bytes)}</td></tr>`).join('') : '<tr><td colspan="6" class="py-6 text-center luci-txt2">-</td></tr>';
 }
 function switchPolicySub(mode) {
   document.getElementById('panelPolQueue').classList.toggle('hidden', mode !== 'queue');
@@ -1369,19 +1395,12 @@ function updateOverviewPortSpeed(activeIf) {
   if (!el || !activeIf) return;
   el.classList.remove('hidden');
   if (activeIf.type === 'ether') {
-    if (!activeIf.running || activeIf.link_rate === 'no-link') {
-      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 font-medium';
-      el.textContent = 'Speed: No Link';
-    } else if (activeIf.link_rate) {
-      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-medium';
-      el.textContent = `Speed: ${activeIf.link_rate}${activeIf.full_duplex ? ' Full' : ''}`;
-    } else {
-      el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub text-[#0099cc]';
-      el.textContent = 'Speed: UP';
-    }
+    if (!activeIf.running || activeIf.link_rate === 'no-link') { el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 font-medium'; el.textContent = `${t('speed_lbl')}: ${t('no_link_lbl')}`; }
+    else if (activeIf.link_rate) { el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-medium'; el.textContent = `${t('speed_lbl')}: ${activeIf.link_rate}${activeIf.full_duplex ? ' ' + t('full_duplex_lbl') : ''}`; }
+    else { el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub text-[#0099cc]'; el.textContent = `${t('speed_lbl')}: ${t('up_lbl')}`; }
   } else {
     el.className = `text-[10px] font-mono px-1.5 py-0.5 rounded luci-sub ${activeIf.running ? 'text-emerald-500' : 'text-rose-500'}`;
-    el.textContent = `Speed: ${activeIf.running ? 'UP' : 'DOWN'}${activeIf.mtu ? ' · MTU ' + activeIf.mtu : ''}`;
+    el.textContent = `${t('speed_lbl')}: ${activeIf.running ? t('up_lbl') : t('down_lbl')}${activeIf.mtu ? ' · MTU ' + activeIf.mtu : ''}`;
   }
 }
 
@@ -1622,7 +1641,8 @@ function applyLang(lang) {
   const tBtn = document.getElementById('themeToggleBtn');
   const curTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   if (tBtn) tBtn.textContent = curTheme === 'dark' ? t('btn_light') : t('btn_dark');
-  if (lastSnap) { pollSnapshot(); refreshHistoryAll(); }
+  if (lastSnap) { renderFromSnap(lastSnap); pollSnapshot(); refreshHistoryAll(); }
+  if (currentActiveTab === 'dbstatus') loadDBStats();
 }
 function setLang(l) { applyLang(l); }
 function toggleLangQuick() { applyLang(currentLang === 'zh' ? 'en' : 'zh'); }
@@ -1877,7 +1897,7 @@ async function pollSnapshot() {
       </div>
     `).join('') : '<div class="luci-txt2">-</div>';
     const wanNames = [...new Set(wans.filter(w => w.version === 4).map(w => w.interface))].join(' + ');
-    document.getElementById('kpiWanSummary').textContent = wanNames || 'WAN OK';
+    document.getElementById('kpiWanSummary').textContent = wanNames || t('wan_ok_lbl');
 
     if (snap.system) {
       document.getElementById('hdrSysIdentity').textContent = snap.system.identity || '-';
@@ -1919,11 +1939,11 @@ async function pollSnapshot() {
     const latEl = document.getElementById('kpiWanLatency');
     if (latEl) {
       const fmtLat = v => {
-        if (!v || v <= 0) return '<span class="text-rose-500">N/A</span>';
+        if (!v || v <= 0) return `<span class="text-rose-500">${t('na_lbl')}</span>`;
         const cls = v < 40 ? 'text-emerald-500' : (v < 120 ? 'text-amber-500' : 'text-rose-500');
         return `<span class="${cls}">${Number(v).toFixed(1)}ms</span>`;
       };
-      latEl.innerHTML = `<div><span class="fi fi-cn rounded-[2px] mr-1"></span>CN: ${fmtLat(snap.wan_latency_cn)}</div><div>🌐 Global: ${fmtLat(snap.wan_latency_global)}</div>`;
+      latEl.innerHTML = `<div><span class="fi fi-cn rounded-[2px] mr-1"></span>${t('cn_lbl')}: ${fmtLat(snap.wan_latency_cn)}</div><div>🌐 ${t('global_lbl')}: ${fmtLat(snap.wan_latency_global)}</div>`;
     }
     const _b = document.getElementById('navSecBadge'); if (_b) { const _n = (snap.security_alerts || []).length; _b.textContent = _n; _b.classList.toggle('hidden', _n === 0); }
 
@@ -1957,8 +1977,8 @@ function renderFromSnap(snap) {
       <tr class="luci-tr cursor-pointer" onclick="loadIfaceDetailChart('${i.name}')">
         <td class="py-2 font-medium text-[#0099cc]">${i.name}</td>
         <td class="py-2 luci-txt2">${i.type}</td>
-        <td class="py-2">${i.disabled ? `<span class="luci-txt2">${t('btn_disabled')}</span>` : (i.running ? '<span class="text-emerald-500">UP</span>' : '<span class="text-rose-500">DOWN</span>')}</td>
-        <td class="py-2 font-mono">${i.type === 'ether' ? (i.link_rate && i.link_rate !== 'no-link' ? `<span class="text-emerald-500">${i.link_rate}${i.full_duplex ? ' Full' : ''}</span>` : '<span class="text-rose-500">No Link</span>') : `<span class="luci-txt2">Virtual</span>`}</td>
+        <td class="py-2">${i.disabled ? `<span class="luci-txt2">${t('btn_disabled')}</span>` : (i.running ? `<span class="text-emerald-500">${t('up_lbl')}</span>` : `<span class="text-rose-500">${t('down_lbl')}</span>`)}</td>
+        <td class="py-2 font-mono">${i.type === 'ether' ? (i.link_rate && i.link_rate !== 'no-link' ? `<span class="text-emerald-500">${i.link_rate}${i.full_duplex ? ' ' + t('full_duplex_lbl') : ''}</span>` : `<span class="text-rose-500">${t('no_link_lbl')}</span>`) : `<span class="luci-txt2">${t('virtual_lbl')}</span>`}</td>
         <td class="py-2 font-mono luci-txt2">${i.mac_address || '-'} / ${i.mtu || '-'}</td>
         <td class="py-2 text-[#0099cc]">${fmtBps(i.rx_bps)}</td>
         <td class="py-2 text-emerald-500">${fmtBps(i.tx_bps)}</td>
@@ -2030,7 +2050,7 @@ function renderActiveAppsSection(snap) {
     });
     apps = Object.values(cMap).sort((a, b) => (b.rx_bps + b.tx_bps) - (a.rx_bps + a.tx_bps) || (b.is_real ? 1 : 0) - (a.is_real ? 1 : 0) || b.session_bytes - a.session_bytes);
     if (infoEl) {
-      infoEl.textContent = `${apps.length} apps · ${totConns} conns · ↓ ${fmtBps(totDl)} ↑ ${fmtBps(totUl)}`;
+      infoEl.textContent = `${apps.length} ${t('apps_unit')} · ${totConns} ${t('conns_unit')} · ↓ ${fmtBps(totDl)} ↑ ${fmtBps(totUl)}`;
       infoEl.classList.remove('hidden');
     }
     if (clrEl) clrEl.classList.toggle('hidden', !selectedAppClient);
@@ -2090,7 +2110,7 @@ function renderRightExtras(snap) {
     else if (p === 'udp') udp++;
     if (c.ip_version === 6) v6++;
     if (c.fasttrack) ft++;
-    const rawGeo = fmtGeo(c.location, c.location_en) || 'Unknown';
+    const rawGeo = fmtGeo(c.location, c.location_en) || t('geo_unknown');
     const country = extractCountryLabel(rawGeo);
     geoCnt[country] = (geoCnt[country] || 0) + 1;
   });
@@ -2239,7 +2259,7 @@ function renderConnections() {
       <td class="py-1.5 text-emerald-500">${fmtBps(c.tx_bps)}</td>
       <td class="py-1.5">↓${fmtBytes(c.rx_bytes)} / ↑${fmtBytes(c.tx_bytes)}</td>
       <td class="py-1.5 luci-txt2">${c.tcp_state || c.timeout}</td>
-      <td class="py-1.5">${!isLanIPAddr(c.remote_ip) ? `<button onclick="quickBlock('${c.remote_ip}')" class="text-rose-500 hover:underline">${t('btn_block_quick')}</button>` : '-'}</td>
+      <td class="py-1.5"><span class="space-x-2 whitespace-nowrap"><button onclick="killLiveConn('${c.id}')" class="text-amber-500 hover:underline">${t('btn_kill')}</button>${!isLanIPAddr(c.remote_ip) ? `<button onclick="quickBlock('${c.remote_ip}')" class="text-rose-500 hover:underline">${t('btn_block_quick')}</button>` : ''}</span></td>
     </tr>
   `).join('');
   const pager = document.getElementById('connPager');
@@ -2415,7 +2435,7 @@ function renderNetworkTables() {
 
   const r = slicePage(netCache.routes, routePage); routePage = r.p;
   document.getElementById('routeBody').innerHTML = r.rows.map(rt => `
-    <tr class="luci-tr"><td class="py-1.5 font-mono text-[#0099cc]">${rt.dst_address}</td><td class="py-1.5 font-mono">${rt.gateway}</td><td class="py-1.5">${rt.routing_table||'main'}</td><td class="py-1.5">${rt.distance}</td><td class="py-1.5">${rt.active?'<span class="text-emerald-500">Active</span>':'Inactive'}</td></tr>
+    <tr class="luci-tr"><td class="py-1.5 font-mono text-[#0099cc]">${rt.dst_address}</td><td class="py-1.5 font-mono">${rt.gateway}</td><td class="py-1.5">${rt.routing_table||'main'}</td><td class="py-1.5">${rt.distance}</td><td class="py-1.5">${rt.active?`<span class="text-emerald-500">${t('active_lbl')}</span>`:t('inactive_lbl')}</td></tr>
   `).join('');
   document.getElementById('routePager').innerHTML = buildPagerHTML(routePage, netCache.routes.length, netPageSize, 'setRoutePage', 'setNetPageSize');
 }
@@ -2427,20 +2447,39 @@ async function wakeMac(mac, iface='') {
   else alert(`WoL -> ${mac}`);
 }
 
-async function loadFirewallRules() {
-  const res = await fetch(`/api/firewall/rules?router_id=${currentRouterId}`);
-  const rows = await res.json();
-  document.getElementById('fwBody').innerHTML = (rows || []).map(r => `
-    <tr class="luci-tr ${r.disabled?'opacity-50':''}">
-      <td class="py-1.5 font-mono">${r.chain}</td>
-      <td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[11px] ${r.action==='drop'||r.action==='reject'?'bg-rose-500/20 text-rose-500':'bg-emerald-500/20 text-emerald-500'}">${r.action}</span></td>
-      <td class="py-1.5">${r.comment || '-'}</td>
-      <td class="py-1.5 font-mono">${r.packets}</td>
-      <td class="py-1.5 font-mono text-[#0099cc]">${fmtBytes(r.bytes)}</td>
-      <td class="py-1.5">${r.disabled ? t('btn_disabled') : 'ON'}</td>
-    </tr>
-  `).join('');
+let fwSubTab = 'filter';
+function switchFwSub(mode) {
+  fwSubTab = mode;
+  const m = { filter: ['panelFwFilter', 'subFwFilterBtn'], nat: ['panelFwNat', 'subFwNatBtn'], addr: ['panelFwAddr', 'subFwAddrBtn'] };
+  Object.entries(m).forEach(([k, [pid, bid]]) => { const pan = document.getElementById(pid), btn = document.getElementById(bid); if (pan) pan.classList.toggle('hidden', k !== mode); if (btn) btn.className = k === mode ? 'px-3.5 py-1.5 bg-[#0099cc] text-white font-medium' : 'px-3.5 py-1.5 luci-sub luci-txt2 hover:opacity-80'; });
+  loadFirewallAll();
 }
+function loadFirewallAll() { if (fwSubTab === 'nat') loadFirewallNAT(); else if (fwSubTab === 'addr') loadAddressList(); else loadFirewallRules(); }
+async function loadFirewallRules() {
+  const rows = await (await fetch(`/api/firewall/rules?router_id=${currentRouterId}`)).json();
+  document.getElementById('fwBody').innerHTML = (rows || []).map(r => `<tr class="luci-tr ${r.disabled?'opacity-50':''}"><td class="py-1.5 font-mono">${r.chain}</td><td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[11px] ${r.action==='drop'||r.action==='reject'?'bg-rose-500/20 text-rose-500':'bg-emerald-500/20 text-emerald-500'}">${r.action}</span></td><td class="py-1.5 font-mono luci-txt2">${r.protocol||'any'}${r.dst_port?':'+r.dst_port:''}</td><td class="py-1.5 font-mono text-[11px]">${r.src_address||'*'} → ${r.dst_address||'*'}</td><td class="py-1.5">${r.comment||'-'}</td><td class="py-1.5 font-mono">${r.packets}</td><td class="py-1.5 font-mono text-[#0099cc]">${fmtBytes(r.bytes)}</td><td class="py-1.5"><button onclick="toggleFwRule('filter','${encodeURIComponent(r.id)}',${r.disabled})" class="px-2 py-0.5 rounded text-xs ${r.disabled?'bg-emerald-500/20 text-emerald-500':'bg-rose-500/20 text-rose-500'}">${r.disabled?t('btn_enable'):t('btn_disable')}</button></td></tr>`).join('');
+}
+async function toggleFwRule(kind, id, enable) { await fetch(`/api/firewall/toggle?router_id=${currentRouterId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ kind, id: decodeURIComponent(id), enable }) }); loadFirewallAll(); }
+async function addFirewallFilter() {
+  const res = await fetch(`/api/firewall/rules?router_id=${currentRouterId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ chain: document.getElementById('fwAddChain').value, action: document.getElementById('fwAddAction').value, protocol: document.getElementById('fwAddProto').value, dst_port: document.getElementById('fwAddPort').value.trim(), src_address: document.getElementById('fwAddSrc').value.trim(), comment: document.getElementById('fwAddComment').value.trim() || 'MikroMon' }) });
+  const d = await res.json(); if (d.error) alert(d.error); else { document.getElementById('fwAddPort').value=''; document.getElementById('fwAddSrc').value=''; loadFirewallRules(); }
+}
+async function loadFirewallNAT() {
+  const rows = await (await fetch(`/api/firewall/nat?router_id=${currentRouterId}`)).json();
+  document.getElementById('natBody').innerHTML = (rows || []).map(r => `<tr class="luci-tr ${r.disabled?'opacity-50':''}"><td class="py-1.5 font-mono">${r.chain}</td><td class="py-1.5"><span class="px-1.5 py-0.5 rounded text-[11px] bg-[#0099cc]/20 text-[#0099cc]">${r.action}</span></td><td class="py-1.5 font-mono luci-txt2">${r.protocol||'any'}${r.dst_port?':'+r.dst_port:''}</td><td class="py-1.5 font-mono">${r.to_addresses||'-'}${r.to_ports?':'+r.to_ports:''}</td><td class="py-1.5">${r.comment||'-'}</td><td class="py-1.5 font-mono text-[#0099cc]">${fmtBytes(r.bytes)}</td><td class="py-1.5"><button onclick="toggleFwRule('nat','${encodeURIComponent(r.id)}',${r.disabled})" class="px-2 py-0.5 rounded text-xs ${r.disabled?'bg-emerald-500/20 text-emerald-500':'bg-rose-500/20 text-rose-500'}">${r.disabled?t('btn_enable'):t('btn_disable')}</button></td></tr>`).join('');
+}
+async function loadAddressList() {
+  const rows = await (await fetch(`/api/firewall/addrlist?router_id=${currentRouterId}`)).json();
+  document.getElementById('addrListBody').innerHTML = (rows || []).map(a => `<tr class="luci-tr ${a.disabled?'opacity-50':''}"><td class="py-1.5 font-mono text-[#0099cc]">${a.list}</td><td class="py-1.5 font-mono">${maskIP(a.address)}</td><td class="py-1.5">${a.comment||'-'}</td><td class="py-1.5 luci-txt2">${a.dynamic?t('dyn'):t('stat')}</td><td class="py-1.5"><button onclick="delAddrListEntry('${encodeURIComponent(a.id)}')" class="text-rose-500 hover:underline">${t('btn_del')}</button></td></tr>`).join('');
+}
+async function addAddrListEntry() {
+  const list = document.getElementById('alListName').value.trim(), address = document.getElementById('alAddress').value.trim(), comment = document.getElementById('alComment').value.trim();
+  if (!list || !address) return;
+  await fetch(`/api/firewall/addrlist?router_id=${currentRouterId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ list, address, comment }) });
+  document.getElementById('alAddress').value=''; loadAddressList();
+}
+async function delAddrListEntry(id) { await fetch(`/api/firewall/addrlist?router_id=${currentRouterId}&id=${id}`, { method:'DELETE' }); loadAddressList(); }
+async function killLiveConn(connId) { await fetch(`/api/connections/kill?router_id=${currentRouterId}&id=${encodeURIComponent(connId)}`, { method:'POST' }); pollSnapshot(); }
 
 async function loadLogs() {
   const res = await fetch(`/api/system/logs?router_id=${currentRouterId}`);
@@ -2528,7 +2567,7 @@ async function loadDBStats() {
   const g = d.geo_db || {};
   const gEl = document.getElementById('geoDbStatusTxt');
   if (gEl) {
-    gEl.textContent = g.loaded ? `Loaded (${g.size_kb} KB) · ${g.path}` : (g.downloading ? 'Downloading ipipfree.ipdb...' : 'Not loaded (click Update)');
+    gEl.textContent = g.loaded ? t('db_loaded_fmt').replace('{kb}', g.size_kb).replace('{path}', g.path) : (g.downloading ? t('db_dl_ing') : t('db_not_loaded'));
   }
   const tInp = document.getElementById('inpIp138Token');
   if (tInp && document.activeElement !== tInp) tInp.value = cfg.ip138_token || '';
@@ -2865,18 +2904,18 @@ function renderSpotlight(kw) {
   );
   let html = '';
   if (apps.length) {
-    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">Live Apps (${apps.length})</div>`;
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">${t('spot_apps')} (${apps.length})</div>`;
     html += apps.map(a => `<button onclick="spotlightPickApp('${a.app}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="font-medium">${tApp(a.app)}</span><span class="font-mono text-[11px] text-[#0099cc]">${fmtBps(a.rx_bps + a.tx_bps)}</span></button>`).join('');
   }
   if (devs.length) {
-    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">Devices (${devs.length})</div>`;
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold">${t('spot_devs')} (${devs.length})</div>`;
     html += devs.map(d => `<button onclick="spotlightPickDevice('${d.ip}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate"><b>${d.host_name || d.ip}</b> <span class="font-mono luci-txt2">${d.ip}</span></span><span class="font-mono text-[11px] text-emerald-500 shrink-0">↓${fmtBps(d.rx_bps)}</span></button>`).join('');
   }
   if (conns.length) {
-    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold flex justify-between"><span>Live Connections (${conns.length})</span><button onclick="spotlightJumpConns('live')" class="text-[#0099cc] hover:underline">Live →</button></div>`;
+    html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold flex justify-between"><span>${t('spot_conns')} (${conns.length})</span><button onclick="spotlightJumpConns('live')" class="text-[#0099cc] hover:underline">Live →</button></div>`;
     html += conns.slice(0, 4).map(c => `<button onclick="spotlightJumpConns('live')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate font-mono text-[11px]"><span class="text-[#0099cc]">${tApp(c.app)}</span> · ${maskIP(c.client_ip)} → ${c.domain || maskIP(c.remote_ip)}:${c.remote_port}</span><span class="text-[10px] luci-txt2 shrink-0">${fmtGeoFlag(c.location, c.location_en)}</span></button>`).join('');
   }
-  html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold flex justify-between"><span>14d History (${spotHistTotal})</span><button onclick="spotlightJumpConns('history')" class="text-[#0099cc] hover:underline">View All 14d →</button></div>`;
+  html += `<div class="px-2 pt-1 text-[10px] uppercase tracking-wider luci-txt2 font-semibold flex justify-between"><span>${t('spot_hist')} (${spotHistTotal})</span><button onclick="spotlightJumpConns('history')" class="text-[#0099cc] hover:underline">View All 14d →</button></div>`;
   if (spotHistItems.length) {
     html += spotHistItems.slice(0, 6).map(h => `<button onclick="spotlightJumpConns('history')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-500/15 flex items-center justify-between gap-2"><span class="truncate font-mono text-[11px]"><span class="text-amber-500">${new Date(h.ts*1000).toLocaleString()}</span> · ${maskIP(h.client_ip)} → ${h.domain || maskIP(h.remote_ip)}</span><span class="text-[10px] luci-txt2 shrink-0">${tApp(h.app) || h.source}</span></button>`).join('');
   } else {

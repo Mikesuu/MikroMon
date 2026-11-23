@@ -677,7 +677,7 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 	if w.cfg.AdgURL == "" {
 		return
 	}
-	entries, err := adguard.FetchQueryLog(w.cfg.AdgURL, w.cfg.AdgUser, w.cfg.AdgPass, 400)
+	entries, err := adguard.FetchQueryLog(w.cfg.AdgURL, w.cfg.AdgUser, w.cfg.AdgPass, 1000)
 	if err != nil {
 		return
 	}
@@ -693,7 +693,7 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 		for _, ip := range e.Answers {
 			w.adgIPDomain[ip] = e.Domain
 		}
-		if len(w.adgIPDomain) > 8000 {
+		if len(w.adgIPDomain) > 20000 {
 			w.adgIPDomain = make(map[string]string)
 		}
 

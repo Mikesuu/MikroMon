@@ -67,6 +67,11 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/dhcp/static", s.handleDHCPStatic)
 	mux.HandleFunc("/api/system/logs", s.handleLogs)
 	mux.HandleFunc("/api/firewall/rules", s.handleFirewallRules)
+	mux.HandleFunc("/api/firewall/toggle", s.handleFirewallToggle)
+	mux.HandleFunc("/api/firewall/nat", s.handleFirewallNAT)
+	mux.HandleFunc("/api/firewall/addrlist", s.handleAddressList)
+	mux.HandleFunc("/api/connections/kill", s.handleKillConn)
+	mux.HandleFunc("/api/network/wireguard", s.handleWireGuardPeers)
 	mux.HandleFunc("/api/tools/wol", s.handleWoL)
 	mux.HandleFunc("/api/appicon", s.handleAppIcon)
 	mux.HandleFunc("/api/appicon/ver", s.handleAppIconVer)
@@ -399,17 +404,116 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleFirewallRules(w http.ResponseWriter, r *http.Request) {
 	id := s.resolveRouterID(r)
+	if r.Method == http.MethodPost {
+		var req struct{ Chain, Action, Protocol, DstPort, SrcAddress, DstAddress, Comment string }
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		if err := s.col.WithClient(id, func(c *routeros.Client) error {
+			return mikrotik.AddFirewallFilter(c, req.Chain, req.Action, req.Protocol, req.DstPort, req.SrcAddress, req.DstAddress, req.Comment)
+		}); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+		return
+	}
 	var rules []mikrotik.FirewallRule
-	err := s.col.WithClient(id, func(c *routeros.Client) error {
-		var e error
-		rules, e = mikrotik.GetFirewallFilters(c)
-		return e
-	})
-	if err != nil {
+	if err := s.col.WithClient(id, func(c *routeros.Client) error { var e error; rules, e = mikrotik.GetFirewallFilters(c); return e }); err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
 	writeJSON(w, 200, rules)
+}
+func (s *Server) handleFirewallToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id := s.resolveRouterID(r)
+	var req struct {
+		Kind   string `json:"kind"`
+		RuleID string `json:"id"`
+		Enable bool   `json:"enable"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := s.col.WithClient(id, func(c *routeros.Client) error {
+		return mikrotik.ToggleFirewallRule(c, req.Kind, req.RuleID, req.Enable)
+	}); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+func (s *Server) handleFirewallNAT(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var rules []mikrotik.NATRule
+	if err := s.col.WithClient(id, func(c *routeros.Client) error { var e error; rules, e = mikrotik.GetFirewallNAT(c); return e }); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, rules)
+}
+func (s *Server) handleAddressList(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	switch r.Method {
+	case http.MethodGet:
+		var list []mikrotik.AddressListEntry
+		if err := s.col.WithClient(id, func(c *routeros.Client) error { var e error; list, e = mikrotik.GetAddressLists(c); return e }); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, list)
+	case http.MethodPost:
+		var req struct{ List, Address, Comment string }
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		if err := s.col.WithClient(id, func(c *routeros.Client) error {
+			return mikrotik.AddAddressListEntry(c, req.List, req.Address, req.Comment)
+		}); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	case http.MethodDelete:
+		eid := r.URL.Query().Get("id")
+		if err := s.col.WithClient(id, func(c *routeros.Client) error { return mikrotik.RemoveAddressListEntry(c, eid) }); err != nil {
+			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	}
+}
+func (s *Server) handleKillConn(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
+	id, cid := s.resolveRouterID(r), r.URL.Query().Get("id")
+	if cid == "" {
+		writeJSON(w, 400, map[string]string{"error": "id required"})
+		return
+	}
+	if err := s.col.WithClient(id, func(c *routeros.Client) error { return mikrotik.RemoveConnection(c, cid) }); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+func (s *Server) handleWireGuardPeers(w http.ResponseWriter, r *http.Request) {
+	id := s.resolveRouterID(r)
+	var peers []mikrotik.WireGuardPeer
+	if err := s.col.WithClient(id, func(c *routeros.Client) error { var e error; peers, e = mikrotik.GetWireGuardPeers(c); return e }); err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, peers)
 }
 
 func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {

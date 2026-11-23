@@ -21,6 +21,13 @@ type appLookup struct {
 }
 
 var appCatalog = map[string]appLookup{
+	"Aqara绿米":       {term: "Aqara Home", country: "cn"},
+	"石头智能":          {term: "Roborock", country: "cn"},
+	"天翼网关":          {term: "小翼管家", country: "cn"},
+	"醒图":            {term: "醒图", country: "cn"},
+	"剪映":            {term: "剪映", country: "cn"},
+	"轻颜相机":          {term: "轻颜相机", country: "cn"},
+	"百度云":           {term: "百度网盘", country: "cn"},
 	"微信":            {id: "414478124", country: "cn"},
 	"QQ":            {id: "444934666", country: "cn"},
 	"抖音":            {id: "1142110895", country: "cn"},
