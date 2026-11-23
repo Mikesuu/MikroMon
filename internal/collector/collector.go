@@ -39,15 +39,15 @@ type LiveConnection struct {
 	App        string `json:"app"`
 	Category   string `json:"category"`
 	Color      string `json:"color"`
-	
-	IsRealApp  bool   `json:"is_real_app"`
-	RxBps      int64  `json:"rx_bps"`
-	TxBps      int64  `json:"tx_bps"`
-	RxBytes    int64  `json:"rx_bytes"`
-	TxBytes    int64  `json:"tx_bytes"`
-	TCPState   string `json:"tcp_state"`
-	Timeout    string `json:"timeout"`
-	FastTrack  bool   `json:"fasttrack"`
+
+	IsRealApp bool   `json:"is_real_app"`
+	RxBps     int64  `json:"rx_bps"`
+	TxBps     int64  `json:"tx_bps"`
+	RxBytes   int64  `json:"rx_bytes"`
+	TxBytes   int64  `json:"tx_bytes"`
+	TCPState  string `json:"tcp_state"`
+	Timeout   string `json:"timeout"`
+	FastTrack bool   `json:"fasttrack"`
 }
 
 type LiveIP struct {
@@ -66,11 +66,11 @@ type ActiveAppSummary struct {
 	App      string `json:"app"`
 	Category string `json:"category"`
 	Color    string `json:"color"`
-	
-	RxBps    int64  `json:"rx_bps"`
-	TxBps    int64  `json:"tx_bps"`
-	Conns    int    `json:"conns"`
-	LastSeen int64  `json:"last_seen"`
+
+	RxBps    int64 `json:"rx_bps"`
+	TxBps    int64 `json:"tx_bps"`
+	Conns    int   `json:"conns"`
+	LastSeen int64 `json:"last_seen"`
 }
 
 type RouterSnapshot struct {
@@ -482,7 +482,7 @@ func (c *Collector) recordDNSApps(w *routerWorker, dns map[string]string, nowUni
 			prev.App = info.App
 			prev.Category = info.Category
 			prev.Color = info.Color
-			
+
 			prev.LastSeen = nowUnix
 			w.recentAppHits[info.App] = prev
 		}
@@ -531,7 +531,7 @@ func (c *Collector) syncAdGuard(w *routerWorker) {
 			prev.App = appInfo.App
 			prev.Category = appInfo.Category
 			prev.Color = appInfo.Color
-			
+
 			if e.TS > prev.LastSeen {
 				prev.LastSeen = e.TS
 			}
@@ -674,15 +674,15 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 			App:        appInfo.App,
 			Category:   appInfo.Category,
 			Color:      appInfo.Color,
-			
-			IsRealApp:  appInfo.IsRealApp,
-			RxBps:      rxBps,
-			TxBps:      txBps,
-			RxBytes:    rxBytes,
-			TxBytes:    txBytes,
-			TCPState:   rc.TCPState,
-			Timeout:    rc.Timeout,
-			FastTrack:  rc.FastTrack,
+
+			IsRealApp: appInfo.IsRealApp,
+			RxBps:     rxBps,
+			TxBps:     txBps,
+			RxBytes:   rxBytes,
+			TxBytes:   txBytes,
+			TCPState:  rc.TCPState,
+			Timeout:   rc.Timeout,
+			FastTrack: rc.FastTrack,
 		})
 
 		if appInfo.IsRealApp {
@@ -692,7 +692,7 @@ func (c *Collector) processConnections(w *routerWorker, nowUnix int64, conns []m
 					App:      appInfo.App,
 					Category: appInfo.Category,
 					Color:    appInfo.Color,
-					
+
 					LastSeen: nowUnix,
 				}
 				realAppMap[appInfo.App] = aa

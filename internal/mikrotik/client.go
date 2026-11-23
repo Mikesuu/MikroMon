@@ -649,13 +649,23 @@ type LogEntry struct {
 }
 
 type FirewallRule struct {
-	ID       string `json:"id"`
-	Chain    string `json:"chain"`
-	Action   string `json:"action"`
-	Comment  string `json:"comment"`
-	Packets  int64  `json:"packets"`
-	Bytes    int64  `json:"bytes"`
-	Disabled bool   `json:"disabled"`
+	ID, Chain, Action, Protocol, SrcAddress, DstAddress, DstPort, InIface, OutIface, Comment string
+	Packets, Bytes                                                                           int64
+	Disabled                                                                                 bool
+}
+type NATRule struct {
+	ID, Chain, Action, Protocol, SrcAddress, DstAddress, DstPort, ToAddresses, ToPorts, OutIface, Comment string
+	Packets, Bytes                                                                                        int64
+	Disabled                                                                                              bool
+}
+type AddressListEntry struct {
+	ID, List, Address, Comment string
+	Dynamic, Disabled          bool
+}
+type WireGuardPeer struct {
+	Interface, PublicKey, Endpoint, AllowedAddr, LastHandshake, Comment string
+	RxBytes, TxBytes                                                    int64
+	Disabled                                                            bool
 }
 
 func GetLogs(c *routeros.Client) ([]LogEntry, error) {
@@ -663,23 +673,17 @@ func GetLogs(c *routeros.Client) ([]LogEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	n := len(r.Re)
-	start := 0
-	if n > 120 {
-		start = n - 120
+	n, start := len(r.Re), 0
+	if n > 500 {
+		start = n - 500
 	}
 	out := make([]LogEntry, 0, n-start)
 	for i := n - 1; i >= start; i-- {
 		m := r.Re[i].Map
-		out = append(out, LogEntry{
-			Time:    m["time"],
-			Topics:  m["topics"],
-			Message: m["message"],
-		})
+		out = append(out, LogEntry{Time: m["time"], Topics: m["topics"], Message: m["message"]})
 	}
 	return out, nil
 }
-
 func GetFirewallFilters(c *routeros.Client) ([]FirewallRule, error) {
 	r, err := c.Run("/ip/firewall/filter/print")
 	if err != nil {
@@ -688,15 +692,111 @@ func GetFirewallFilters(c *routeros.Client) ([]FirewallRule, error) {
 	out := make([]FirewallRule, 0, len(r.Re))
 	for _, re := range r.Re {
 		m := re.Map
-		out = append(out, FirewallRule{
-			ID:       m[".id"],
-			Chain:    m["chain"],
-			Action:   m["action"],
-			Comment:  m["comment"],
-			Packets:  parseInt64(m["packets"]),
-			Bytes:    parseInt64(m["bytes"]),
-			Disabled: m["disabled"] == "true",
-		})
+		out = append(out, FirewallRule{ID: m[".id"], Chain: m["chain"], Action: m["action"], Protocol: m["protocol"], SrcAddress: m["src-address"], DstAddress: m["dst-address"], DstPort: m["dst-port"], InIface: m["in-interface"], OutIface: m["out-interface"], Comment: m["comment"], Packets: parseInt64(m["packets"]), Bytes: parseInt64(m["bytes"]), Disabled: m["disabled"] == "true"})
+	}
+	return out, nil
+}
+func ToggleFirewallRule(c *routeros.Client, kind, id string, enable bool) error {
+	base := "/ip/firewall/filter"
+	if kind == "nat" {
+		base = "/ip/firewall/nat"
+	}
+	cmd := base + "/disable"
+	if enable {
+		cmd = base + "/enable"
+	}
+	_, err := c.Run(cmd, "=numbers="+id)
+	return err
+}
+func AddFirewallFilter(c *routeros.Client, chain, action, proto, dstPort, srcAddr, dstAddr, comment string) error {
+	if chain == "" {
+		chain = "forward"
+	}
+	if action == "" {
+		action = "drop"
+	}
+	args := []string{"/ip/firewall/filter/add", "=chain=" + chain, "=action=" + action, "=place-before=0"}
+	if proto != "" {
+		args = append(args, "=protocol="+proto)
+	}
+	if dstPort != "" {
+		args = append(args, "=dst-port="+dstPort)
+	}
+	if srcAddr != "" {
+		args = append(args, "=src-address="+srcAddr)
+	}
+	if dstAddr != "" {
+		args = append(args, "=dst-address="+dstAddr)
+	}
+	if comment != "" {
+		args = append(args, "=comment="+comment)
+	}
+	_, err := c.RunArgs(args)
+	return err
+}
+func GetFirewallNAT(c *routeros.Client) ([]NATRule, error) {
+	r, err := c.Run("/ip/firewall/nat/print")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]NATRule, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		out = append(out, NATRule{ID: m[".id"], Chain: m["chain"], Action: m["action"], Protocol: m["protocol"], SrcAddress: m["src-address"], DstAddress: m["dst-address"], DstPort: m["dst-port"], ToAddresses: m["to-addresses"], ToPorts: m["to-ports"], OutIface: m["out-interface"], Comment: m["comment"], Packets: parseInt64(m["packets"]), Bytes: parseInt64(m["bytes"]), Disabled: m["disabled"] == "true"})
+	}
+	return out, nil
+}
+func GetAddressLists(c *routeros.Client) ([]AddressListEntry, error) {
+	r, err := c.Run("/ip/firewall/address-list/print")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AddressListEntry, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		out = append(out, AddressListEntry{ID: m[".id"], List: m["list"], Address: m["address"], Comment: m["comment"], Dynamic: m["dynamic"] == "true", Disabled: m["disabled"] == "true"})
+		if len(out) >= 300 {
+			break
+		}
+	}
+	return out, nil
+}
+func AddAddressListEntry(c *routeros.Client, listName, addr, comment string) error {
+	_, err := c.Run("/ip/firewall/address-list/add", "=list="+listName, "=address="+addr, "=comment="+comment)
+	return err
+}
+func RemoveAddressListEntry(c *routeros.Client, id string) error {
+	_, err := c.Run("/ip/firewall/address-list/remove", "=.id="+id)
+	return err
+}
+func RemoveConnection(c *routeros.Client, connID string) error {
+	if strings.HasPrefix(connID, "v6:") {
+		_, err := c.Run("/ipv6/firewall/connection/remove", "=.id="+strings.TrimPrefix(connID, "v6:"))
+		return err
+	}
+	_, err := c.Run("/ip/firewall/connection/remove", "=.id="+strings.TrimPrefix(connID, "v4:"))
+	return err
+}
+func GetWireGuardPeers(c *routeros.Client) ([]WireGuardPeer, error) {
+	r, err := c.Run("/interface/wireguard/peers/print")
+	if err != nil {
+		return []WireGuardPeer{}, nil
+	}
+	out := make([]WireGuardPeer, 0, len(r.Re))
+	for _, re := range r.Re {
+		m := re.Map
+		ep := m["current-endpoint-address"]
+		if ep == "" {
+			ep = m["endpoint-address"]
+		}
+		port := m["current-endpoint-port"]
+		if port == "" {
+			port = m["endpoint-port"]
+		}
+		if ep != "" && port != "" && port != "0" {
+			ep += ":" + port
+		}
+		out = append(out, WireGuardPeer{Interface: m["interface"], PublicKey: m["public-key"], Endpoint: ep, AllowedAddr: m["allowed-address"], LastHandshake: m["last-handshake"], RxBytes: parseInt64(m["rx"]), TxBytes: parseInt64(m["tx"]), Comment: m["comment"], Disabled: m["disabled"] == "true"})
 	}
 	return out, nil
 }
